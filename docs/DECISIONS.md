@@ -47,7 +47,7 @@ No early-access release before AI: the first public release (1.0, milestone M8) 
 
 ## ADR-011 — Languages
 
-English only in v1, for both the UI and CV content. All UI strings go through `i18n`; headings and date formatting go through `cv-core::locale` tables so more languages can be added without restructuring.
+English only in v1, for both the UI and CV content. AI prompts still tell the model to keep the source text's language and never translate, and `LanguageChanged` still drops a rewrite that changes language, because imported or pasted text can be in another language. All UI strings go through `i18n`; headings and date formatting go through `cv-core::locale` tables so more languages can be added without restructuring.
 
 ## ADR-012 — Platforms, packaging and testing
 
@@ -106,7 +106,7 @@ English only in v1, for both the UI and CV content. All UI strings go through `i
 
 ## ADR-019 — Persistence details
 
-- Synchronous `Store` trait in `cv-store`, called from async `cv-api` services via `spawn_blocking`.
+- Synchronous `Store` trait in `cv-store`, called from async `cv-app` services via `spawn_blocking` (`cv-api` holds only DTOs and `ApiError`, see ADR-021).
 - Revision, title and name columns are authoritative over the JSON copies.
 - The migration test uses a synthetic v0 shape, since v1 starts at schema version 1.
 - Database restore validates the file, backs up the current database, swaps and reopens.
@@ -114,6 +114,15 @@ English only in v1, for both the UI and CV content. All UI strings go through `i
 ## ADR-020 — Development workflow
 
 Semantic branches and one PR per feature (stacked when needed), Conventional Commits, CodeRabbit review on every PR, and the product owner merges. See `AGENTS.md`.
+
+## ADR-021 — Crate layering for application services
+
+The spec calls `cv-api` both "types shared by src-tauri and ui" and "application services". Both cannot hold, because the UI compiles `cv-api` to WASM and services need SQLite and Typst. So:
+
+- `cv-api`: request/response DTOs and `ApiError` only (WASM-safe).
+- `cv-app` (new, native only): application services implementing the operations over `cv-core`, `cv-store`, `cv-render`, `cv-import` and `cv-ai`. Tauri commands call it; a future HTTP server could too.
+- Storage-agnostic records (`StoredCv`, `CvSummary`, …) and report types (`LintIssue`, `AtsReport`, …) live in `cv-core`, since `cv-api` and the producing crates both need them.
+- Seam traits live with their concern: `Store` in `cv-store` (SQLite-free signatures; the SQLite implementation sits behind it), `Exporter` and `TextExtractor` in `cv-render`, `Llm` in `cv-ai`, `PageCounter` in `cv-core`.
 
 ## ADR-022 — Typst pin and our own `World` (M0.5 spike)
 

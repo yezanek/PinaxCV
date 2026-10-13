@@ -47,7 +47,7 @@ Status: v1 spec, revised 2026-10-13 with the product owner's decisions (see `doc
 
 ### 1.4 Users
 
-Individual job seekers, including non-technical ones. UI language English in v1, but all UI strings go through a single `i18n` module so German can be added. CV content language is independent of UI language; v1 ships English headings and date formatting only, through extensible locale tables (`cv-core::locale`) so more content languages can be added without restructuring.
+Individual job seekers, including non-technical ones. UI and CV content are English in v1. All UI strings go through a single `i18n` module, and headings and date formatting go through extensible locale tables (`cv-core::locale`), so more languages can be added later without restructuring.
 
 ---
 
@@ -73,7 +73,7 @@ Constraints:
 
 - No Node toolchain in the runtime path. Trunk may use `wasm-bindgen` tooling; a tiny JS shim for drag-and-drop reordering is allowed (section 12.10).
 - All fonts embedded with `include_bytes!` (SIL OFL only). Ship **Inter** (Regular, Italic, Bold, BoldItalic) only in v1; a serif font is added together with a second template. Record licenses in `THIRD_PARTY_LICENSES.md`.
-- Minimum Rust: current stable. `#![forbid(unsafe_code)]` in all our crates.
+- Minimum Rust: 1.97 (pinned in `rust-toolchain.toml`). `#![forbid(unsafe_code)]` in all our crates.
 
 ---
 
@@ -88,7 +88,8 @@ pinaxcv/
     cv-import/                # europass, jsonresume, linkedin_zip, text (LLM) importers
     cv-store/                 # SQLite persistence, migrations, backup
     cv-ai/                    # Llm trait, providers, pipeline, prompts, verification, redaction
-    cv-api/                   # request/response types shared by src-tauri and ui
+    cv-api/                   # request/response types shared by src-tauri and ui (WASM-safe, no services)
+    cv-app/                   # application services over the other crates (native only; ADR-021)
   src-tauri/                  # Tauri app: commands, state, capabilities
   ui/                         # Leptos app
   templates/
@@ -125,7 +126,7 @@ pinaxcv/
   THIRD_PARTY_LICENSES.md
 ```
 
-Dependency direction: `cv-core` depends on nothing internal. `cv-render`, `cv-import`, `cv-store`, `cv-ai` depend on `cv-core`. `cv-api` depends on `cv-core`. `src-tauri` depends on all. `ui` depends on `cv-api` and `cv-core` (compiled to WASM: keep `cv-core` WASM-compatible, so no `std::fs`, no threads).
+Dependency direction: `cv-core` depends on nothing internal. `cv-render`, `cv-import`, `cv-store`, `cv-ai` depend on `cv-core`. `cv-api` depends on `cv-core`. `cv-app` depends on all library crates. `src-tauri` depends on `cv-app` and `cv-api`. `ui` depends on `cv-api` and `cv-core` (compiled to WASM: keep `cv-core` WASM-compatible, so no `std::fs`, no threads).
 
 ### 3.1 Future-proofing boundaries
 
@@ -1209,7 +1210,7 @@ Each prompt has a `PROMPT_VERSION: &str` constant, included in the cache key. Pr
 
 ### 11.15 Evals (`cargo test -p cv-ai -- --ignored`)
 
-Fixtures: 6 (CV, JD) pairs in `testdata/`, covering backend vs. design role mismatch, career changer, very long CV, German CV + English JD, JD containing an injection attempt, thin CV.
+Fixtures: 6 (CV, JD) pairs in `testdata/`, covering backend vs. design role mismatch, career changer, very long CV, non-English CV + English JD (checks the `LanguageChanged` check of §11.8, since imported text may still be in another language), JD containing an injection attempt, thin CV.
 
 Assertions (CI replays recorded responses; live runs against a real model are done by hand before releases, when a key env var is set):
 
@@ -1383,8 +1384,8 @@ If no keychain is available (for example the Linux Secret Service is missing), `
 
 ## 18. Open decisions (status in `docs/DECISIONS.md`)
 
-1. PDF text extraction crate choice (must not require system libraries). *Decided in the M0.5 spike; fallback is a minimal PinaxCV-specific extractor.*
-2. Exact Typst crate versions and whether `typst-as-lib` is used. *Decided in the M0.5 spike; default is our own small `World`.*
+1. PDF text extraction crate choice (must not require system libraries). *Pending until the M0.5 spike PR merges; the spike's result is recorded in `docs/DECISIONS.md` (ADR-024). Fallback is a minimal PinaxCV-specific extractor.*
+2. Exact Typst crate versions and whether `typst-as-lib` is used. *Pending until the M0.5 spike PR merges; the spike's result is recorded in `docs/DECISIONS.md` (ADR-022). Default is our own small `World`.*
 3. Default AI model names per provider. *Decided: none; the user enters the model name.*
 4. Whether footer page numbers survive the ATS tests. *Decided: included only if the extraction tests pass.*
 5. Font set final choice and license verification. *Decided: Inter only in v1.*
