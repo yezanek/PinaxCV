@@ -103,7 +103,7 @@ English only in v1, for both the UI and CV content. All UI strings go through `i
 
 ## ADR-019 — Persistence details
 
-- Synchronous `Store` trait in `cv-store`, called from async `cv-api` services via `spawn_blocking`.
+- Synchronous `Store` trait in `cv-store`, called from async `cv-app` services via `spawn_blocking` (`cv-api` holds only DTOs and `ApiError`, see ADR-021).
 - Revision, title and name columns are authoritative over the JSON copies.
 - The migration test uses a synthetic v0 shape, since v1 starts at schema version 1.
 - Database restore validates the file, backs up the current database, swaps and reopens.

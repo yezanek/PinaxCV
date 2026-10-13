@@ -22,10 +22,10 @@ PostgreSQL
 The standalone application remains:
 
 ```text
-Tauri → cv-api → SQLite
+Tauri → cv-app → cv-store → SQLite
 ```
 
-The domain semantics should remain shared.
+`cv-api` stays the shared request/response (DTO) boundary, and the domain semantics in `cv-core` remain shared.
 
 ## Data migration
 

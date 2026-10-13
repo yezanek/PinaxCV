@@ -47,7 +47,7 @@ Status: v1 spec, revised 2026-10-13 with the product owner's decisions (see `doc
 
 ### 1.4 Users
 
-Individual job seekers, including non-technical ones. UI language English in v1, but all UI strings go through a single `i18n` module so German can be added. CV content language is independent of UI language; v1 ships English headings and date formatting only, through extensible locale tables (`cv-core::locale`) so more content languages can be added without restructuring.
+Individual job seekers, including non-technical ones. UI and CV content are English in v1. All UI strings go through a single `i18n` module, and headings and date formatting go through extensible locale tables (`cv-core::locale`), so more languages can be added later without restructuring.
 
 ---
 

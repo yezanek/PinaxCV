@@ -4,7 +4,7 @@
 
 - Offline by default.
 - No telemetry or crash upload.
-- Network requests only for explicitly configured AI, optional update checks, and user-clicked HTTPS links.
+- Network requests only for AI calls the user has configured and consented to, optional update checks, and user-clicked HTTPS links.
 - API keys stored in the OS keychain or memory-only fallback; never in SQLite, logs, or backups.
 - Logs contain no CV content, job descriptions, prompts, or secrets.
 - User data deletion removes database/WAL data and stored keychain credentials after confirmation.
