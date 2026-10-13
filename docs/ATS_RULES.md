@@ -11,7 +11,7 @@ Users should still verify the final document through the employer's application 
 1. Single column; no side-by-side layout.
 2. Reading order equals source order; no floating or absolutely positioned content.
 3. Standard headings, printed as written (not upper-cased).
-4. Contact block is body text at the top of page 1, no icons; email and phone within the first five extracted lines (the check fails beyond eight).
+4. Contact block is body text at the top of page 1, with no icons. Email and phone should appear within the first five extracted lines; lines six to eight still pass, and the check fails only if either appears after line eight.
 5. No headers or footers with contact info; a "Page 1 of 2" footer only if it does not interleave with body text.
 6. Ligatures off; kerning on.
 7. Real lists with a standard bullet glyph.

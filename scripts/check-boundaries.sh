@@ -5,10 +5,11 @@ set -euo pipefail
 
 fail=0
 
-# deps_of CRATE: names of all normal (non-dev, non-build) dependencies of CRATE.
+# deps_of CRATE: names of all normal (non-dev, non-build) dependencies of CRATE,
+# excluding CRATE itself.
 deps_of() {
   cargo tree --locked -p "$1" -e normal --prefix none --format '{p}' \
-    | awk '{print $1}' | sort -u
+    | awk -v root="$1" '$1 != root {print $1}' | sort -u
 }
 
 # forbid CRATE PATTERN REASON: fail if any dependency of CRATE matches PATTERN.
@@ -32,6 +33,12 @@ forbid cv-api 'tauri.*|rusqlite|libsqlite3-sys|reqwest|hyper.*|cv-store|cv-rende
 # Only cv-store may use SQLite.
 for crate in cv-render cv-import cv-ai; do
   forbid "$crate" 'rusqlite|libsqlite3-sys|cv-store' "only cv-store owns persistence"
+done
+
+# Leaf crates may depend internally only on cv-core (cv-app, added in M1, composes them).
+for crate in cv-api cv-store cv-render cv-import cv-ai; do
+  forbid "$crate" 'cv-api|cv-store|cv-render|cv-import|cv-ai|cv-app' \
+    "leaf crates may depend internally only on cv-core"
 done
 
 # No PostgreSQL or SaaS server code anywhere in v1.
