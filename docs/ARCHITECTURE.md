@@ -6,10 +6,10 @@
 Leptos UI
    │
    ▼
-Tauri commands
+Tauri commands (src-tauri)      ◄── cv-api DTOs ──►  Leptos UI (WASM)
    │
    ▼
-cv-api application services
+cv-app application services
    │
    ├── cv-core
    ├── cv-store ── SQLite (v1)
@@ -20,12 +20,14 @@ cv-api application services
 
 `cv-core` is the semantic center. It must not know about the desktop shell, database, network, or operating system.
 
+`cv-api` holds only the request/response DTOs and `ApiError`. It is compiled into the WASM UI as well as the backend, so it cannot depend on storage, rendering or network crates. The application services that orchestrate a request (load, resolve, render, save) live in `cv-app`, a native-only crate that `src-tauri` calls and a future HTTP server could reuse (ADR-021).
+
 ## 2. Future deployment models
 
 Desktop:
 
 ```text
-Leptos → Tauri → cv-api → SQLite
+Leptos → Tauri → cv-app → SQLite
 ```
 
 Future hosted service:
@@ -48,7 +50,7 @@ The latter is deliberately not implemented in v1.
 
 ### Application API
 
-`cv-api` defines operations as explicit request/response contracts. Tauri commands adapt these contracts to the UI. Future HTTP transport can expose equivalent operations without changing domain semantics.
+`cv-api` defines operations as explicit request/response contracts. `cv-app` implements them; Tauri commands adapt them to the UI. Future HTTP transport can expose equivalent operations through `cv-app` without changing domain semantics.
 
 ### Rendering
 
