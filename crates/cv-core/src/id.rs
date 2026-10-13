@@ -8,6 +8,10 @@ use serde::{Deserialize, Deserializer, Serialize};
 /// Length of a ULID in its canonical Crockford base32 text form.
 const ULID_LEN: usize = 26;
 
+/// JSON Schema pattern accepting exactly what [`Id::parse`] accepts: 26 Crockford
+/// base32 characters in either case, the first at most 7.
+const ULID_PATTERN: &str = "^[0-7][0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{25}$";
+
 /// A stable entity identifier holding a ULID in its canonical text form.
 ///
 /// IDs are assigned on creation and import and never derived from content.
@@ -16,7 +20,7 @@ const ULID_LEN: usize = 26;
 /// ULID, so an `Id` value is always well-formed.
 #[derive(Serialize, JsonSchema, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[serde(transparent)]
-pub struct Id(String);
+pub struct Id(#[schemars(regex(pattern = ULID_PATTERN))] String);
 
 /// Error returned when a string is not a valid ULID.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -103,6 +107,29 @@ mod tests {
         assert!(Id::parse("01HZX3M8Q4V7K2N9P5R6T0W1YI").is_err());
         // The first character encodes the top bits of the timestamp and cannot exceed 7.
         assert!(Id::parse("81HZX3M8Q4V7K2N9P5R6T0W1YB").is_err());
+    }
+
+    #[test]
+    fn schema_pattern_matches_parse() {
+        let schema = serde_json::to_value(schemars::schema_for!(Id)).expect("schema");
+        assert_eq!(schema["type"], "string");
+        let pattern = schema["pattern"].as_str().expect("schema has a pattern");
+        let re = regex::Regex::new(pattern).expect("valid regex");
+        let samples = [
+            VALID.to_owned(),
+            VALID.to_ascii_lowercase(),
+            String::new(),
+            "not-a-ulid".to_owned(),
+            VALID[..25].to_owned(),
+            format!("{VALID}0"),
+            "01HZX3M8Q4V7K2N9P5R6T0W1YI".to_owned(),
+            "01hzx3m8q4v7k2n9p5r6t0w1yl".to_owned(),
+            "81HZX3M8Q4V7K2N9P5R6T0W1YB".to_owned(),
+        ];
+        for sample in &samples {
+            assert_eq!(re.is_match(sample), Id::parse(sample).is_ok(), "{sample:?}");
+        }
+        assert!(!re.is_match("not-a-ulid"));
     }
 
     #[test]
