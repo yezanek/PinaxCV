@@ -133,6 +133,10 @@ pub struct AiStatus {
 
 /// Sent once by the settings screen. The API key goes to the OS keychain (or
 /// memory) and is never persisted in the database, logged, or echoed back.
+///
+/// `Serialize` exists only so the UI can send this request to the backend; no
+/// response type contains an `AiConfig` (the backend answers with [`AiStatus`]),
+/// and backend code never serializes one. `Debug` redacts the key.
 #[derive(Serialize, Deserialize, JsonSchema, Clone, PartialEq)]
 pub struct AiConfig {
     pub provider: AiProvider,

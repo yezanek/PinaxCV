@@ -38,7 +38,33 @@ pub enum ErrorCode {
     Internal,
 }
 
+impl ErrorCode {
+    /// The stable snake_case name, identical to the serialized form.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::NotFound => "not_found",
+            Self::Conflict => "conflict",
+            Self::Validation => "validation",
+            Self::Cancelled => "cancelled",
+            Self::Io => "io",
+            Self::Db => "db",
+            Self::Render => "render",
+            Self::Import => "import",
+            Self::UnsupportedFormat => "unsupported_format",
+            Self::NoTextLayer => "no_text_layer",
+            Self::AiNotConfigured => "ai_not_configured",
+            Self::AiConsentRequired => "ai_consent_required",
+            Self::AiProvider => "ai_provider",
+            Self::AiInvalidOutput => "ai_invalid_output",
+            Self::AiCancelled => "ai_cancelled",
+            Self::Keychain => "keychain",
+            Self::Internal => "internal",
+        }
+    }
+}
+
 impl ApiError {
+    /// An error with a code and an actionable English message, without details.
     pub fn new(code: ErrorCode, message: impl Into<String>) -> Self {
         Self {
             code,
@@ -65,7 +91,7 @@ impl ApiError {
 
 impl std::fmt::Display for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}: {}", self.code, self.message)
+        write!(f, "{}: {}", self.code.as_str(), self.message)
     }
 }
 
@@ -96,6 +122,34 @@ mod tests {
     #[test]
     fn display_names_code_and_message() {
         let err = ApiError::new(ErrorCode::NotFound, "No such CV.");
-        assert_eq!(err.to_string(), "NotFound: No such CV.");
+        assert_eq!(err.to_string(), "not_found: No such CV.");
+    }
+
+    #[test]
+    fn as_str_matches_serialized_name() {
+        use ErrorCode::*;
+        let all = [
+            NotFound,
+            Conflict,
+            Validation,
+            Cancelled,
+            Io,
+            Db,
+            Render,
+            Import,
+            UnsupportedFormat,
+            NoTextLayer,
+            AiNotConfigured,
+            AiConsentRequired,
+            AiProvider,
+            AiInvalidOutput,
+            AiCancelled,
+            Keychain,
+            Internal,
+        ];
+        for code in all {
+            let json = serde_json::to_value(code).expect("serialize");
+            assert_eq!(json, code.as_str(), "{code:?}");
+        }
     }
 }

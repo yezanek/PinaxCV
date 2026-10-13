@@ -23,14 +23,17 @@ pub enum StoreError {
     #[error("revision conflict; current revision is {current_revision}")]
     Conflict { current_revision: u64 },
     /// Stored content was written by a newer PinaxCV.
-    #[error("content has schema version {found}, newer than supported version {supported}")]
+    #[error(
+        "content has schema version {found}, newer than supported version {supported}; update PinaxCV to open it"
+    )]
     NewerSchema { found: u32, supported: u32 },
     /// Stored content could not be read or migrated.
-    #[error("invalid stored content: {0}")]
+    #[error("invalid stored content ({0}); restore a snapshot or a backup")]
     Invalid(String),
-    /// The database itself failed; the message never contains CV content.
-    #[error("storage failure: {0}")]
-    Backend(String),
+    /// The database itself failed. The source error is never shown to the user
+    /// and must not carry CV content; implementations pass the driver error.
+    #[error("storage failure; check free disk space and file permissions")]
+    Backend(#[source] Box<dyn std::error::Error + Send + Sync>),
 }
 
 pub type Result<T> = std::result::Result<T, StoreError>;

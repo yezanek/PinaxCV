@@ -50,6 +50,7 @@ pub enum RenderError {
 
 /// One output format produced from a resolved CV (PDF, HTML; DOCX/ODT later).
 pub trait Exporter {
+    /// Renders `cv` to this format; never writes files or reads persistence.
     fn export(
         &self,
         cv: &ResolvedCv,
@@ -59,6 +60,7 @@ pub trait Exporter {
 
 /// Reads plain text back out of a PDF, for the ATS check and the PDF importer.
 pub trait TextExtractor: Send + Sync {
+    /// Returns the PDF's text in reading order, one line per text line.
     fn extract(&self, pdf: &[u8]) -> Result<String, RenderError>;
 }
 
@@ -87,6 +89,12 @@ pub fn suggested_file_name(full_name: &str, extension: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Async callers move render errors across `spawn_blocking`.
+    const _: () = {
+        const fn assert_send_sync<T: Send + Sync>() {}
+        assert_send_sync::<RenderError>();
+    };
 
     #[test]
     fn suggested_file_name_is_portable() {
