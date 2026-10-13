@@ -1,0 +1,377 @@
+//! The base CV document (spec section 4.2).
+
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+
+use crate::Id;
+
+/// Current version of the [`Cv`] JSON shape. Bumped together with a migration step.
+pub const CV_SCHEMA_VERSION: u32 = 1;
+
+/// The canonical base CV. Variants are overlays on top of it and never mutate it.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct Cv {
+    pub schema_version: u32,
+    pub id: Id,
+    /// Internal name shown in the CV list.
+    pub title: String,
+    /// Content language; drives section headings and date formatting.
+    pub locale: Locale,
+    pub paper: Paper,
+    pub template: TemplateId,
+    pub options: TemplateOptions,
+    pub basics: Basics,
+    /// Professional summary, plain text.
+    pub summary: Option<String>,
+    /// Sections in display order.
+    pub sections: Vec<Section>,
+}
+
+/// Name, headline and contact details.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct Basics {
+    pub full_name: String,
+    /// For example "Backend Engineer".
+    pub headline: Option<String>,
+    pub email: Option<String>,
+    pub phone: Option<String>,
+    /// For example "Berlin, Germany".
+    pub location: Option<String>,
+    /// Printed visibly; only `https:` and `mailto:` URLs become clickable in exports.
+    pub links: Vec<Link>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct Link {
+    pub id: Id,
+    pub label: String,
+    pub url: String,
+}
+
+/// A CV section. Serialized with an explicit `"type"` tag.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum Section {
+    Experience(EntrySection),
+    Education(EntrySection),
+    Projects(EntrySection),
+    Skills(SkillsSection),
+    Languages(LanguagesSection),
+    Certifications(EntrySection),
+    Custom(CustomSection),
+}
+
+impl Section {
+    /// Returns the section's own ID, whatever its kind.
+    pub fn id(&self) -> &Id {
+        match self {
+            Section::Experience(s)
+            | Section::Education(s)
+            | Section::Projects(s)
+            | Section::Certifications(s) => &s.id,
+            Section::Skills(s) => &s.id,
+            Section::Languages(s) => &s.id,
+            Section::Custom(s) => &s.id,
+        }
+    }
+}
+
+/// A section made of entries (jobs, degrees, projects, certifications).
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct EntrySection {
+    pub id: Id,
+    /// Replaces the default heading from the locale table.
+    pub title_override: Option<String>,
+    pub entries: Vec<Entry>,
+}
+
+/// A user-titled section with the same shape as [`EntrySection`].
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct CustomSection {
+    pub id: Id,
+    pub title: String,
+    pub entries: Vec<Entry>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct Entry {
+    pub id: Id,
+    /// Job title, degree or project name.
+    pub title: String,
+    /// Employer, school or issuer.
+    pub org: String,
+    pub location: Option<String>,
+    pub period: Period,
+    pub bullets: Vec<Bullet>,
+    /// Optional one-line or paragraph description.
+    pub description: Option<String>,
+    /// Optional link (certifications, projects). Licence numbers go in `description`.
+    pub url: Option<String>,
+    /// When true, AI may not modify title, org, period or location.
+    pub locked: bool,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct Bullet {
+    pub id: Id,
+    pub text: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct Period {
+    pub start: Option<PartialDate>,
+    pub end: Option<PartialDate>,
+    /// When true, `end` is ignored and rendered as "Present".
+    pub current: bool,
+}
+
+/// A year with an optional month (1..=12).
+#[derive(
+    Serialize, Deserialize, JsonSchema, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub struct PartialDate {
+    pub year: u16,
+    pub month: Option<u8>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct SkillsSection {
+    pub id: Id,
+    pub title_override: Option<String>,
+    pub groups: Vec<SkillGroup>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct SkillGroup {
+    pub id: Id,
+    pub label: Option<String>,
+    pub skills: Vec<Skill>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct Skill {
+    pub id: Id,
+    pub name: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct LanguagesSection {
+    pub id: Id,
+    pub title_override: Option<String>,
+    pub items: Vec<LanguageItem>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct LanguageItem {
+    pub id: Id,
+    pub name: String,
+    /// Free text, for example "C1" or "Native".
+    pub level: Option<String>,
+}
+
+/// CV content language. v1 ships English only; more locales are added here
+/// together with their heading and date tables.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Locale {
+    #[default]
+    En,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Paper {
+    #[default]
+    A4,
+    Letter,
+}
+
+/// Identifier of an embedded template. v1 has only `classic`.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq, Eq)]
+#[serde(transparent)]
+pub struct TemplateId(pub String);
+
+impl Default for TemplateId {
+    fn default() -> Self {
+        Self("classic".to_owned())
+    }
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum DateStyle {
+    /// "Mar 2021"
+    #[default]
+    MonthNameYear,
+    /// "03/2021"
+    NumericMonthYear,
+    /// "2021"
+    YearOnly,
+}
+
+/// Layout options. Out-of-range values are clamped at save time.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct TemplateOptions {
+    pub font_size_pt: f32,
+    pub line_spacing: f32,
+    pub margin_mm: f32,
+    /// `#RRGGBB` for heading rules and text only; `None` means black.
+    pub accent: Option<String>,
+    pub date_style: DateStyle,
+}
+
+impl TemplateOptions {
+    pub const FONT_SIZE_PT: (f32, f32) = (9.0, 12.0);
+    pub const LINE_SPACING: (f32, f32) = (0.9, 1.4);
+    pub const MARGIN_MM: (f32, f32) = (12.0, 30.0);
+}
+
+impl Default for TemplateOptions {
+    fn default() -> Self {
+        Self {
+            font_size_pt: 10.0,
+            line_spacing: 1.1,
+            margin_mm: 18.0,
+            accent: None,
+            date_style: DateStyle::default(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_ids::id;
+
+    fn sample_cv() -> Cv {
+        Cv {
+            schema_version: CV_SCHEMA_VERSION,
+            id: id(1),
+            title: "Main CV".into(),
+            locale: Locale::En,
+            paper: Paper::A4,
+            template: TemplateId::default(),
+            options: TemplateOptions::default(),
+            basics: Basics {
+                full_name: "Jane Doe".into(),
+                headline: Some("Backend Engineer".into()),
+                email: Some("jane@example.com".into()),
+                phone: None,
+                location: Some("Berlin, Germany".into()),
+                links: vec![Link {
+                    id: id(2),
+                    label: "Website".into(),
+                    url: "https://example.com".into(),
+                }],
+            },
+            summary: None,
+            sections: vec![
+                Section::Experience(EntrySection {
+                    id: id(3),
+                    title_override: None,
+                    entries: vec![Entry {
+                        id: id(4),
+                        title: "Engineer".into(),
+                        org: "Acme".into(),
+                        location: None,
+                        period: Period {
+                            start: Some(PartialDate {
+                                year: 2021,
+                                month: Some(3),
+                            }),
+                            end: None,
+                            current: true,
+                        },
+                        bullets: vec![Bullet {
+                            id: id(5),
+                            text: "Built things".into(),
+                        }],
+                        description: None,
+                        url: None,
+                        locked: false,
+                    }],
+                }),
+                Section::Skills(SkillsSection {
+                    id: id(6),
+                    title_override: None,
+                    groups: vec![SkillGroup {
+                        id: id(7),
+                        label: None,
+                        skills: vec![Skill {
+                            id: id(8),
+                            name: "Rust".into(),
+                        }],
+                    }],
+                }),
+            ],
+        }
+    }
+
+    #[test]
+    fn cv_round_trips_through_json() {
+        let cv = sample_cv();
+        let json = serde_json::to_string(&cv).expect("serialize");
+        let back: Cv = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back, cv);
+    }
+
+    #[test]
+    fn sections_are_tagged_and_enums_are_snake_case() {
+        let value = serde_json::to_value(sample_cv()).expect("serialize");
+        assert_eq!(value["sections"][0]["type"], "experience");
+        assert_eq!(value["sections"][1]["type"], "skills");
+        assert_eq!(value["locale"], "en");
+        assert_eq!(value["paper"], "a4");
+        assert_eq!(value["template"], "classic");
+        assert_eq!(value["options"]["date_style"], "month_name_year");
+    }
+
+    #[test]
+    fn section_id_returns_own_id_for_every_kind() {
+        let cv = sample_cv();
+        assert_eq!(cv.sections[0].id(), &id(3));
+        assert_eq!(cv.sections[1].id(), &id(6));
+        let custom = Section::Custom(CustomSection {
+            id: id(9),
+            title: "Volunteering".into(),
+            entries: vec![],
+        });
+        assert_eq!(custom.id(), &id(9));
+        let languages = Section::Languages(LanguagesSection {
+            id: id(10),
+            title_override: None,
+            items: vec![],
+        });
+        assert_eq!(languages.id(), &id(10));
+    }
+
+    #[test]
+    fn template_options_default_matches_spec() {
+        let o = TemplateOptions::default();
+        assert_eq!(
+            (o.font_size_pt, o.line_spacing, o.margin_mm),
+            (10.0, 1.1, 18.0)
+        );
+        assert_eq!(o.accent, None);
+        assert_eq!(o.date_style, DateStyle::MonthNameYear);
+        let (min, max) = TemplateOptions::FONT_SIZE_PT;
+        assert!(min <= o.font_size_pt && o.font_size_pt <= max);
+    }
+
+    #[test]
+    fn partial_dates_order_by_year_then_month() {
+        let a = PartialDate {
+            year: 2020,
+            month: Some(12),
+        };
+        let b = PartialDate {
+            year: 2021,
+            month: None,
+        };
+        let c = PartialDate {
+            year: 2021,
+            month: Some(1),
+        };
+        assert!(a < b && b < c);
+    }
+}
