@@ -88,7 +88,8 @@ pinaxcv/
     cv-import/                # europass, jsonresume, linkedin_zip, text (LLM) importers
     cv-store/                 # SQLite persistence, migrations, backup
     cv-ai/                    # Llm trait, providers, pipeline, prompts, verification, redaction
-    cv-api/                   # request/response types shared by src-tauri and ui
+    cv-api/                   # request/response types shared by src-tauri and ui (WASM-safe, no services)
+    cv-app/                   # application services over the other crates (native only; ADR-021)
   src-tauri/                  # Tauri app: commands, state, capabilities
   ui/                         # Leptos app
   templates/
@@ -125,7 +126,7 @@ pinaxcv/
   THIRD_PARTY_LICENSES.md
 ```
 
-Dependency direction: `cv-core` depends on nothing internal. `cv-render`, `cv-import`, `cv-store`, `cv-ai` depend on `cv-core`. `cv-api` depends on `cv-core`. `src-tauri` depends on all. `ui` depends on `cv-api` and `cv-core` (compiled to WASM: keep `cv-core` WASM-compatible, so no `std::fs`, no threads).
+Dependency direction: `cv-core` depends on nothing internal. `cv-render`, `cv-import`, `cv-store`, `cv-ai` depend on `cv-core`. `cv-api` depends on `cv-core`. `cv-app` depends on all library crates. `src-tauri` depends on `cv-app` and `cv-api`. `ui` depends on `cv-api` and `cv-core` (compiled to WASM: keep `cv-core` WASM-compatible, so no `std::fs`, no threads).
 
 ### 3.1 Future-proofing boundaries
 

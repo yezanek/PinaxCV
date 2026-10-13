@@ -112,6 +112,15 @@ English only in v1, for both the UI and CV content. All UI strings go through `i
 
 Semantic branches and one PR per feature (stacked when needed), Conventional Commits, CodeRabbit review on every PR, and the product owner merges. See `AGENTS.md`.
 
+## ADR-021 — Crate layering for application services
+
+The spec calls `cv-api` both "types shared by src-tauri and ui" and "application services". Both cannot hold, because the UI compiles `cv-api` to WASM and services need SQLite and Typst. So:
+
+- `cv-api`: request/response DTOs and `ApiError` only (WASM-safe).
+- `cv-app` (new, native only): application services implementing the operations over `cv-core`, `cv-store`, `cv-render`, `cv-import` and `cv-ai`. Tauri commands call it; a future HTTP server could too.
+- Storage-agnostic records (`StoredCv`, `CvSummary`, …) and report types (`LintIssue`, `AtsReport`, …) live in `cv-core`, since `cv-api` and the producing crates both need them.
+- Seam traits live with their concern: `Store` in `cv-store` (SQLite-free signatures; the SQLite implementation sits behind it), `Exporter` and `TextExtractor` in `cv-render`, `Llm` in `cv-ai`, `PageCounter` in `cv-core`.
+
 ## Open decisions
 
 - PDF text extraction crate (M0.5 spike; fallback is a minimal PinaxCV-specific extractor).
