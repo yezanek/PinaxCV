@@ -73,7 +73,7 @@ Constraints:
 
 - No Node toolchain in the runtime path. Trunk may use `wasm-bindgen` tooling; a tiny JS shim for drag-and-drop reordering is allowed (section 12.10).
 - All fonts embedded with `include_bytes!` (SIL OFL only). Ship **Inter** (Regular, Italic, Bold, BoldItalic) only in v1; a serif font is added together with a second template. Record licenses in `THIRD_PARTY_LICENSES.md`.
-- Minimum Rust: current stable. `#![forbid(unsafe_code)]` in all our crates.
+- Minimum Rust: 1.97 (pinned in `rust-toolchain.toml`). `#![forbid(unsafe_code)]` in all our crates.
 
 ---
 
@@ -1210,7 +1210,7 @@ Each prompt has a `PROMPT_VERSION: &str` constant, included in the cache key. Pr
 
 ### 11.15 Evals (`cargo test -p cv-ai -- --ignored`)
 
-Fixtures: 6 (CV, JD) pairs in `testdata/`, covering backend vs. design role mismatch, career changer, very long CV, German CV + English JD, JD containing an injection attempt, thin CV.
+Fixtures: 6 (CV, JD) pairs in `testdata/`, covering backend vs. design role mismatch, career changer, very long CV, non-English CV + English JD (checks the `LanguageChanged` check of §11.8, since imported text may still be in another language), JD containing an injection attempt, thin CV.
 
 Assertions (CI replays recorded responses; live runs against a real model are done by hand before releases, when a key env var is set):
 
@@ -1384,8 +1384,8 @@ If no keychain is available (for example the Linux Secret Service is missing), `
 
 ## 18. Open decisions (status in `docs/DECISIONS.md`)
 
-1. PDF text extraction crate choice (must not require system libraries). *Decided in the M0.5 spike; fallback is a minimal PinaxCV-specific extractor.*
-2. Exact Typst crate versions and whether `typst-as-lib` is used. *Decided in the M0.5 spike; default is our own small `World`.*
+1. PDF text extraction crate choice (must not require system libraries). *Pending until the M0.5 spike PR merges; the spike's result is recorded in `docs/DECISIONS.md` (ADR-024). Fallback is a minimal PinaxCV-specific extractor.*
+2. Exact Typst crate versions and whether `typst-as-lib` is used. *Pending until the M0.5 spike PR merges; the spike's result is recorded in `docs/DECISIONS.md` (ADR-022). Default is our own small `World`.*
 3. Default AI model names per provider. *Decided: none; the user enters the model name.*
 4. Whether footer page numbers survive the ATS tests. *Decided: included only if the extraction tests pass.*
 5. Font set final choice and license verification. *Decided: Inter only in v1.*

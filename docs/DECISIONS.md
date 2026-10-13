@@ -44,7 +44,7 @@ No early-access release before AI: the first public release (1.0, milestone M8) 
 
 ## ADR-011 — Languages
 
-English only in v1, for both the UI and CV content. All UI strings go through `i18n`; headings and date formatting go through `cv-core::locale` tables so more languages can be added without restructuring.
+English only in v1, for both the UI and CV content. AI prompts still tell the model to keep the source text's language and never translate, and `LanguageChanged` still drops a rewrite that changes language, because imported or pasted text can be in another language. All UI strings go through `i18n`; headings and date formatting go through `cv-core::locale` tables so more languages can be added without restructuring.
 
 ## ADR-012 — Platforms, packaging and testing
 
