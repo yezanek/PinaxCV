@@ -19,10 +19,15 @@ struct SpikeWorld {
 
 impl SpikeWorld {
     fn new(text: String) -> Self {
-        let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../fonts");
+        // Embedded in the binary, as cv-render will do.
+        const FONTS: [&[u8]; 4] = [
+            include_bytes!("../../fonts/Inter-Regular.ttf"),
+            include_bytes!("../../fonts/Inter-Bold.ttf"),
+            include_bytes!("../../fonts/Inter-SemiBold.ttf"),
+            include_bytes!("../../fonts/Inter-Italic.ttf"),
+        ];
         let mut fonts = Vec::new();
-        for name in ["Inter-Regular", "Inter-Bold", "Inter-SemiBold", "Inter-Italic"] {
-            let data = std::fs::read(format!("{dir}/{name}.ttf")).expect("font");
+        for data in FONTS {
             fonts.extend(Font::iter(Bytes::new(data)));
         }
         let book = FontBook::from_fonts(&fonts);
