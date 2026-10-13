@@ -9,11 +9,12 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
-schemars = "1.2.3"
-serde = { version = "1.0.229", features = ["derive"] }
+schemars.workspace = true
+serde.workspace = true
+thiserror.workspace = true
 
 [dev-dependencies]
-serde_json = "1.0.154"
+serde_json.workspace = true
 
 [lints]
 workspace = true

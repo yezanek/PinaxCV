@@ -9,6 +9,9 @@
 mod cv;
 mod id;
 mod job;
+mod pages;
+mod records;
+mod report;
 mod resolved;
 mod suggestion;
 mod variant;
@@ -16,6 +19,11 @@ mod variant;
 pub use cv::*;
 pub use id::{Id, IdSource, InvalidId};
 pub use job::{JobRequirements, Requirement, RequirementKind};
+pub use pages::{PageCountError, PageCounter};
+pub use records::{
+    CvSummary, SnapshotReason, SnapshotSummary, StoredCv, StoredVariant, Timestamp, VariantSummary,
+};
+pub use report::{AtsCheck, AtsReport, Diagnostic, LintIssue, ValidationIssue};
 pub use resolved::{
     ResolvedCv, ResolvedEntry, ResolvedEntrySection, ResolvedLanguagesSection, ResolvedSection,
     ResolvedSkillsSection,
