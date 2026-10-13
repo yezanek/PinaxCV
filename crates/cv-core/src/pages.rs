@@ -5,6 +5,7 @@ use crate::ResolvedCv;
 /// Counts the pages a resolved CV renders to. Implemented by `cv-render`;
 /// tests use a fake.
 pub trait PageCounter {
+    /// Number of pages `cv` renders to with its current template options.
     fn pages(&self, cv: &ResolvedCv) -> Result<u32, PageCountError>;
 }
 
