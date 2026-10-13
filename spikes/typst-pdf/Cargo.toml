@@ -1,0 +1,17 @@
+[package]
+name = "spike-typst-pdf"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+# Throwaway M0.5 spike; deliberately outside the main workspace.
+[workspace]
+
+[dependencies]
+typst = "0.15.1"
+typst-pdf = "0.15.1"
+typst-render = "0.15.1"
+typst-layout = "0.15.1"
+pdf-extract = "0.12.1"
+lopdf = "0.45.0"
+sha2 = "0.10"

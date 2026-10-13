@@ -1,0 +1,4 @@
+# Throwaway M0.5 spike; deliberately outside the main workspace.
+[workspace]
+resolver = "3"
+members = ["ui", "src-tauri"]

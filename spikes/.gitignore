@@ -1,0 +1,5 @@
+target/
+dist/
+*.pdf
+extract-*.txt
+/typst-pdf/page1.png
