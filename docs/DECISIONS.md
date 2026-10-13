@@ -115,10 +115,31 @@ English only in v1, for both the UI and CV content. All UI strings go through `i
 
 Semantic branches and one PR per feature (stacked when needed), Conventional Commits, CodeRabbit review on every PR, and the product owner merges. See `AGENTS.md`.
 
+## ADR-022 — Typst pin and our own `World` (M0.5 spike)
+
+- Pin `typst`, `typst-layout`, `typst-pdf` and `typst-render` at 0.15.1. `cv-render` implements its own small `World` (embedded Inter, one in-memory main file, no package downloads, `today` returns `None`); `typst-as-lib` is not used.
+- The template never interpolates user text into Typst markup. The spike broke on an unescaped `@` in an email address (read as a label), so `cv-render` passes the `ResolvedCv` as data (`sys.inputs` / JSON) and the template reads fields from it.
+- Measured with `spikes/typst-pdf` (1-page CV, Inter 4.1, release build, GitHub runners): cold compile 7.4 ms (Linux), 7.2 ms (Windows), 406 ms (macOS, first run on a cold runner); PDF export 2.2 / 2.9 / 14.8 ms; 31,274 bytes.
+
+## ADR-023 — Deterministic PDF output (M0.5 spike)
+
+- Export with `PdfOptions { ident: Smart::Custom(..), timestamp: None }`. The same input produced byte-identical PDFs within a run and across Linux, Windows and macOS (SHA-256 prefix `de88d17d5050738c` on all three).
+- Golden-file tests in M2 may therefore compare PDF bytes, not only extracted text. A Typst upgrade that changes bytes is expected and updates the golden files in the same PR.
+
+## ADR-024 — PDF text read-back for the ATS check (M0.5 spike)
+
+- `cv-render`'s `TextExtractor` uses `lopdf` (0.45). It keeps line breaks, so the header checks (name in the first 3 lines, email and phone in the first 8) work: the email was on line 3. Every checked string survived on all three systems, with no ligature, private-use or replacement codepoints when ligatures are off.
+- `pdf-extract` (0.12) also recovers every string but joins the header lines into one line ("Jane DoeBackend Engineer…"), which is what naive ATS parsers may see. The template therefore ends each header line with a trailing non-breaking space so words stay separated even for line-joining extractors; an M2 test runs both extractors and fails if header words merge.
+- The planned fallback (a minimal PinaxCV-specific reader, scored "as read by PinaxCV") is not needed for now.
+
+## ADR-025 — Live preview and desktop shell build (M0.5 spike)
+
+- Preview stays PNG over a custom `preview` URI scheme (`preview://localhost/…` on Linux and macOS, `http://preview.localhost/…` on Windows). Incremental recompile after editing one bullet: p50 0.4 ms (Linux), 0.7 ms (Windows), 0.6 ms (macOS). PNG render of page 1 at 1.5 px/pt: p50 10.9 / 8.3 / 13.9 ms, about 100 KB. Compile plus render is under 30 ms at p90 on every runner, far inside the spec's p95 < 250 ms target after the 150 ms debounce, so SVG preview is not needed. The 2-page CV measurement is repeated in M2 with the real template.
+- Tauri 2.12 + Leptos 0.8 (CSR) + Trunk 0.21 builds on `ubuntu-22.04` and `windows-latest` (Linux needs `libwebkit2gtk-4.1-dev`, `libsoup-3.0-dev`, `librsvg2-dev`, `libayatana-appindicator3-dev`). Cold CI builds: Trunk 55 s / 216 s, Tauri shell 119 s / 239 s (Linux / Windows). On Linux the app was run under Xvfb and showed the page served over `preview://`.
+- The CSP allows `img-src 'self' preview: http://preview.localhost` and `script-src 'self' 'wasm-unsafe-eval'`; M3 keeps exactly these additions.
+
 ## Open decisions
 
-- PDF text extraction crate (M0.5 spike; fallback is a minimal PinaxCV-specific extractor).
-- Typst crate versions and whether `typst-as-lib` is used (M0.5 spike; default is our own small `World`).
-- Tagged-PDF and deterministic-output options for the pinned Typst version (M0.5 spike).
+- Tagged PDF (accessibility tags) for the pinned Typst version (M2).
 - Exact HTML CSS/template design (M2).
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
