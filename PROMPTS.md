@@ -2,11 +2,15 @@
 
 ## M0 — Architecture & Contracts
 
-Read `pinaxcd-spec.md`, `AGENTS.md`, and `docs/*` before editing code.
+Read `pinaxcv-spec.md`, `AGENTS.md`, and `docs/*` before editing code.
 
 Establish the PinaxCV workspace and architecture boundaries. Define domain/application contracts without implementing PostgreSQL, HTTP, accounts, synchronization, or SaaS infrastructure. Ensure SQLite is hidden behind the storage boundary and Tauri is an adapter. Define PDF and single-file HTML exporters over `ResolvedCv`.
 
 Run formatting, clippy, and tests. Record decisions in `docs/DECISIONS.md`.
+
+## M0.5 — Risk spikes
+
+Build throwaway spikes in `spikes/` for PDF text extraction from Typst output, byte-identical PDF output, live PNG preview latency over a custom URI scheme, and the Trunk + Tauri 2 + Leptos build on Linux and the Windows CI runner. Record each result with measurements in `docs/DECISIONS.md`.
 
 ## M1 — Core & Storage
 
@@ -32,13 +36,17 @@ Implement overlays without mutating the base CV. Verify that PDF and HTML export
 
 Implement deterministic lint and ATS UI with jump-to-field behavior.
 
-## M7 — AI
+## M7a — AI foundation and tailoring
 
-Implement provider abstraction, consent, redaction, verification, caching, review UI, and evals. AI proposes; the user approves. Never send contact details. Never fabricate facts.
+Implement the provider abstraction (Anthropic, OpenAI, Gemini, OpenAI-compatible by base URL; no default model), keychain, consent, redaction, caching, job registry, stages A-C and the hide/collapse/order review UI. AI proposes; the user approves. Never fabricate facts.
+
+## M7b — AI rewriting, review and import
+
+Implement stages D-G with mandatory verification, `IMPORT_EXTRACT`, the rewrite review UI and evals. Contact details are never sent, except by `IMPORT_EXTRACT` after consent that says so.
 
 ## M8 — Release
 
-Implement Linux/Windows CI and packaging. Keep macOS and SaaS work out of this milestone.
+Implement Linux/Windows packaging (AppImage, deb, Flatpak, NSIS, portable exe), updater and signing for 1.0. CI already exists from M0. Keep macOS and SaaS work out of this milestone.
 
 ## M10 — macOS, future
 

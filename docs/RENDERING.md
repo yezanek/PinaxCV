@@ -35,7 +35,9 @@ Requirements:
 - semantic HTML;
 - responsive layout;
 - accessible headings and lists;
-- clickable URLs;
+- clickable `https:` and `mailto:` URLs only;
+- optional email and phone;
+- system fonts, automatic dark mode, print styles;
 - escaped user content;
 - no PinaxCV runtime dependency.
 

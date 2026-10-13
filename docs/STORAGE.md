@@ -11,7 +11,8 @@ Requirements:
 - migrations;
 - transactions;
 - revision-based optimistic conflict detection;
-- snapshots;
+- snapshots (base CVs only, latest 50 per CV);
+- latest AI review per CV (`review_sessions`);
 - backup/restore;
 - no secrets in the database.
 

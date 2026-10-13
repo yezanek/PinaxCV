@@ -6,6 +6,7 @@
 - `DATA_MODEL.md` — persistence concepts.
 - `STORAGE.md` — SQLite now, PostgreSQL later.
 - `RENDERING.md` — PDF, preview, and HTML export.
+- `AI_ARCHITECTURE.md` — AI pipeline, privacy and verification.
 - `IMPORT_EXPORT.md` — external formats.
 - `PRODUCT_EVOLUTION.md` — desktop → macOS → SaaS.
 - `SAAS_MIGRATION.md` — future hosted migration strategy.

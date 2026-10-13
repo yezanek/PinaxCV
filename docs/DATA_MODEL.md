@@ -16,7 +16,7 @@ Core entities include:
 - Variant
 - Variant overlay fields
 - Revision/snapshot
-- AI suggestion/review state
+- AI suggestion/review state (on the variant, or per CV in `review_sessions` for reviews without a variant)
 
 Use stable ULIDs rather than database-local integer identities.
 

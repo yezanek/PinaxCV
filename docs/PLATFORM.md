@@ -10,10 +10,12 @@ Platform-specific concerns include:
 - keychain/credential store;
 - file dialogs;
 - update mechanisms;
-- packaging;
+- packaging (AppImage, deb and Flatpak on Linux; NSIS installer and a portable exe on Windows);
 - native webview behavior.
 
 Keep these concerns behind adapters where practical.
+
+Development happens on Linux. Windows is tested by GitHub Actions `windows-latest` runners (including `tauri-driver` end-to-end tests) from the first commit, and manually in a Windows 11 evaluation VM before 1.0.
 
 ## macOS — future
 

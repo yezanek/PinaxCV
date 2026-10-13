@@ -9,6 +9,10 @@
 - Logs contain no CV content, job descriptions, prompts, or secrets.
 - User data deletion removes database/WAL data and stored keychain credentials after confirmation.
 - Embedded templates/fonts only; no user-supplied executable templates in v1.
+- Only `https:` and `mailto:` links are clickable in exports.
+- The backend owns every file dialog; the UI never passes file paths.
+- Contact details are never sent to AI providers, except by the text importer after consent that says so.
+- "Clear AI cache" and "Delete all data" cover cached AI responses, which contain CV text.
 
 ## Future SaaS
 

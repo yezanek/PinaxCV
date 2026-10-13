@@ -1,5 +1,7 @@
 # PinaxCV Architecture Decisions
 
+Decisions made by the product owner on 2026-10-13 are recorded as ADR-009 onward. Spike results (M0.5) will be added as they land.
+
 ## ADR-001 — Standalone-first
 
 PinaxCV v1 is Linux/Windows desktop only. This avoids recurring hosting costs before product-market evidence exists.
@@ -30,15 +32,90 @@ macOS support is a product-validation decision, not a v1 requirement.
 
 ## ADR-008 — SaaS deferred
 
-Accounts, HTTP API, PostgreSQL, synchronization, multi-tenancy, billing, and hosted infrastructure are not implemented until explicitly justified by demand.
+Accounts, HTTP API, PostgreSQL, synchronization, multi-tenancy, billing, and hosted infrastructure are not implemented until explicitly justified by demand. The intended business model is a future paid hosted version.
+
+## ADR-009 — License and repository
+
+Apache-2.0. Public repository `pinaxcv` from day one.
+
+## ADR-010 — Release scope
+
+No early-access release before AI: the first public release (1.0, milestone M8) includes AI. The AI work is split into M7a (foundation and tailoring) and M7b (rewriting, review, text import).
+
+## ADR-011 — Languages
+
+English only in v1, for both the UI and CV content. All UI strings go through `i18n`; headings and date formatting go through `cv-core::locale` tables so more languages can be added without restructuring.
+
+## ADR-012 — Platforms, packaging and testing
+
+- Development happens on Linux. CI runs on `ubuntu-22.04` and `windows-latest` from the first commit; the Windows runner (including `tauri-driver` end-to-end tests) is the Windows test machine until a manual pass in a Windows 11 evaluation VM before 1.0.
+- Linux: AppImage, `.deb` and Flatpak.
+- Windows: NSIS installer plus a portable exe labelled "no auto-update".
+- Windows builds are unsigned before 1.0 and signed from 1.0.
+- Update checks are asked on first run with "off" preselected.
+
+## ADR-013 — Privacy rules
+
+- Contact details are never sent to an AI provider, except by the text importer (`IMPORT_EXTRACT`), whose consent dialog shows the exact text and says contact details are included.
+- The name is sent only with the opt-in `ai.send_name` setting. Location is sent as city and country only, and can be disabled.
+- HTML export has "Include email" (default on) and "Include phone" (default off).
+- The AI cache is included in backups; Settings has "Clear AI cache", and "Delete all data" removes it.
+
+## ADR-014 — Security rules
+
+- Only `https:` and `mailto:` links are clickable in PDF and HTML exports; other schemes are printed as plain text and flagged by lint.
+- The backend opens every file dialog and writes only to the returned path; the UI never passes paths.
+- The HTML "no external resources" test parses the output and fails on any non-`data:` resource load; navigational links are allowed.
+
+## ADR-015 — Variant model
+
+- A variant can hide sections, entries, bullets, skills and language items, and can reorder sections (CV id as the parent key in `order`), entries, bullets and skills. `skills_order` is removed in favour of `order`.
+- Experience order can be changed manually; AI may suggest reordering only when the user enables the opt-in tailoring option.
+- Text overrides cover bullets (bullet id), entry descriptions (entry id) and the summary (`summary_override`). Titles, employers, dates and locations are never overridable.
+- `Entry` gains an optional `url` (certifications, projects); licence numbers go in `description`.
+- `Variant` gains `schema_version` with its own migration chain.
+- `ResolvedCv` keeps all entity IDs; the Typst data contract omits them.
+- Fit-to-length cuts are always `Pending` for user review.
+- Only base CVs get automatic snapshots. Deleted CVs are recoverable for 30 days.
+- The latest AI review made without a variant is stored per CV in `review_sessions`.
+
+## ADR-016 — Rendering
+
+- Inter is the only CV font in v1.
+- Headings are printed as written (title case), not upper-cased.
+- A "Page 1 of 2" footer is included only if extraction tests prove it does not interleave with body text.
+- The template places contact details in the first five extracted lines; the ATS check fails only beyond eight.
+- Characters the embedded fonts cannot display raise a `MissingGlyphs` warning; export is still allowed.
+- Live preview uses PNG pages served as raw bytes over a `preview://` custom URI scheme.
+- HTML export: single column, system fonts, automatic dark mode, print styles.
+- Absent optional fields in the Typst data contract are `null`, never empty strings.
+
+## ADR-017 — AI providers and tests
+
+- Providers: Anthropic, OpenAI, Gemini, and any OpenAI-compatible endpoint by base URL (covers Ollama and other local servers). There is no dedicated Ollama adapter.
+- There is no default model: the user enters the model name.
+- CI replays recorded AI responses; live evals run by hand before releases.
+
+## ADR-018 — Imports
+
+- The product owner supplies real (redacted) LinkedIn and Europass exports before M4; the importers are built against them.
+- A heuristic text/PDF importer works without AI and is labelled low confidence.
+
+## ADR-019 — Persistence details
+
+- Synchronous `Store` trait in `cv-store`, called from async `cv-api` services via `spawn_blocking`.
+- Revision, title and name columns are authoritative over the JSON copies.
+- The migration test uses a synthetic v0 shape, since v1 starts at schema version 1.
+- Database restore validates the file, backs up the current database, swaps and reopens.
+
+## ADR-020 — Development workflow
+
+Semantic branches and one PR per feature (stacked when needed), Conventional Commits, CodeRabbit review on every PR, and the product owner merges. See `AGENTS.md`.
 
 ## Open decisions
 
-- exact persistence interface shape;
-- exact HTML CSS/template design;
-- exact PDF text extraction crate;
-- Typst version/API;
-- font licensing/final set;
-- application license;
-- German UI timing;
-- future SaaS synchronization model.
+- PDF text extraction crate (M0.5 spike; fallback is a minimal PinaxCV-specific extractor).
+- Typst crate versions and whether `typst-as-lib` is used (M0.5 spike; default is our own small `World`).
+- Tagged-PDF and deterministic-output options for the pinned Typst version (M0.5 spike).
+- Exact HTML CSS/template design (M2).
+- Future SaaS DTO reuse and synchronization model (SaaS phase).

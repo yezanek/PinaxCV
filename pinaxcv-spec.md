@@ -1,7 +1,7 @@
 # PinaxCV: Implementation Specification
 
 Target reader: an LLM coding assistant implementing this project end to end.
-Status: v1 spec. Product: PinaxCV. Initial platforms: Linux and Windows. Future platforms: macOS if justified by demand. Future hosted SaaS: PostgreSQL-backed, only after product validation. Language: Rust (everything).
+Status: v1 spec, revised 2026-10-13 with the product owner's decisions (see `docs/DECISIONS.md`). Product: PinaxCV. Initial platforms: Linux and Windows. v1 language: English (UI and CV content). Future platforms: macOS if justified by demand. Future hosted SaaS: PostgreSQL-backed, only after product validation. Language: Rust (everything).
 
 ---
 
@@ -47,7 +47,7 @@ Status: v1 spec. Product: PinaxCV. Initial platforms: Linux and Windows. Future 
 
 ### 1.4 Users
 
-Individual job seekers, including non-technical ones. UI language English in v1, but all UI strings go through a single `i18n` module so German can be added. CV content language is independent of UI language.
+Individual job seekers, including non-technical ones. UI language English in v1, but all UI strings go through a single `i18n` module so German can be added. CV content language is independent of UI language; v1 ships English headings and date formatting only, through extensible locale tables (`cv-core::locale`) so more content languages can be added without restructuring.
 
 ---
 
@@ -61,8 +61,8 @@ Individual job seekers, including non-technical ones. UI language English in v1,
 | DB | `rusqlite` with feature `bundled`, `rusqlite_migration` | Static SQLite, no system lib; hide behind persistence interfaces so PostgreSQL can be added later |
 | Serialization | `serde`, `serde_json`, `schemars` | |
 | IDs | `ulid` | String form in JSON and DB |
-| HTTP | `reqwest` with `rustls-tls`, no OpenSSL | AI only |
-| Secrets | `keyring` | Windows Credential Manager; Linux Secret Service; fallback in section 11.9 |
+| HTTP | `reqwest` with `rustls-tls`, no OpenSSL | AI requests only (the updater uses Tauri's plugin) |
+| Secrets | `keyring` | Windows Credential Manager; Linux Secret Service; fallback in section 13.1 |
 | Zip/CSV | `zip`, `csv` | LinkedIn |
 | Errors | `thiserror` in libraries, `anyhow` only in `src-tauri` glue | |
 | Async | `tokio` | |
@@ -71,8 +71,8 @@ Individual job seekers, including non-technical ones. UI language English in v1,
 
 Constraints:
 
-- No Node toolchain in the runtime path. Trunk may use `wasm-bindgen` tooling; a tiny JS shim for drag-and-drop reordering is allowed (section 13.5).
-- All fonts embedded with `include_bytes!` (SIL OFL only). Ship **Inter** (Regular, Italic, Bold, BoldItalic) and **Source Serif 4** (Regular, Bold) or **Lato**; record licenses in `THIRD_PARTY_LICENSES.md`.
+- No Node toolchain in the runtime path. Trunk may use `wasm-bindgen` tooling; a tiny JS shim for drag-and-drop reordering is allowed (section 12.10).
+- All fonts embedded with `include_bytes!` (SIL OFL only). Ship **Inter** (Regular, Italic, Bold, BoldItalic) only in v1; a serif font is added together with a second template. Record licenses in `THIRD_PARTY_LICENSES.md`.
 - Minimum Rust: current stable. `#![forbid(unsafe_code)]` in all our crates.
 
 ---
@@ -102,6 +102,8 @@ pinaxcv/
     europass/
     jobs/                     # job description fixtures
     ai_recorded/              # recorded LLM responses for tests
+  .github/workflows/          # CI: ubuntu-22.04 and windows-latest from the first commit
+  .coderabbit.yaml            # CodeRabbit review configuration
   docs/
     ARCHITECTURE.md
     APPLICATION_API.md
@@ -159,7 +161,7 @@ pub struct Cv {
     pub schema_version: u32,
     pub id: Id,
     pub title: String,               // internal name shown in the CV list
-    pub locale: Locale,              // content language: en, de, fr, es, it, nl, pt, pl (extensible)
+    pub locale: Locale,              // content language: en in v1 (extensible: de, fr, es, it, nl, pt, pl later)
     pub paper: Paper,                // A4 | Letter
     pub template: TemplateId,        // "classic" in v1
     pub options: TemplateOptions,
@@ -201,6 +203,7 @@ pub struct Entry {
     pub period: Period,
     pub bullets: Vec<Bullet>,        // Bullet { id, text }
     pub description: Option<String>, // optional one-line/paragraph
+    pub url: Option<String>,         // optional link (certifications, projects); licence numbers go in `description`
     pub locked: bool,                // AI may not modify title/org/period/location
 }
 
@@ -229,6 +232,8 @@ pub struct TemplateOptions {
 
 All types derive `Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq`. Use `#[serde(tag = "type", rename_all = "snake_case")]` on enums so JSON is explicit.
 
+`cv-core` takes IDs and timestamps as inputs (an `IdGenerator`/clock passed in by callers) so it stays free of random-number and time dependencies; the WASM UI build enables `getrandom`'s JS backend for its own ID generation. `JobRequirements` (section 11.4) and `VerificationWarning` (section 11.8) are plain data types defined in `cv-core`, because `Variant` and `Suggestion` reference them; the logic that produces them lives in `cv-ai`.
+
 ### 4.3 Validation (`cv_core::validate`)
 
 Two levels:
@@ -239,17 +244,20 @@ Two levels:
 ### 4.4 Variants and overlay
 
 ```rust
+pub const VARIANT_SCHEMA_VERSION: u32 = 1;
+
 pub struct Variant {
+    pub schema_version: u32,
     pub id: Id,
     pub cv_id: Id,
     pub name: String,                            // "Acme, Senior Backend"
     pub job: JobTarget,
-    pub hidden: BTreeSet<Id>,                    // entries or bullets hidden entirely
+    pub hidden: BTreeSet<Id>,                    // sections, entries, bullets, skills or language items hidden entirely
     pub collapsed: BTreeSet<Id>,                 // entries rendered as a single line (title, org, period)
-    pub order: BTreeMap<Id, Vec<Id>>,            // parent id (section/entry) -> ordered child ids
-    pub text_overrides: BTreeMap<Id, String>,    // bullet/summary/description id -> replacement text
+    pub order: BTreeMap<Id, Vec<Id>>,            // parent id -> ordered child ids; parent is the CV id (section order),
+                                                 // a section id (entries/items), an entry id (bullets) or a skill group id (skills)
+    pub text_overrides: BTreeMap<Id, String>,    // bullet id -> bullet text; entry id -> entry description
     pub summary_override: Option<String>,
-    pub skills_order: Option<Vec<Id>>,           // optional ordering of skill ids to surface matches first
     pub page_target: Option<u8>,                 // 1 or 2
     pub suggestions: Vec<Suggestion>,
     pub revision: u64,
@@ -264,7 +272,7 @@ pub struct JobTarget {
 }
 ```
 
-`ResolvedCv` is a fully materialized document (no IDs needed by the template except for debug) produced by:
+`ResolvedCv` is a fully materialized document. It keeps every entity ID, because lint targets, jump-to-field, the AI payload and fit-to-length all depend on them; the Typst data contract (section 6.3) simply omits them. It is produced by:
 
 ```rust
 impl Cv { pub fn resolve(&self, v: Option<&Variant>) -> ResolvedCv }
@@ -273,10 +281,10 @@ impl Cv { pub fn resolve(&self, v: Option<&Variant>) -> ResolvedCv }
 Resolve rules (implement exactly; property-test them):
 
 1. Start from the base. Unknown IDs in the variant (deleted content) are ignored silently and reported by `Variant::prune(&Cv)`, which the UI calls after base edits.
-2. Remove entries/bullets whose IDs are in `hidden`. If a section ends up with zero entries, omit the section.
+2. Remove sections, entries, bullets, skills and language items whose IDs are in `hidden`. If a section ends up with zero visible children, omit the section.
 3. `collapsed` entries render with title, org, and period only (no bullets, no description).
-4. Apply `order` for each parent: listed IDs first in the given order, then remaining children in base order.
-5. Apply `text_overrides` to matching bullets, descriptions, and (with key = `cv.id`) nothing else; the summary uses `summary_override`.
+4. Apply `order` for each parent: listed IDs first in the given order, then remaining children in base order. The CV id as parent orders sections. Experience entries keep base (reverse-chronological) order unless the user reorders them manually or accepts an opt-in AI reorder suggestion (section 11.6).
+5. Apply `text_overrides`: a bullet id replaces that bullet's text; an entry id replaces that entry's description. Any other key is ignored and reported by `prune`. The summary uses only `summary_override`.
 6. **Locked entries:** overrides targeting `title`, `org`, `period`, `location` don't exist in the model, so this is enforced by the model itself: only text of bullets/description/summary can be overridden.
 7. The resolve function is pure and total (never panics, never returns IDs that do not exist).
 
@@ -302,18 +310,18 @@ pub struct Suggestion {
 pub enum SuggestionKind { Rewrite, Hide, Collapse, Reorder, Summary, SkillOrder, LengthCut }
 ```
 
-Accepting a suggestion mutates the **variant** (or the base CV when the user chose "Apply to base CV" from a Review suggestion made without a variant). It never silently mutates anything else.
+Accepting a suggestion mutates the **variant** (or the base CV when the user chose "Apply to base CV" from a Review suggestion made without a variant). It never silently mutates anything else. Review suggestions made without a variant are stored per CV in the `review_sessions` table (latest review only, section 5.2).
 
 ### 4.6 Fit-to-length (`cv_core::fit`)
 
-Input: `ResolvedCv` plus per-bullet relevance scores (0..100). The renderer is injected as a trait `PageCounter { fn pages(&self, cv: &ResolvedCv) -> Result<u32> }`.
+Signature: `fit(cv: &Cv, variant: &Variant, scores: Option<&RelevanceScores>, page_target: u8, counter: &dyn PageCounter) -> FitResult`, where `FitResult` carries the proposed overlay changes as `LengthCut` suggestions (or `CannotFit { pages }`). Per-bullet relevance scores are 0..100. The renderer is injected as a trait `PageCounter { fn pages(&self, cv: &ResolvedCv) -> Result<u32> }`; each iteration resolves the variant with the cuts so far applied.
 
 Algorithm (deterministic, no LLM):
 
 1. Render; if pages <= target, done.
 2. Build a candidate list ordered by ascending priority. Priority = relevance score, with adjustments: bullets of the most recent Experience entry get +30; the first two bullets of every entry get +15; entries whose `locked = true` are never removed (but their bullets may be).
 3. Remove the lowest-priority bullet (add to `hidden`), re-render, repeat. When an entry has zero visible bullets left and relevance < 40, collapse it instead. When all non-collapsible content is exhausted and the page target is still exceeded, return `FitResult::CannotFit { pages }`.
-4. Each removal is recorded as a `LengthCut` suggestion with status `Accepted` and reason "Removed to fit N page(s)", so the user can review and undo.
+4. Each removal is recorded as a `LengthCut` suggestion with status `Pending` and reason "Removed to fit N page(s)". Cuts are never applied automatically: the user reviews and accepts them, whether they came from the "Fit to N pages" button or from AI tailoring.
 5. If no scores exist (no AI), use position-based priority: later bullets in older entries go first.
 
 Cap iterations at 200.
@@ -361,6 +369,12 @@ CREATE TABLE snapshots (                    -- automatic history of base CVs
 );
 CREATE INDEX idx_snapshots_cv ON snapshots(cv_id, created_at DESC);
 
+CREATE TABLE review_sessions (              -- latest AI review (section 11.11) per CV, made without a variant
+  cv_id         TEXT PRIMARY KEY REFERENCES cvs(id) ON DELETE CASCADE,
+  content       TEXT NOT NULL,              -- JSON: suggestions + notes
+  created_at    TEXT NOT NULL
+);
+
 CREATE TABLE settings (
   key           TEXT PRIMARY KEY,
   value         TEXT NOT NULL
@@ -374,7 +388,7 @@ CREATE TABLE ai_cache (
 );
 ```
 
-Settings keys: `ui.language`, `ai.provider` (`none|anthropic|openai|ollama`), `ai.model`, `ai.base_url` (Ollama / custom), `ai.consent_version`, `ai.consent_at`, `ai.send_name` (bool, default false), `export.default_dir`.
+Settings keys: `ui.language`, `ai.provider` (`none|anthropic|openai|gemini|openai_compatible`), `ai.model` (entered by the user; there is no default model), `ai.base_url` (for `openai_compatible`, e.g. a local Ollama server), `ai.consent_version`, `ai.consent_at`, `ai.send_name` (bool, default false), `ai.send_location` (bool, default true; city and country only), `update.check` (bool; asked on first run, default false), `export.default_dir`, `export.html.include_email` (default true), `export.html.include_phone` (default false).
 
 ### 5.3 Store API
 
@@ -400,7 +414,9 @@ pub trait Store: Send + Sync {
 
 Requirements:
 
-- On load, deserialize `content` and run `migrate_cv_json(value) -> Cv`, which upgrades from any older `schema_version` (one function per bump, unit-tested with fixtures). Refuse to open content with a `schema_version` newer than the app's, with a clear error.
+- On load, deserialize `content` and run `migrate_cv_json(value) -> Cv` (and `migrate_variant_json` for variants), which upgrades from any older `schema_version` (one function per bump, unit-tested with fixtures). Refuse to open content with a `schema_version` newer than the app's, with a clear error. Because v1 starts at schema version 1, the migration test uses a small synthetic v0 shape (e.g. `name` instead of `basics.full_name`) purely to prove the migration path.
+- The `revision`, `title` and `name` columns are authoritative; the store overwrites the copies inside the JSON on every save so they cannot drift.
+- `restore_db_from` validates the file (opens, `PRAGMA integrity_check`, schema not newer than the app), backs up the current database, closes the connection, swaps the files, and reopens.
 - `save_cv` increments `revision` and sets `updated_at` in one transaction. Conflict returns `StoreError::Conflict { current_revision }`.
 - Snapshots: taken automatically before every import-merge, before every "apply AI suggestions to base", and on export (throttled: at most one per hour per CV). Keep the latest 50 per CV.
 - Tests use `Connection::open_in_memory()`.
@@ -427,6 +443,10 @@ Requirements:
 - Accessible document structure and keyboard-friendly links.
 - No PinaxCV runtime dependency or JavaScript bundle.
 - User CV content is escaped and never interpreted as HTML.
+- Only `https:` and `mailto:` links are clickable (same rule in the PDF); any other scheme, including `http:`, `tel:` and `javascript:`, is rendered as plain text and flagged by lint (`unsafe_link`).
+- Email and phone are optional per export: the export dialog has "Include email" (default on) and "Include phone" (default off) checkboxes, because the file is meant for public hosting.
+- Design: single column, the visitor's system font stack (no embedded web fonts), automatic light/dark via `prefers-color-scheme`, and a print stylesheet.
+- "No external resources" is tested by parsing the output: any `src=`, `<link>`, `<script>`, `@import` or CSS `url(` that is not a `data:` URI fails; navigational `<a href>` links are allowed.
 - Export is completely offline.
 - HTML is generated directly from `ResolvedCv`; it must never be produced by parsing the PDF.
 
@@ -475,6 +495,8 @@ Rules:
 - **One World for the process lifetime.** Only the virtual `data.json` file changes between compiles, so Typst's incremental cache is effective. Guard with a mutex or use a small pool (max 2) if compile time warrants.
 - **No system fonts.** The World's font book contains only embedded fonts. Output must be byte-for-byte reproducible for the same input (fixed creation timestamp option if supported; verify).
 - **No filesystem or network access from templates.** The World resolves only embedded template files and the virtual `data.json`. Packages (`@preview/...`) are not allowed.
+- **Glyph coverage.** Before compiling, check every character against the embedded fonts' coverage (e.g. with `ttf-parser`) and return a `MissingGlyphs` diagnostic listing the characters. Export is still allowed; the editor and the Checks tab show the warning.
+- **Links.** Only `https:` and `mailto:` URLs become PDF links; anything else is printed as plain text.
 - **User data goes to Typst only as data** (`json("data.json")`), never spliced into markup. When printing strings, use Typst's string content, not `eval`.
 - PDF metadata: `title` = "<Full name>, CV", `author` = full name, document language = CV locale. Do not embed producer/creator strings identifying the user's machine. Verify current Typst options for tagged PDF / accessibility and enable if available.
 - Compile on a blocking thread; the caller handles cancellation via a revision counter (section 12.4).
@@ -489,19 +511,19 @@ Rules:
               "summary": "Summary", "present": "Present" },
   "paper": "a4",
   "opts": { "font_size_pt": 10.0, "line_spacing": 1.1, "margin_mm": 18.0, "accent": null },
-  "basics": { "full_name": "", "headline": "", "email": "", "phone": "", "location": "", "links": [{"label":"","url":""}] },
-  "summary": "",
+  "basics": { "full_name": "Jane Doe", "headline": null, "email": "jane@example.com", "phone": null, "location": null, "links": [{"label":"Website","url":"https://example.com"}] },
+  "summary": null,
   "sections": [
     { "kind": "experience", "heading": "Work Experience",
       "entries": [ { "title": "", "org": "", "location": "", "period": "Mar 2021 – Present",
-                     "description": "", "bullets": ["", ""], "collapsed": false } ] },
+                     "description": null, "bullets": ["…", "…"], "collapsed": false } ] },
     { "kind": "skills", "heading": "Skills", "groups": [ { "label": "Languages", "skills": ["Rust", "Go"] } ] },
     { "kind": "languages", "heading": "Languages", "items": [ { "name": "German", "level": "C1" } ] }
   ]
 }
 ```
 
-Dates are formatted in Rust (locale + `date_style`), not in Typst. Section headings come from a locale table in Rust (`cv-core::locale`), with `title_override` taking precedence. Headings in v1: en, de. Other locales fall back to English until added.
+Absent optional fields are JSON `null` (Typst `none`), never empty strings, so the template never prints stray separators. Dates are formatted in Rust (locale + `date_style`), not in Typst. Section headings come from a locale table in Rust (`cv-core::locale`), with `title_override` taking precedence. Headings in v1: en only. Other locales fall back to English until added.
 
 ### 6.4 Template requirements (`templates/classic/template.typ`)
 
@@ -510,13 +532,13 @@ Hard rules (document them in `docs/ATS_RULES.md` and enforce with tests):
 1. **Single column.** No `grid`/`columns` that place content side by side. Dates go on the same line as title using right-aligned text via a fixed-width-safe approach: prefer `title, org` on the first line and `period · location` on the second line. Do **not** use `h(1fr)` with dates if extraction tests show dates are detached; keep the layout that passes the tests.
 2. **Reading order = source order.** No `place`, `float`, `move`, or absolutely positioned elements for content.
 3. **Standard headings**, in the order: contact block, Summary, Work Experience, Education, Skills, Languages, Certifications, Projects, custom. (Order is per `cv.sections`; the standard names are the defaults.)
-4. **Contact block is body text, at the top of page 1**, with text labels or plain separators, no icons. Email and phone appear within the first five extracted lines. URLs printed in full (linkified is fine).
-5. **No headers/footers containing contact info.** A page-number footer is allowed but not required; if included, use plain text "Page 1 of 2"... and verify it does not interleave with body text in extraction (if it does, drop it).
+4. **Contact block is body text, at the top of page 1**, with text labels or plain separators, no icons. The template places email and phone within the first five extracted lines; the ATS check (section 7.2) fails only beyond eight, which leaves room for a headline. URLs printed in full (linkified only for `https:`/`mailto:`).
+5. **No headers/footers containing contact info.** A plain-text "Page 1 of 2" footer is included only if the extraction tests prove it does not interleave with body text; otherwise there is no footer.
 6. **Ligatures off:** `#set text(ligatures: false)` (and set `features` off for `liga`, `clig` if supported). Kerning stays on.
 7. **Real lists:** use `list`/`-` for bullets, using a standard bullet glyph present in the font.
 8. **No images, no backgrounds, no skill bars/ratings**, no decorative glyphs. Accent color only for heading rules/text.
 9. **Text is real text**, never outlined shapes.
-10. Font: Inter (body), sizes from options. Language set from `locale` (`#set text(lang: ...)`).
+10. Font: Inter (body), sizes from options. Language set from `locale` (`#set text(lang: ...)`). Headings are printed as written (title case), not upper-cased.
 11. Handle empty/missing fields without leaving stray separators or blank headings. Empty sections are not emitted.
 12. Page breaks: avoid orphan headings (`keep-with-next` behavior) and avoid splitting a single entry's first two lines across pages.
 
@@ -535,7 +557,7 @@ A minimal starting template (implement, then refine against the ATS tests):
 
 #let heading-line(t) = {
   v(0.8em)
-  text(weight: "bold", size: 1.1em, fill: accent)[#upper(t)]
+  text(weight: "bold", size: 1.1em, fill: accent)[#t]
   v(-0.5em)
   line(length: 100%, stroke: 0.5pt + accent)
 }
@@ -593,7 +615,7 @@ A minimal starting template (implement, then refine against the ATS tests):
 
 ### 7.1 Deterministic lint (`cv_core::lint`)
 
-Runs on `ResolvedCv`, returns `Vec<LintIssue { code, severity: Error|Warning|Info, target: Option<Id>, message, fix_hint }>`. No network, no AI.
+Signature: `lint(cv: &ResolvedCv, page_count: Option<u32>) -> Vec<LintIssue { code, severity: Error|Warning|Info, target: Option<Id>, message, fix_hint }>`; the API layer passes the last compiled page count. No network, no AI.
 
 | Code | Severity | Rule |
 |---|---|---|
@@ -614,17 +636,19 @@ Runs on `ResolvedCv`, returns `Vec<LintIssue { code, severity: Error|Warning|Inf
 | `no_numbers` | Info | entry with >= 3 bullets and none containing a digit |
 | `special_chars` | Warning | control characters or private-use/emoji characters in any text |
 | `long_url` | Info | link URL > 60 chars |
-| `page_count` | Info | more than 2 pages |
+| `unsafe_link` | Warning | link URL scheme is not `https:` or `mailto:` (it will be printed as plain text) |
+| `missing_glyphs` | Warning | characters the embedded fonts cannot display |
+| `page_count` | Info | more than 2 pages (only when `page_count` is provided) |
 
 ### 7.2 ATS check on the real PDF (`cv_render::ats`)
 
 Function `ats_report(pdf: &[u8], cv: &ResolvedCv) -> AtsReport`:
 
-1. Extract text using a Rust PDF text extractor (choose one after evaluating `pdf-extract`, `lopdf`-based extraction, or `mupdf` bindings *only if* they build without system libraries; otherwise use the extractor that works). Keep the extractor behind a trait `TextExtractor` so it can be swapped.
+1. Extract text using a pure-Rust PDF text extractor, chosen in the M0.5 spike from candidates such as `pdf-extract` and `lopdf`-based extraction (no system libraries). If none reads PinaxCV's own PDFs faithfully, write a minimal extractor for PinaxCV's output (we control the producer) and label the score "as read by PinaxCV". Keep the extractor behind a trait `TextExtractor` so it can be swapped.
 2. Checks:
    - Name appears within the first 3 non-empty lines.
    - Email and phone (if present in the CV) appear within the first 8 non-empty lines and are contiguous (not split by a newline in the middle).
-   - Each section heading appears, in the expected order.
+   - Each section heading appears, in the expected order (compared case-insensitively after whitespace normalization).
    - For each entry: title, org, and period appear within a 4-line window.
    - No characters in the private-use area, no U+FFFD, no ligature codepoints (U+FB00..U+FB06).
    - Every bullet text of the CV appears in extracted text after whitespace normalization (allow hyphenation-free line wraps).
@@ -651,21 +675,22 @@ Fixtures (create as JSON, each valid against the schema):
 - `typical` (2 jobs, 1 degree, skills, languages)
 - `long` (6 jobs, spanning 3 pages)
 - `unicode` (names with é, ü, ß, ł, Ø; Cyrillic entry; Greek; verify font coverage or record a documented limitation)
-- `cjk` (expected to warn if font lacks coverage: assert the warning appears rather than silent tofu)
+- `cjk` (Inter lacks CJK coverage: assert the `MissingGlyphs` diagnostic appears rather than silent tofu)
 - `empty_sections` (sections with no entries)
 - `long_strings` (very long org names, 200-char bullets, long URLs)
 - `current_job` (`current: true`)
 - `special_chars` (ampersands, quotes, `#`, `$`, `@`, backslashes, Typst-significant characters like `*`, `_`, `` ` ``, to prove data cannot inject markup)
+- `unsafe_links` (`javascript:`, `data:`, `http:` and `tel:` URLs: assert none becomes a link in PDF or HTML, and `unsafe_link` lint fires)
 
 ### 8.2 Other tests
 
 - `cv-core`: unit tests for validation, resolve properties (proptest), fit algorithm using a fake `PageCounter`, lint rules (one test per code).
-- `cv-store`: in-memory DB tests for CRUD, conflict, snapshots, migration from fixture v0 JSON, backup via `VACUUM INTO` to tempfile.
+- `cv-store`: in-memory DB tests for CRUD, conflict, snapshots, migration from the synthetic v0 fixture JSON, backup via `VACUUM INTO` to tempfile, restore validation.
 - `cv-import`: fixture-based tests per importer, including malformed input (must return warnings/errors, never panic).
-- `cv-ai`: pipeline tests with a `FakeLlm` returning recorded JSON from `testdata/ai_recorded/`; verification tests (section 11.8); evals (section 11.11) behind `--ignored`.
+- `cv-ai`: pipeline tests with a `FakeLlm` returning recorded JSON from `testdata/ai_recorded/`; verification tests (section 11.8); evals (section 11.15) behind `--ignored`.
 - `src-tauri`: command handler tests against an in-memory store.
-- UI: component logic tests where practical; smoke test with `tauri-driver` optional.
-- CI runs `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test --workspace`.
+- UI: component logic tests where practical; end-to-end smoke tests with `tauri-driver` on both CI platforms (the Windows runner is the only Windows test machine during development).
+- CI runs `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test --workspace` on `ubuntu-22.04` and `windows-latest` from the first commit.
 
 ---
 
@@ -678,7 +703,7 @@ pub struct ImportResult { pub cv_partial: CvPartial, pub warnings: Vec<ImportWar
 pub trait Importer { fn import(&self, input: ImportInput) -> Result<ImportResult, ImportError>; }
 ```
 
-`CvPartial` is a `Cv`-shaped structure where every field is optional, with fresh IDs assigned. Importers never write to the DB. The UI shows the **import preview** (section 12.6), and the user picks *New CV* or *Merge into* an existing CV.
+`CvPartial` is a `Cv`-shaped structure where every field is optional, with fresh IDs assigned. Importers never write to the DB. The UI shows the **import preview** (section 12.2, import wizard), and the user picks *New CV* or *Merge into* an existing CV. Previews live in an in-memory `ImportPreviews` registry with a short TTL and are never persisted.
 
 Robustness rules for all importers: never panic on bad input; cap input size (default 20 MB; ZIP entries 10 MB each; reject zip-slip paths; cap decompressed total at 100 MB); trim and normalize whitespace and Unicode (NFC); strip control characters; report anything skipped as a warning with a user-readable message.
 
@@ -693,7 +718,7 @@ Europass has offered several export formats over the years (older XML, a newer J
 1. **Detect** by content: root element / top-level keys. Support the current Europass JSON/XML export if the user can provide samples; keep a `testdata/europass/` fixture per supported variant.
 2. Map personal info, work experience (position, employer, period, activities), education (title, organisation, period), skills (mother tongue, foreign languages with CEFR levels → `LanguageItem`), digital/other skills → Skills groups, certifications.
 3. Unsupported formats (including Europass **PDF**) return `ImportError::UnsupportedFormat` with a message suggesting the text/PDF importer (section 9.4) or the user exporting from Europass as JSON/XML.
-4. **Verify** the current Europass export format against actual sample files before finalizing; the implementer must not guess field names. If samples are unavailable, implement the parser defensively (ignore unknown fields) and mark the importer "experimental" in the UI.
+4. **Verify** the current Europass export format against actual sample files before finalizing; the implementer must not guess field names. The product owner provides real (redacted) Europass and LinkedIn exports before M4; implement the parser defensively regardless (ignore unknown fields).
 
 ### 9.3 LinkedIn data export (ZIP)
 
@@ -725,7 +750,7 @@ Details:
 Used for pasted text, a LinkedIn "Save to PDF", or a Europass PDF.
 
 - PDF → text using the same `TextExtractor` as the ATS check. If the extracted text is empty (scanned PDF), return `ImportError::NoTextLayer` (no OCR in v1).
-- Text → `CvPartial` using the AI feature (section 11.10, prompt `IMPORT_EXTRACT`), **with explicit consent** and with the text shown to the user before sending. If AI is disabled, offer a very basic heuristic parser (heading detection + date regex) and mark the result as low confidence.
+- Text → `CvPartial` using the AI feature (section 11.12, prompt `IMPORT_EXTRACT`), **with explicit consent** and with the exact text shown to the user before sending. This is the one stage that may send contact details (section 11.1, principle 5); the consent dialog says so explicitly. If AI is disabled, offer a basic heuristic parser (heading detection + date regex) and mark the result as low confidence.
 - Output is always previewed and editable before creation.
 
 ### 9.5 Merge
@@ -744,6 +769,7 @@ pub struct AppState {
     pub renderer: Arc<Renderer>,
     pub llm: RwLock<Option<Arc<dyn Llm>>>,   // built from settings + keychain
     pub jobs: JobRegistry,                    // cancellable long-running AI jobs
+    pub import_previews: ImportPreviews,      // in-memory, short TTL, never persisted
 }
 ```
 
@@ -760,14 +786,14 @@ CV and variants:
 
 Rendering:
 - `preview(PreviewReq { cv_id, variant_id?, revision: u64, unsaved_cv?: Cv, unsaved_variant?: Variant }) -> PreviewResp { revision, pages: Vec<Vec<u8>> (PNG), page_count, diagnostics }`. Accepting the unsaved in-memory state lets the UI preview without waiting for saves.
-- `export_pdf(cv_id, variant_id?, path) -> ExportResult { path, page_count, ats: AtsReport }`; uses the dialog plugin's save path chosen by the UI. Fails on export-time validation errors with the list of issues.
-- `export_html(cv_id, variant_id?, path) -> ExportResult { path }`; writes one self-contained HTML file generated from the resolved CV. The output contains no external resources and requires no PinaxCV runtime.
+- `export_pdf(cv_id, variant_id?) -> ExportResult { path, page_count, ats: AtsReport }`; the **backend** opens the save dialog (dialog plugin from Rust) and writes only to the path the dialog returns; the UI never passes file paths. Returns `Cancelled` if the user closes the dialog. Fails on export-time validation errors with the list of issues.
+- `export_html(cv_id, variant_id?, HtmlExportOptions { include_email, include_phone }) -> ExportResult { path }`; same backend-owned save dialog. Writes one self-contained HTML file generated from the resolved CV. The output contains no external resources and requires no PinaxCV runtime.
 - `ats_check(cv_id, variant_id?) -> AtsReport`
 - `lint(cv_id, variant_id?) -> Vec<LintIssue>`
 - `list_templates() -> Vec<TemplateManifest>`
 
 Import:
-- `import_parse(kind: ImportKind, bytes or path) -> ImportPreview` (no DB writes)
+- `import_parse(kind: ImportKind, source: PastedText | PickFile) -> ImportPreview` (no DB writes; files are chosen through a backend-owned open dialog)
 - `import_commit(preview_id, decisions) -> StoredCv`
 
 AI (section 11):
@@ -781,12 +807,12 @@ AI (section 11):
 - Events emitted via Tauri events: `ai://progress { job_id, stage, pct }`, `ai://done { job_id, result }`, `ai://error { job_id, error }`.
 
 Settings and maintenance:
-- `get_settings`, `set_setting`, `backup_db(path)`, `restore_db_from(path)` (with confirmation and pre-restore backup), `open_data_dir`.
+- `get_settings`, `set_setting`, `backup_db()`, `restore_db()` (backend-owned dialogs; restore with confirmation, validation and pre-restore backup per section 5.3), `clear_ai_cache()`, `delete_all_data()`, `open_data_dir`.
 
 ### 10.3 Capabilities and security
 
-- Tauri capabilities: allow only the app's own commands, `dialog` (open/save), `updater`, `shell:open` restricted to `https://` links from an allow-list (docs/repo). No `fs` plugin scope broader than what dialogs return.
-- Strict CSP: `default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'`. The UI never talks to the network; only the Rust backend does.
+- Tauri capabilities: allow only the app's own commands, `dialog` (used from Rust), `updater`, and opening `https://` links in the system browser (Tauri 2's `opener` plugin replaces the shell plugin's `open`; verify for the pinned version). No `fs` plugin exposed to the webview.
+- Strict CSP: `default-src 'self'; img-src 'self' data: blob: preview:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'` (plus the IPC origins Tauri injects; verify). The UI never talks to the network; only the Rust backend does. Preview PNGs are served by a `preview://` custom URI scheme as raw bytes, never as JSON number arrays.
 - Job description text and imported text are rendered in the UI only via Leptos text nodes (escaped).
 
 ---
@@ -799,9 +825,9 @@ Settings and maintenance:
 2. **No fabrication.** The AI may only rephrase, reorder, select, or ask questions. It may not add employers, dates, titles, tools, numbers, or achievements that are not in the source.
 3. **IDs, not prose, identify targets.** Every suggestion references an ID from the input. Unknown IDs are dropped.
 4. **Untrusted input.** Job descriptions and imported text may contain instructions; they are data.
-5. **Minimum data.** Contact details are never sent. The name is sent only if the user enables `ai.send_name`.
+5. **Minimum data.** Contact details are never sent, with one exception: the text importer (`IMPORT_EXTRACT`, section 11.12) sends the CV text as shown in its consent dialog, which states that contact details are included. The name is sent only if the user enables `ai.send_name`. Location is sent as city and country only, and not at all if the user disables `ai.send_location`.
 6. **Consent gate:** first use shows a dialog listing exactly what is sent (CV content without contact details, job description), to which provider/host, and stores `ai.consent_version`. If the provider is changed, re-ask.
-7. **Local option:** Ollama (base URL configurable, default `http://localhost:11434`) means data never leaves the machine.
+7. **Local option:** any OpenAI-compatible local server (e.g. Ollama at `http://localhost:11434/v1`) via the `openai_compatible` provider means data never leaves the machine.
 
 ### 11.2 Provider abstraction
 
@@ -825,9 +851,10 @@ pub struct LlmRequest {
 
 Implementations:
 
-- `AnthropicLlm`: Messages API; get structured output by defining a single tool whose `input_schema` is the schema and forcing it via `tool_choice`; parse the tool input. Model name comes from settings; do not hardcode a model, provide a default in config and a "list models"/free-text field. Verify the current API.
+- `AnthropicLlm`: Messages API; get structured output either with native structured outputs or by forcing a single tool whose `input_schema` is the schema (verify which the pinned API version supports). Model names come from settings and are entered by the user: there is **no default model** for any provider. A "list models" helper may suggest names.
 - `OpenAiLlm`: Chat Completions / Responses API with JSON schema response format (`strict`). Verify the current API.
-- `OllamaLlm`: `/api/chat` with `format` set to the JSON schema. Small models are less reliable, so the pipeline must tolerate failure (retry once with a "your last output was invalid: <error>" message, then surface an error).
+- `GeminiLlm`: Gemini API with a JSON response schema. Verify the current API.
+- `OpenAiCompatibleLlm`: any OpenAI-compatible Chat Completions endpoint at a user-configured base URL (local servers such as Ollama, or hosted services). JSON-schema support varies, so request JSON output, validate it, and tolerate failure (retry once with a "your last output was invalid: <error>" message, then surface an error).
 - `FakeLlm` for tests: returns values from a queue or from files keyed by `schema_name`.
 
 Common behavior: `reqwest` with rustls, 60 s per-request timeout (configurable), max 2 retries with backoff on 429/5xx, no logging of request or response bodies (log only stage, model, token counts, duration). After parsing, validate against the Rust output type with `serde`; on failure retry once with the error message; then return `LlmError::InvalidOutput`.
@@ -852,7 +879,7 @@ Common behavior: `reqwest` with rustls, 60 s per-request timeout (configurable),
 }
 ```
 
-Excluded always: email, phone, location text beyond country/city if the user disables it, links. Excluded unless `ai.send_name`: full name. Employer names are included (they are needed for relevance); mention this in consent text.
+Excluded always: email, phone, links, and any location detail beyond city and country. Location (city, country) is excluded if the user disables `ai.send_location`. Excluded unless `ai.send_name`: full name. Employer names are included (they are needed for relevance); mention this in consent text.
 
 ### 11.4 Stage A: Parse job description (`JOB_PARSE`)
 
@@ -957,7 +984,7 @@ Score every entry, bullet and skill.
 3. Entry score < `collapse_below` → suggest `Collapse`.
 4. Within kept entries: order bullets by score descending, ties by original order; if more than `max_bullets_per_entry`, suggest `Hide` for the lowest-scoring extras.
 5. Order skills by score descending inside each group (`SkillOrder` suggestion).
-6. Order Experience entries: keep reverse-chronological by default. Reordering entries by relevance is off by default (`options.reorder_entries_by_relevance = false`) because ATS and recruiters expect chronology.
+6. Order Experience entries: keep reverse-chronological by default. Reordering entries by relevance is an opt-in tailoring option (`options.reorder_entries_by_relevance`, default `false`) because ATS and recruiters expect chronology; when enabled it produces a `Reorder` suggestion like any other.
 7. Then run fit-to-length (section 4.6) if `page_target` is set.
 
 Each suggestion carries a `reason` composed from the LLM's `reason` plus a deterministic tag, e.g. "Low relevance (score 12)".
@@ -1056,8 +1083,6 @@ Write the summary.
 ```
 
 Verification: same number/term checks against the whole CV.
-
-**Fallback if no keychain on Linux:** if the Secret Service is unavailable, `ai_configure` asks the user to enter the API key each session (held only in memory), with an explanation. Never write the key to disk in plaintext.
 
 ### 11.10 Stage F: Gap analysis (`GAPS`)
 
@@ -1174,7 +1199,7 @@ Stages and progress:
 4. `rewrite` batches → 80%
 5. `summary` → 90%
 6. `gaps` → 95%
-7. `fit_to_length` if requested → 100%
+7. `fit_to_length` if requested → 100% (its `LengthCut` suggestions are `Pending` like all others)
 
 Requirements: each stage cancellable; a failure in an optional stage (rewrite, summary, gaps) doesn't discard prior results, instead the job completes with a `partial: true` flag and per-stage errors; results are stored on the variant as `Pending` suggestions; token usage is accumulated and shown to the user (no dollar estimate, since pricing changes).
 
@@ -1186,7 +1211,7 @@ Each prompt has a `PROMPT_VERSION: &str` constant, included in the cache key. Pr
 
 Fixtures: 6 (CV, JD) pairs in `testdata/`, covering backend vs. design role mismatch, career changer, very long CV, German CV + English JD, JD containing an injection attempt, thin CV.
 
-Assertions (run against a live model when a key env var is set, otherwise against recorded responses):
+Assertions (CI replays recorded responses; live runs against a real model are done by hand before releases, when a key env var is set):
 
 - All returned IDs exist in the input.
 - The relevant-experience entry outscores the irrelevant one by >= 25 points.
@@ -1233,9 +1258,9 @@ Assertions (run against a live model when a key env var is set, otherwise agains
 
 ### 12.5 Variants tab
 
-- Select variant (dropdown) or "Base CV". Buttons: New variant (empty overlay or from tailoring), Duplicate, Delete.
-- When a variant is selected, the Content tab shows base content with **visibility toggles** (eye icon per entry and bullet), a **collapse toggle** per entry, drag ordering that writes to `order`, and per-bullet "edit text for this variant" (writes to `text_overrides`, with a "revert to base" link). A banner reads "Editing variant: <name>. Base CV is unchanged."
-- Fit controls: page target (Auto/1/2) and "Fit to N pages" button that runs `cv_core::fit` and produces `LengthCut` suggestions.
+- Select variant (dropdown) or "Base CV". Buttons: New variant (empty overlay or from tailoring), Duplicate, Delete. Variants have no automatic snapshots (only base CVs do); in-editor undo/redo still applies.
+- When a variant is selected, the Content tab shows base content with **visibility toggles** (eye icon per section, entry, bullet, skill and language item), a **collapse toggle** per entry, ordering of sections, entries and bullets that writes to `order`, and per-bullet and per-description "edit text for this variant" (writes to `text_overrides`, with a "revert to base" link). A banner reads "Editing variant: <name>. Base CV is unchanged."
+- Fit controls: page target (Auto/1/2) and "Fit to N pages" button that runs `cv_core::fit` and produces `Pending` `LengthCut` suggestions for review.
 
 ### 12.6 Suggestion review UI
 
@@ -1253,7 +1278,7 @@ Assertions (run against a live model when a key env var is set, otherwise agains
 
 ### 12.8 Style tab
 
-Template picker (v1: one), options controls bound to `TemplateOptions` with sliders/segmented controls within ranges, paper size, locale (affects headings and date formatting), date style. Values outside the manifest ranges are clamped by the backend.
+Template picker (v1: one), options controls bound to `TemplateOptions` with sliders/segmented controls within ranges, paper size, locale (v1: English only; affects headings and date formatting), date style. Values outside the manifest ranges are clamped by the backend.
 
 ### 12.9 Accessibility
 
@@ -1267,27 +1292,33 @@ Use pointer events with a small Rust implementation, or wrap SortableJS through 
 
 ## 13. Privacy and security requirements
 
-- No network calls except: (a) AI provider requests the user configured, (b) update check to GitHub Releases (can be disabled in Settings; off until the user chooses on first run), (c) opening user-clicked https links in the system browser.
+- No network calls except: (a) AI provider requests the user configured, (b) update check to GitHub Releases (asked on first run with "off" preselected; changeable in Settings), (c) opening user-clicked https links in the system browser.
 - No analytics, no crash upload. Panics write to a local log file the user can open and attach to an issue manually.
 - API keys only in the OS keychain (or memory-only fallback). Never logged, never in the DB, never in exported backups.
 - Logs never contain CV content, job descriptions, or prompts.
 - Backup export (`VACUUM INTO`) contains CV data but no secrets; the UI warns that the file holds personal data.
 - Zip and file parsing hardened per section 9.
 - Typst template and fonts are embedded; the user cannot supply templates in v1 (removes a code-execution surface).
-- Data deletion: "Delete all data" in Settings wipes the DB, WAL files, and the keychain entry after confirmation.
+- Data deletion: "Delete all data" in Settings wipes the DB (including the AI cache), WAL files, and the keychain entry after confirmation. A separate "Clear AI cache" button removes cached AI responses, which contain CV text and are included in backups.
+- Export paths: the backend opens all save/open dialogs itself and writes only to paths the dialog returned (section 10.2).
 - Include `PRIVACY.md` explaining the above in plain language, and `THIRD_PARTY_LICENSES.md`.
+
+### 13.1 Secrets fallback
+
+If no keychain is available (for example the Linux Secret Service is missing), `ai_configure` asks the user to enter the API key each session (held only in memory), with an explanation. Never write the key to disk in plaintext.
 
 ---
 
 ## 14. Packaging and CI
 
-- GitHub Actions matrix: `ubuntu-22.04` and `windows-latest`. Steps: checkout, Rust toolchain, `wasm32-unknown-unknown` target, Trunk, Tauri CLI, `cargo test --workspace`, `tauri-action` build.
-- Outputs: Windows NSIS installer and portable exe (WebView2 bootstrapper referenced in the installer), Linux AppImage plus `.deb`.
+- GitHub Actions matrix: `ubuntu-22.04` and `windows-latest`, from the first commit (development happens on Linux; the Windows runner is the Windows test machine). Steps: checkout, Rust toolchain, `wasm32-unknown-unknown` target, Trunk, Tauri CLI, `cargo test --workspace`, `tauri-driver` end-to-end smoke tests, `tauri-action` build.
+- Outputs: Windows NSIS installer (WebView2 bootstrapper referenced) and a portable exe labelled "no auto-update"; Linux AppImage, `.deb` and Flatpak.
+- Before 1.0: a manual test pass in a Windows 11 evaluation VM (free from Microsoft's Evaluation Center).
 - Updater: `tauri-plugin-updater` with signed manifests on GitHub Releases; the update signing key is a repo secret; the public key is in `tauri.conf.json`.
-- Windows code signing: optional in v1 (document SmartScreen behavior); leave a CI step ready for SignPath or a certificate.
+- Windows code signing: pre-1.0 test builds are unsigned (document SmartScreen behavior); builds are signed from 1.0 (SignPath for open source, or a certificate).
 - Reproducibility: pin the toolchain (`rust-toolchain.toml`), commit `Cargo.lock`.
 - Release checklist in `docs/RELEASING.md`.
-- License: choose and record in `docs/DECISIONS.md` (suggest MIT or Apache-2.0 for the app; verify that embedded fonts and dependencies are compatible).
+- License: Apache-2.0 (decided; see `docs/DECISIONS.md`). Verify that embedded fonts and dependencies are compatible.
 
 ---
 
@@ -1313,7 +1344,10 @@ Use pointer events with a small Rust implementation, or wrap SortableJS through 
 ## 17. Milestones and acceptance criteria
 
 **M0: Architecture and contracts.** Establish `cv-core`, repository/storage interfaces, application-service request/response contracts, error contracts, platform boundaries, exporter seam, and architecture documentation. No PostgreSQL, HTTP server, accounts, or SaaS infrastructure is implemented.
-*Accept:* architecture docs reviewed; `cv-core` has no platform/database/network dependencies; storage-specific types do not leak into application/domain APIs; `cv-api` operations are explicit request/response types; PDF and HTML exporter seams are defined.
+*Accept:* architecture docs reviewed; `cv-core` has no platform/database/network dependencies (enforced by a CI check); storage-specific types do not leak into application/domain APIs; `cv-api` operations are explicit request/response types; PDF and HTML exporter seams are defined; CI is green on `ubuntu-22.04` and `windows-latest`.
+
+**M0.5: Risk spikes.** Throwaway code in `spikes/`: (1) PDF text extraction from Typst output with the `typical`, `unicode` and `special_chars` fixtures; (2) byte-identical PDF output and tagged-PDF support; (3) live preview latency with PNG pages over a custom URI scheme; (4) Trunk + Tauri 2 + Leptos build on Linux locally and on the Windows CI runner.
+*Accept:* one recorded decision per spike, with measurements, in `docs/DECISIONS.md`.
 
 **M1: Core and storage.** `cv-core` types, validation, resolve, lint, fit (with fake counter), migrations, `cv-store` with tests. SQLite is the only persistence implementation.
 *Accept:* `cargo test -p cv-core -p cv-store` green; proptests for resolve pass; migration test from v0 fixture passes; repository/application tests do not depend on concrete SQLite connection types.
@@ -1333,11 +1367,12 @@ Use pointer events with a small Rust implementation, or wrap SortableJS through 
 **M6: Checks panel.** Lint UI and ATS check UI.
 *Accept:* a deliberately bad CV (missing email, long bullets, bad dates) shows expected issues with jump-to-field.
 
-**M7: AI.** Providers, keychain, consent, stages A-G, verification, suggestion review UI, caching, evals, text import.
-*Accept:* with `FakeLlm` the full flow works in tests; with a real key, tailoring a fixture CV to a fixture JD produces reviewable suggestions, verification drops or flags every fabricated number/term in the adversarial fixture, and the injection fixture does not alter behavior. No contact details appear in any captured request payload (assert in a test using a recording `Llm`).
+**M7a: AI foundation and tailoring.** Providers (Anthropic, OpenAI, Gemini, OpenAI-compatible), keychain, consent, redaction, caching, job registry; stages A (job parse), B (relevance), C (selection); suggestion review UI for hide/collapse/order.
+**M7b: AI rewriting, review and text import.** Stages D-G with full verification, `IMPORT_EXTRACT`, rewrite cards, bulk actions, evals.
+*Accept (M7a + M7b):* with `FakeLlm` the full flow works in tests; with a real key, tailoring a fixture CV to a fixture JD produces reviewable suggestions, verification drops or flags every fabricated number/term in the adversarial fixture, and the injection fixture does not alter behavior. No contact details appear in any captured request payload of any stage other than `IMPORT_EXTRACT` (assert in a test using a recording `Llm`).
 
 **M8: Linux/Windows packaging.** CI builds, installers, updater, licenses, privacy doc, backup/restore and release process.
-*Accept:* a clean Windows 11 VM and a clean Ubuntu 22.04 VM install and run the app with no manual dependency installation beyond what the installer/AppImage handles; PDF and HTML exports work; update flow works between two tagged test releases.
+*Accept:* a clean Windows 11 VM and a clean Ubuntu 22.04 VM install and run the app with no manual dependency installation beyond what the installer/AppImage/Flatpak handles; PDF and HTML exports work; update flow works between two tagged test releases; 1.0 Windows builds are signed.
 
 **M9: Product validation.** No feature implementation milestone. Measure real usage and collect evidence of demand before funding additional platform or hosted infrastructure work.
 *Accept:* product owner reviews downloads/active usage, repeat usage, feedback, feature requests, export/import usage, AI usage, willingness-to-pay signals, and requests for additional platforms or synchronization.
@@ -1346,19 +1381,19 @@ Use pointer events with a small Rust implementation, or wrap SortableJS through 
 
 **Future M11: Hosted SaaS, only if justified.** Define authentication, authorization/tenant isolation, PostgreSQL persistence, HTTP API, synchronization, server-side rendering/AI boundaries, migration from desktop data, deployment and billing. This phase is intentionally not part of v1.
 
-## 18. Open decisions to record in `docs/DECISIONS.md` (implementer decides, then documents)
+## 18. Open decisions (status in `docs/DECISIONS.md`)
 
-1. PDF text extraction crate choice (must not require system libraries).
-2. Exact Typst crate versions and whether `typst-as-lib` is used.
-3. Default AI model names per provider.
-4. Whether footer page numbers survive the ATS tests.
-5. Font set final choice and license verification.
-6. App license.
-7. Whether to include a German UI translation in v1.
-8. Exact `cv-store` repository/service interface shape and whether it is sync or async.
-9. Exact HTML export template and CSS strategy.
-10. Whether future SaaS uses the same `cv-api` request/response DTOs directly over HTTP or a separately versioned transport schema.
-11. SaaS synchronization/conflict model; defer until SaaS phase.
+1. PDF text extraction crate choice (must not require system libraries). *Decided in the M0.5 spike; fallback is a minimal PinaxCV-specific extractor.*
+2. Exact Typst crate versions and whether `typst-as-lib` is used. *Decided in the M0.5 spike; default is our own small `World`.*
+3. Default AI model names per provider. *Decided: none; the user enters the model name.*
+4. Whether footer page numbers survive the ATS tests. *Decided: included only if the extraction tests pass.*
+5. Font set final choice and license verification. *Decided: Inter only in v1.*
+6. App license. *Decided: Apache-2.0.*
+7. Whether to include a German UI translation in v1. *Decided: no; English only (UI and content).*
+8. Exact `cv-store` repository/service interface shape and whether it is sync or async. *Decided: synchronous `Store` trait, called via `spawn_blocking`.*
+9. Exact HTML export template and CSS strategy. *Decided: single column, system fonts, auto dark mode, print styles.*
+10. Whether future SaaS uses the same `cv-api` request/response DTOs directly over HTTP or a separately versioned transport schema. *Deferred to the SaaS phase.*
+11. SaaS synchronization/conflict model. *Deferred to the SaaS phase.*
 
 ---
 
@@ -1367,7 +1402,6 @@ Use pointer events with a small Rust implementation, or wrap SortableJS through 
 - **ATS:** Applicant Tracking System.
 - **Variant:** a job-specific overlay on a base CV.
 - **Overlay:** set of hide/collapse/order/text-override instructions applied at render time.
-- **Resolved CV:** the materialized document after applying a variant.
 - **Golden test:** a test comparing generated output to reviewed, committed expectations.
 - **Resolved CV:** the materialized document after applying a variant.
 - **HTML export:** a standalone UTF-8 HTML document with embedded CSS and no external resources.
