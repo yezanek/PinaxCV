@@ -4,7 +4,7 @@
 
 Keep the core portable, keep v1 simple, and defer infrastructure until users justify it.
 
-Each milestone is delivered as one or more feature branches and pull requests (see `AGENTS.md`). CI runs on `ubuntu-22.04` and `windows-latest` from the first commit.
+Each milestone is delivered as one or more feature branches and pull requests (see `AGENTS.md`). CI runs on `ubuntu-22.04` and `windows-latest` from the first commit, plus a non-blocking `macos-latest` job that only warns early about macOS problems (ADR-007).
 
 ## M0 — Architecture & Contracts
 

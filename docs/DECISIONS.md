@@ -30,6 +30,9 @@ PDF and HTML share semantic content but have different layout requirements. HTML
 
 macOS support is a product-validation decision, not a v1 requirement.
 
+- CI also builds and tests on `macos-latest` as a non-blocking job (`continue-on-error`), to catch portability and WebKit differences early. A macOS failure never blocks a merge.
+- No macOS signing, notarization, installers or releases until Future M10.
+
 ## ADR-008 — SaaS deferred
 
 Accounts, HTTP API, PostgreSQL, synchronization, multi-tenancy, billing, and hosted infrastructure are not implemented until explicitly justified by demand. The intended business model is a future paid hosted version.
