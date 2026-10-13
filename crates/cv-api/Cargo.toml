@@ -1,0 +1,15 @@
+[package]
+name = "cv-api"
+description = "PinaxCV: Application-service request/response types and error contracts shared by the desktop shell and the UI."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+cv-core.workspace = true
+
+[lints]
+workspace = true

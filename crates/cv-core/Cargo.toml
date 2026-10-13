@@ -1,0 +1,15 @@
+[package]
+name = "cv-core"
+description = "PinaxCV: Domain model, variant resolution, validation, lint and fit-to-length."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+
+
+[lints]
+workspace = true
