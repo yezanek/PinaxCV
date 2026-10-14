@@ -281,6 +281,14 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - The form shows entry sections first, then skills and languages. Section order in the CV (and preview) is set with the ↑ ↓ buttons (ADR-041).
 - Checked under Xvfb: adding a skills group updates the preview.
 
+## ADR-043 — Europass PDFs are imported from their embedded XML (M4)
+
+- The Europass editor's PDF export embeds the structured CV as an XML attachment in the current `Candidate` format (namespace `http://www.europass.eu/1.0`, HR-XML based). Checked against a real export supplied by the product owner, which is not committed.
+- This refines spec section 9.2: a Europass PDF is imported from that attachment, exactly, and `UnsupportedFormat` is returned only when no Europass XML is embedded (for example a printed or scanned CV).
+- `cv_import::embedded_xml` checks every embedded file and returns the first that declares the Europass namespace on a `Candidate` root, whatever its file name. Attachments over 10 MB (spec section 9) are refused, by declared size before decompressing and by actual size after.
+- A LinkedIn "Save to PDF" profile has no embedded data and gets its own layout-based importer (planned).
+- Tests build synthetic PDFs in code; personal data never enters the repository.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
