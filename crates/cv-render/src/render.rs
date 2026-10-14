@@ -32,6 +32,9 @@ const CLASSIC: &str = include_str!("../templates/classic/template.typ");
 /// The embedded manifest of the `classic` template, for the UI.
 pub const CLASSIC_MANIFEST: &str = include_str!("../templates/classic/manifest.json");
 
+/// The largest preview scale accepted; an A4 page is then about 4800 px wide.
+pub const MAX_PIXELS_PER_PT: f32 = 8.0;
+
 /// Diagnostic code for characters the embedded fonts cannot display.
 pub const MISSING_GLYPHS: &str = "missing_glyphs";
 
@@ -116,7 +119,14 @@ impl Compiled {
     }
 
     /// Renders every page to PNG at `pixels_per_pt` (1.5 suits the preview).
+    /// Scales that are not finite, not positive or above
+    /// [`MAX_PIXELS_PER_PT`] are refused.
     pub fn preview_png(&self, pixels_per_pt: f32) -> Result<Vec<Vec<u8>>, RenderError> {
+        if !pixels_per_pt.is_finite() || pixels_per_pt <= 0.0 || pixels_per_pt > MAX_PIXELS_PER_PT {
+            return Err(RenderError::Export(format!(
+                "preview scale {pixels_per_pt} is outside 0 to {MAX_PIXELS_PER_PT}"
+            )));
+        }
         let options = typst_render::RenderOptions {
             pixel_per_pt: f64::from(pixels_per_pt).into(),
             ..Default::default()
@@ -164,6 +174,7 @@ impl Exporter for PdfExporter<'_> {
             media_type: "application/pdf",
             suggested_file_name: suggested_file_name(&cv.basics.full_name, "pdf"),
             page_count: Some(compiled.page_count()),
+            warnings: compiled.warnings().to_vec(),
         })
     }
 }
@@ -419,6 +430,26 @@ mod tests {
         let pngs = compiled.preview_png(1.0).expect("png");
         assert_eq!(pngs.len(), compiled.page_count() as usize);
         assert!(pngs.iter().all(|p| p.starts_with(b"\x89PNG")));
+    }
+
+    #[test]
+    fn preview_refuses_bad_scales() {
+        let compiled = compile("minimal");
+        for scale in [0.0, -1.0, f32::NAN, f32::INFINITY, MAX_PIXELS_PER_PT * 2.0] {
+            assert!(compiled.preview_png(scale).is_err(), "{scale}");
+        }
+        assert!(compiled.preview_png(MAX_PIXELS_PER_PT).is_ok());
+    }
+
+    #[test]
+    fn pdf_export_keeps_missing_glyph_warnings() {
+        let renderer = Renderer::new();
+        let doc = PdfExporter {
+            renderer: &renderer,
+        }
+        .export(&fixture("cjk").resolve(None), &ExportOptions::default())
+        .expect("export is still allowed");
+        assert!(doc.warnings.iter().any(|w| w.code == MISSING_GLYPHS));
     }
 
     #[test]
