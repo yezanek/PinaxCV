@@ -106,7 +106,7 @@ English only in v1, for both the UI and CV content. AI prompts still tell the mo
 
 ## ADR-019 — Persistence details
 
-- Synchronous `Store` trait in `cv-store`, called from async `cv-app` services via `spawn_blocking` (`cv-api` holds only DTOs and `ApiError`, see ADR-021).
+- Synchronous `Store` trait in `cv-store`, called from synchronous `cv-app` services; the Tauri shell wraps each call in `spawn_blocking` (ADR-036). `cv-api` holds only DTOs and `ApiError` (ADR-021).
 - Revision, title and name columns are authoritative over the JSON copies.
 - The migration test uses a synthetic v0 shape, since v1 starts at schema version 1.
 - Database restore validates the file, backs up the current database, swaps and reopens.
@@ -234,9 +234,9 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 ## ADR-036 — Application services in `cv-app` (M3)
 
 - `cv_app::App` implements the CV, variant, preview, export, ATS and lint operations of spec section 10.2 on top of `Store`, `Renderer` and the exporters. The methods are synchronous; the Tauri shell runs each call in `spawn_blocking`, which is where ADR-019's async boundary now sits. This keeps `cv-app` free of an async runtime and of Tauri, and the boundary check forbids Tauri in it.
-- File dialogs are the `SaveDialog` trait, implemented by the shell with the Rust-side dialog plugin. The UI never sends a path. A cancelled dialog returns `ErrorCode::Cancelled`. Files are written to a hidden temporary file next to the target and renamed over it, so a failed export leaves nothing half-written.
+- File dialogs are the `SaveDialog` trait, implemented by the shell with the Rust-side dialog plugin. The UI never sends a path. A cancelled dialog returns `ErrorCode::Cancelled`. Files are written to a hidden temporary file next to the target and renamed over it, so a failed export leaves nothing half-written. Each export creates its own uniquely named temporary file exclusively. On Unix it is created `0600` and takes over the replaced file's permissions; the folder is synced after the rename. Write errors say only the error kind, never the path, because the path usually holds the user's name.
 - `save_cv` runs `validate::for_save` (clamping options) and refuses structural errors with `Validation`, carrying every issue in `details`. Exports run `validate::for_export` first. A PDF export also returns the ATS report of the written bytes.
-- `preview` renders unsaved editor state without saving it and keeps only the newest revision's PNG pages for the `preview://` handler (`{base}/{revision}/{page}.png`, 1-based). An older revision arriving late is not cached.
+- `preview` renders unsaved editor state without saving it and keeps only the newest preview's PNG pages for the `preview://` handler (`{base}/{preview_id}/{page}.png`, 1-based). The preview id is an app-wide counter taken before rendering, not the editor's revision, so two CVs at the same revision never share pages. A slow preview finishing after a later one is not cached; `PreviewResponse.revision` still echoes the editor's revision so the UI can drop stale responses.
 - `create_cv` makes a blank CV (title trimmed, "Untitled CV" if empty) with no sections. Templates for new CVs come later.
 - After a successful export, an export snapshot is requested; it is best effort because the file is already written, and the store throttles it to one per hour (ADR-031).
 - New IDs come from `UlidIds` (the `ulid` crate). Store and render errors map to `ApiError` codes without CV content in the message.
