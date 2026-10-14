@@ -1,0 +1,25 @@
+---
+source: crates/cv-render/tests/html_golden.rs
+expression: body
+---
+<body>
+<header>
+<h1>Jane Doe</h1>
+<ul class="contact">
+<li><a href="mailto:jane@example.com">jane@example.com</a></li>
+</ul>
+</header>
+<main>
+<section>
+<h2>Projects</h2>
+<article class="entry">
+<h3>PinaxCV<span class="org">, Open source</span></h3>
+<p class="meta">Jan 2026 – Present</p>
+<ul>
+<li>Wrote the storage layer and its 24 tests.</li>
+</ul>
+</article>
+</section>
+</main>
+</body>
+</html>

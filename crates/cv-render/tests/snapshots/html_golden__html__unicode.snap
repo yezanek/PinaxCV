@@ -1,0 +1,45 @@
+---
+source: crates/cv-render/tests/html_golden.rs
+expression: body
+---
+<body>
+<header>
+<h1>Zoë Łukasz-Øster</h1>
+<p class="headline">Ingénieure logicielle</p>
+<ul class="contact">
+<li><a href="mailto:jane@example.com">jane@example.com</a></li>
+<li>Zürich, Schweiz</li>
+</ul>
+</header>
+<main>
+<section class="summary">
+<h2>Summary</h2>
+<p>Straße, façade, naïve café, Ærøskøbing, Dvořák, Ελληνικά, Привет мир.</p>
+</section>
+<section>
+<h2>Work Experience</h2>
+<article class="entry">
+<h3>Разработчик<span class="org">, ООО «Пример»</span></h3>
+<p class="meta">May 2019 – Aug 2022 | Москва</p>
+<ul>
+<li>Разработала систему отчётности для 40 команд.</li>
+</ul>
+</article>
+<article class="entry">
+<h3>Μηχανικός λογισμικού<span class="org">, Εταιρεία Αθηνών</span></h3>
+<p class="meta">Feb 2016 – Apr 2019</p>
+<ul>
+<li>Σχεδίασα το API πληρωμών για 3 τράπεζες.</li>
+</ul>
+</article>
+<article class="entry">
+<h3>Développeuse<span class="org">, Société Générale de Logiciels</span></h3>
+<p class="meta">Sep 2012 – Jan 2016</p>
+<ul>
+<li>Améliorée la qualité: 12 % de défauts en moins, groß und klein.</li>
+</ul>
+</article>
+</section>
+</main>
+</body>
+</html>

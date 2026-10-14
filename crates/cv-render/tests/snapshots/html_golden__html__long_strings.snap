@@ -1,0 +1,28 @@
+---
+source: crates/cv-render/tests/html_golden.rs
+expression: body
+---
+<body>
+<header>
+<h1>Jane Doe</h1>
+<ul class="contact">
+<li><a href="mailto:jane@example.com">jane@example.com</a></li>
+<li>Portfolio: <a href="https://portfolio.example.com/projects/projects/projects/projects/projects/projects/index.html">https://portfolio.example.com/projects/projects/projects/projects/projects/projects/index.html</a></li>
+</ul>
+</header>
+<main>
+<section>
+<h2>Work Experience</h2>
+<article class="entry">
+<h3>Principal Research Engineer and Technical Lead for Distributed Consensus<span class="org">, The International Consortium for Interoperable Distributed Systems Research and Standardisation</span></h3>
+<p class="meta">Jan 2018 – Present</p>
+<p><a href="https://consortium.example.org/members/principal-research-engineers/distributed-consensus/2018">https://consortium.example.org/members/principal-research-engineers/distributed-consensus/2018</a></p>
+<ul>
+<li>Coordinated the specification work for the consortium&#39;s replication protocol across eleven member organisations, Coordinated the specification work for the consortium&#39;s replication protocol across ele</li>
+<li>SupercalifragilisticexpialidociousSupercalifragilisticexpialidociousSupercalifragilisticexpialidociousSupercalifragilisticexpialidocious is one very long word repeated 4 times.</li>
+</ul>
+</article>
+</section>
+</main>
+</body>
+</html>

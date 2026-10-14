@@ -1,0 +1,51 @@
+/* PinaxCV HTML export: single column, system fonts, light and dark, print. */
+:root {
+  color-scheme: light dark;
+  --text: #1a1a1a;
+  --muted: #555;
+  --bg: #fff;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --text: #e8e8e8; --muted: #a8a8a8; --bg: #121212; }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0 auto;
+  max-width: 46rem;
+  padding: 2.5rem 1.25rem 4rem;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--text);
+  background: var(--bg);
+  overflow-wrap: anywhere;
+}
+h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 0.25rem; }
+h2 {
+  font-size: 1.15rem;
+  margin: 2rem 0 0.75rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--accent);
+}
+h3 { font-size: 1rem; margin: 0; }
+.headline { margin: 0 0 0.5rem; font-size: 1.1rem; color: var(--muted); }
+.contact { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; }
+.org { font-weight: normal; }
+.meta { margin: 0.1rem 0 0.4rem; color: var(--muted); }
+.entry { margin: 0 0 1.25rem; }
+.entry p { margin: 0.25rem 0; }
+.entry ul, .skills, .languages { margin: 0.25rem 0; padding-left: 1.25rem; }
+a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 30rem) {
+  body { padding-top: 1.5rem; }
+  h1 { font-size: 1.6rem; }
+}
+@media print {
+  :root { --text: #000; --muted: #333; --bg: #fff; }
+  body { max-width: none; padding: 0; font-size: 10.5pt; }
+  h2 { break-after: avoid; }
+  .entry { break-inside: avoid; }
+  a { text-decoration: none; }
+}

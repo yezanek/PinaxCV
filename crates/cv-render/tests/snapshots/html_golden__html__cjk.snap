@@ -1,0 +1,25 @@
+---
+source: crates/cv-render/tests/html_golden.rs
+expression: body
+---
+<body>
+<header>
+<h1>山田 花子</h1>
+<ul class="contact">
+<li><a href="mailto:jane@example.com">jane@example.com</a></li>
+</ul>
+</header>
+<main>
+<section>
+<h2>Work Experience</h2>
+<article class="entry">
+<h3>ソフトウェアエンジニア<span class="org">, 株式会社サンプル</span></h3>
+<p class="meta">Apr 2020 – Present</p>
+<ul>
+<li>決済システムを設計し、遅延を40%削減しました。</li>
+</ul>
+</article>
+</section>
+</main>
+</body>
+</html>

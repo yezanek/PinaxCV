@@ -5,12 +5,14 @@
 
 pub mod ats;
 pub mod data;
+mod html;
 mod render;
 #[cfg(test)]
 mod testdata;
 
 use cv_core::{Diagnostic, ResolvedCv, ValidationIssue};
 
+pub use html::{HtmlExporter, to_html};
 pub use render::{CLASSIC_MANIFEST, Compiled, MISSING_GLYPHS, PdfExporter, Renderer};
 
 /// Options shared by every export format.

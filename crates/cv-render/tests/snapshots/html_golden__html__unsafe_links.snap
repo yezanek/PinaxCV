@@ -1,0 +1,32 @@
+---
+source: crates/cv-render/tests/html_golden.rs
+expression: body
+---
+<body>
+<header>
+<h1>Jane Doe</h1>
+<ul class="contact">
+<li><a href="mailto:jane@example.com">jane@example.com</a></li>
+<li>Site: <a href="https://jane.example.com">https://jane.example.com</a></li>
+<li>Mail: <a href="mailto:jane@example.com">mailto:jane@example.com</a></li>
+<li>Script: javascript:alert(1)</li>
+<li>Data: data:text/html;base64,PHNjcmlwdD4=</li>
+<li>Old: http://jane.example.com</li>
+<li>Phone: tel:+15550199</li>
+</ul>
+</header>
+<main>
+<section>
+<h2>Projects</h2>
+<article class="entry">
+<h3>Side project<span class="org">, Self</span></h3>
+<p class="meta">Jan 2024 – Present</p>
+<p>javascript:void(0)</p>
+<ul>
+<li>Built a tool used by 300 people.</li>
+</ul>
+</article>
+</section>
+</main>
+</body>
+</html>
