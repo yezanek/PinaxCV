@@ -168,6 +168,15 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - `Variant::prune(&mut self, &Cv)` removes stale references and returns the removed IDs. It also removes references to the wrong kind of entity (a bullet in `collapsed`, a language item in `text_overrides`, a child listed under the wrong parent). Suggestions are not pruned; their targets are checked when a suggestion is accepted (M5).
 - The idempotence property (spec 4.4, d) is tested by turning the resolved output back into a base CV and resolving it with an empty variant. `collapsed` is a rendering flag, so it is not compared.
 
+## ADR-029 — Lint details (M1)
+
+- `missing_glyphs` is reported by `cv-render` as a compile `Diagnostic`, because only the renderer knows which characters the embedded fonts cover. The API layer adds it to the `lint` command's results (M2/M3). `cv_core::lint` implements every other rule in spec section 7.1.
+- A year-only date overlaps every month of its year: `date_order` never fires for an end and a start in the same year when one of them has no month, and `gap` uses the shortest possible gap (a year-only end counts as December, a year-only start as January). Overlapping and current jobs cover the months they span.
+- `date_style_mixed` flags every entry that prints a year-only date when any other printed date has a month.
+- `duplicate_bullet` and `weak_opening` compare after collapsing whitespace and lower-casing. `special_chars` covers control characters other than newline and tab, private-use characters, the emoji blocks U+1F000..U+1FAFF and U+2600..U+27BF, U+FE0F and U+200D.
+- Collapsed entries are not flagged by `no_bullets`, since hiding their bullets was the user's choice.
+- Findings are ordered by the spec's table, then by document order.
+
 ## Open decisions
 
 - Tagged PDF (accessibility tags) for the pinned Typst version (M2).
