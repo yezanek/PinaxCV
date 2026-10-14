@@ -68,6 +68,64 @@ impl Variant {
             revision: 0,
         }
     }
+
+    /// Hides `id` in this variant, or shows it again. Returns whether it is
+    /// now hidden.
+    pub fn toggle_hidden(&mut self, id: &Id) -> bool {
+        toggle(&mut self.hidden, id)
+    }
+
+    /// Collapses entry `id` to one line, or expands it again. Returns whether
+    /// it is now collapsed.
+    pub fn toggle_collapsed(&mut self, id: &Id) -> bool {
+        toggle(&mut self.collapsed, id)
+    }
+
+    /// Sets this variant's text for a bullet or entry description. Text equal
+    /// to the base (`base`) removes the override, so the variant follows
+    /// later base edits again.
+    pub fn set_text(&mut self, id: &Id, text: String, base: &str) {
+        if text == base {
+            self.text_overrides.remove(id);
+        } else {
+            self.text_overrides.insert(id.clone(), text);
+        }
+    }
+
+    /// "Revert to base" for a bullet or description. Returns whether an
+    /// override was removed.
+    pub fn revert_text(&mut self, id: &Id) -> bool {
+        self.text_overrides.remove(id).is_some()
+    }
+
+    /// Moves child `id` of `parent` one step up or down. `current` is the
+    /// order the variant shows now (base order with this variant's order
+    /// applied); the result is stored as the variant's full order for
+    /// `parent`. Returns false when the move is not possible.
+    pub fn move_child(&mut self, parent: &Id, current: &[Id], id: &Id, up: bool) -> bool {
+        let Some(i) = current.iter().position(|c| c == id) else {
+            return false;
+        };
+        let j = match (up, i) {
+            (true, 0) => return false,
+            (true, i) => i - 1,
+            (false, i) if i + 1 >= current.len() => return false,
+            (false, i) => i + 1,
+        };
+        let mut order = current.to_vec();
+        order.swap(i, j);
+        self.order.insert(parent.clone(), order);
+        true
+    }
+}
+
+fn toggle(set: &mut BTreeSet<Id>, id: &Id) -> bool {
+    if set.remove(id) {
+        false
+    } else {
+        set.insert(id.clone());
+        true
+    }
 }
 
 #[cfg(test)]
@@ -86,6 +144,46 @@ mod tests {
         assert!(v.hidden.is_empty() && v.collapsed.is_empty() && v.order.is_empty());
         assert!(v.text_overrides.is_empty() && v.summary_override.is_none());
         assert!(v.suggestions.is_empty());
+    }
+
+    #[test]
+    fn toggles_hide_and_collapse() {
+        let mut v = Variant::empty(id(1), id(2), "Acme");
+        assert!(v.toggle_hidden(&id(3)));
+        assert!(v.hidden.contains(&id(3)));
+        assert!(!v.toggle_hidden(&id(3)));
+        assert!(v.hidden.is_empty());
+        assert!(v.toggle_collapsed(&id(4)));
+        assert!(!v.toggle_collapsed(&id(4)));
+        assert!(v.collapsed.is_empty());
+    }
+
+    #[test]
+    fn text_overrides_follow_the_base_when_equal_and_revert() {
+        let mut v = Variant::empty(id(1), id(2), "Acme");
+        v.set_text(&id(5), "Short".into(), "Long base text");
+        assert_eq!(
+            v.text_overrides.get(&id(5)).map(String::as_str),
+            Some("Short")
+        );
+        v.set_text(&id(5), "Long base text".into(), "Long base text");
+        assert!(v.text_overrides.is_empty());
+        v.set_text(&id(5), "Short".into(), "Long base text");
+        assert!(v.revert_text(&id(5)));
+        assert!(!v.revert_text(&id(5)));
+    }
+
+    #[test]
+    fn moves_children_within_bounds() {
+        let mut v = Variant::empty(id(1), id(2), "Acme");
+        let current = [id(4), id(5), id(6)];
+        assert!(v.move_child(&id(2), &current, &id(6), true));
+        assert_eq!(v.order[&id(2)], [id(4), id(6), id(5)]);
+        assert!(!v.move_child(&id(2), &current, &id(4), true));
+        assert!(!v.move_child(&id(2), &current, &id(6), false));
+        assert!(!v.move_child(&id(2), &current, &id(9), false));
+        assert!(v.move_child(&id(2), &current, &id(4), false));
+        assert_eq!(v.order[&id(2)], [id(5), id(4), id(6)]);
     }
 
     #[test]
