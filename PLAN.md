@@ -6,6 +6,8 @@ Keep the core portable, keep v1 simple, and defer infrastructure until users jus
 
 Each milestone is delivered as one or more feature branches and pull requests (see `AGENTS.md`). CI runs on `ubuntu-22.04` and `windows-latest` from the first commit, plus a non-blocking `macos-latest` job that only warns early about macOS problems (ADR-007).
 
+The product owner builds PinaxCV from source on a Linux laptop and a MacBook. `docs/BUILDING.md` gives build instructions for Linux (Debian/Ubuntu, Fedora, Arch), macOS and Windows, and every milestone that changes the build updates it in the same PR (ADR-026). A macOS source build is supported for personal use; it does not add macOS releases, signing or notarization to v1.
+
 ## M0 — Architecture & Contracts
 
 - Cargo workspace and crate boundaries; `rust-toolchain.toml`; committed `Cargo.lock`.
@@ -50,6 +52,8 @@ HTML requirements:
 ## M3 — Desktop App
 
 Tauri + Leptos editor, autosave, preview, PDF export, HTML export, style controls, backend-owned file dialogs.
+
+`docs/BUILDING.md` gains `cargo tauri dev` and `cargo tauri build` instructions; the product owner checks them on Linux and macOS.
 
 ## M4 — Importers
 
