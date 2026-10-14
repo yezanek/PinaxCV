@@ -289,6 +289,14 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - A LinkedIn "Save to PDF" profile has no embedded data and gets its own layout-based importer (planned).
 - Tests build synthetic PDFs in code; personal data never enters the repository.
 
+## ADR-044 — Reading the Europass Candidate XML (M4)
+
+- `cv_import::parse_candidate` reads the Europass `Candidate` XML into plain records (person, positions, education, languages). Mapping those records to a CV, and merging, are separate steps.
+- Elements are matched by local name, so the `hr:`, `oa:` and `eures:` prefixes don't matter, and unknown elements are ignored (spec section 9.2). Field paths were checked against a real export, which is not committed. Tests use synthetic XML in the same shape.
+- Only the candidate's own contact channels are read. Organisation contacts and the `CandidateSupplier` block are ignored. Birth date, gender and nationality are never read, because the CV model has no fields for them.
+- Descriptions are stored as escaped HTML. `html_text` drops every tag without interpreting it and splits the text into paragraphs and list items, which become bullets.
+- XML parsing uses roxmltree 0.21.1, which the workspace already locks through Typst. It is pure Rust and needs no system libraries.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
