@@ -2,9 +2,10 @@
 //! add and remove sections, entries and bullets, and edit their text.
 //! Lists are keyed by ID, so typing never rebuilds the input in focus.
 
-use cv_core::{Bullet, Cv, Entry, EntrySection, Id, Period, Section};
+use cv_core::{Bullet, Cv, Entry, EntrySection, Id, PartialDate, Period, Section};
 use leptos::prelude::*;
 
+use crate::dates;
 use crate::ids::new_id;
 
 /// Applies an edit to the CV and schedules preview and autosave.
@@ -225,12 +226,77 @@ fn EntryEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> imp
             }));
         }
     };
+    // Dates keep what the user typed: the model only changes once the text
+    // parses (or is cleared), so a half-typed "20" is not wiped out.
+    let date = {
+        let (section, id) = (section.clone(), id.clone());
+        move |label: &'static str,
+              get: fn(&Period) -> Option<PartialDate>,
+              set: fn(&mut Period, Option<PartialDate>)| {
+            let initial = cv.with_untracked(|c| {
+                c.as_ref()
+                    .and_then(|c| entry_ref(c, &section, &id))
+                    .map(|e| dates::format(get(&e.period)))
+                    .unwrap_or_default()
+            });
+            let (s, e) = (section.clone(), id.clone());
+            view! {
+                <label class="date">{label}
+                    <input value=initial placeholder="2021 or 2021-03"
+                        on:input=move |ev| {
+                            let v = event_target_value(&ev);
+                            let parsed = dates::parse(&v);
+                            if parsed.is_some() || v.trim().is_empty() {
+                                let (s, e) = (s.clone(), e.clone());
+                                edit.run(Box::new(move |c| if let Some(x) = entry_mut(c, &s, &e) { set(&mut x.period, parsed) }));
+                            }
+                        } />
+                </label>
+            }
+        }
+    };
+    let current = {
+        let (s1, e1, s2, e2) = (section.clone(), id.clone(), section.clone(), id.clone());
+        view! {
+            <label class="check">
+                <input type="checkbox"
+                    prop:checked=move || cv.with(|c| c.as_ref().and_then(|c| entry_ref(c, &s1, &e1)).is_some_and(|e| e.period.current))
+                    on:change=move |ev| {
+                        let on = event_target_checked(&ev);
+                        let (s, e) = (s2.clone(), e2.clone());
+                        edit.run(Box::new(move |c| if let Some(x) = entry_mut(c, &s, &e) { x.period.current = on }));
+                    } />
+                " I work here now"
+            </label>
+        }
+    };
+    let description = {
+        let (s1, e1, s2, e2) = (section.clone(), id.clone(), section.clone(), id.clone());
+        view! {
+            <label>"Description (optional)"
+                <textarea
+                    prop:value=move || cv.with(|c| c.as_ref().and_then(|c| entry_ref(c, &s1, &e1)).and_then(|e| e.description.clone()).unwrap_or_default())
+                    on:input=move |ev| {
+                        let v = event_target_value(&ev);
+                        let (s, e) = (s2.clone(), e2.clone());
+                        edit.run(Box::new(move |c| if let Some(x) = entry_mut(c, &s, &e) { x.description = opt(v) }));
+                    }></textarea>
+            </label>
+        }
+    };
     let (bs, be) = (section.clone(), id.clone());
     view! {
         <div class="entry">
             {text("Title", |e| e.title.clone(), |e, v| e.title = v)}
             {text("Organisation", |e| e.org.clone(), |e, v| e.org = v)}
             {text("Location", |e| e.location.clone().unwrap_or_default(), |e, v| e.location = opt(v))}
+            <div class="dates">
+                {date("Start", |p| p.start, |p, d| p.start = d)}
+                {date("End", |p| p.end, |p, d| p.end = d)}
+            </div>
+            {current}
+            {description}
+            {text("Link (optional, https:// links are clickable)", |e| e.url.clone().unwrap_or_default(), |e, v| e.url = opt(v))}
             <For each=bullets key=|b| b.clone() let:bullet>
                 <BulletEditor cv=cv edit=edit section=bs.clone() entry=be.clone() id=bullet />
             </For>

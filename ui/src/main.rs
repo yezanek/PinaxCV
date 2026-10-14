@@ -4,6 +4,7 @@
 use cv_core::Id;
 use leptos::prelude::*;
 
+mod dates;
 mod editor;
 mod entries;
 mod ids;
