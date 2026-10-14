@@ -246,8 +246,8 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - `src-tauri` (package `pinaxcv`) is a workspace member on Tauri 2.12 with `tauri-plugin-dialog` 2.8. It opens `pinaxcv.sqlite3` in the platform app data folder (identifier `dev.pinaxcv.app`), builds `cv_app::App` and manages it as shared state.
 - Every command is a one-line adapter that runs the matching `App` method through `spawn_blocking` (ADR-036). Arguments and results are `cv-api` and `cv-core` types; errors are `ApiError`.
 - `build.rs` declares the app's commands in an app manifest, so Tauri generates `allow-*` permissions for exactly those commands, and `capabilities/main.json` grants them to the main window. No dialog, fs or shell permission is granted to the webview; the save dialog runs from Rust on the blocking pool. The CSP is spec section 10.3's plus the `http://preview.localhost` origin from ADR-025.
-- `preview://localhost/{revision}/{page}.png` (`http://preview.localhost/...` on Windows) serves PNG bytes from the newest preview with `Cache-Control: no-store`: 404 for a replaced page, 503 before startup finishes.
-- Until the Leptos UI lands, `frontendDist` points at a static placeholder page so the shell builds and runs on its own. The Linux CI job now installs the WebKitGTK packages listed in `docs/BUILDING.md`.
+- `preview://localhost/{preview_id}/{page}.png` (`http://preview.localhost/...` on Windows) serves PNG bytes from the newest preview with `Cache-Control: no-store`: 404 for a replaced page, 503 before startup finishes.
+- Until the Leptos UI lands, `frontendDist` points at a static placeholder page so the shell builds and runs on its own. The Linux CI job now installs `libwebkit2gtk-4.1-dev`, `libsoup-3.0-dev`, `librsvg2-dev` and `libayatana-appindicator3-dev`, which is what building and testing the shell needs. `docs/BUILDING.md` lists Tauri's full prerequisite set for local builds, which also has `libxdo-dev` and `libssl-dev`; `libsoup-3.0-dev` comes in there as a dependency of `libwebkit2gtk-4.1-dev`.
 
 ## ADR-038 — Editor UI foundation (M3)
 
