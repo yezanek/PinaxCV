@@ -1175,6 +1175,7 @@ dependencies = [
  "cv-core",
  "lopdf 0.45.0",
  "roxmltree 0.21.1",
+ "serde_json",
 ]
 
 [[package]]
