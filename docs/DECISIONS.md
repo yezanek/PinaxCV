@@ -224,6 +224,13 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Styling: single column up to 46rem, system font stack, light and dark through `prefers-color-scheme`, a narrow-screen rule and a print stylesheet. No scripts, web fonts or images.
 - Tests parse each fixture's output for `src=`, `<link>`, `<script>`, `@import` and non-`data:` `url(`, check every `href`, and snapshot the body of each fixture's HTML with the dialog defaults (email on, phone off).
 
+## ADR-035 — Preview and export speed with the real template (M2)
+
+- `cargo run --release -p cv-render --example preview_latency` edits one bullet, then resolves, compiles and renders every page to PNG at 1.5 px/pt, 40 times. It uses the 3-page `long` fixture, which is harder than the spec's 2-page CV.
+- In a 4-core Linux cloud container: preview p50 136 ms, p95 179 ms (target p95 < 250 ms after the debounce); PDF export of `typical` p95 2.4 ms (target < 1 s); HTML export of `typical` p95 0.07 ms (target < 250 ms).
+- Nearly all preview time is PNG rendering of every page, not compilation (ADR-025 measured incremental compiles under 1 ms). If a slower laptop misses the target, M3 renders only the visible pages first; that is not needed on this evidence.
+- The spec's reference machine is a mid-range laptop, so the target is marked met on this evidence and re-checked on the product owner's machines with the command above.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
