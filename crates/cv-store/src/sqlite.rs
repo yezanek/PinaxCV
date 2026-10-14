@@ -75,33 +75,53 @@ impl SqliteStore {
         let path = self.path.clone().ok_or_else(|| {
             StoreError::Invalid("an in-memory database cannot be restored".into())
         })?;
+        if same_path(source, &path) {
+            return Err(StoreError::Invalid(
+                "the backup is the current database".into(),
+            ));
+        }
         check_backup(source)?;
 
         let stamp = timestamp(self.clock.now()).0.replace([':', '.'], "-");
-        let mut safety = path.clone().into_os_string();
-        safety.push(format!(".before-restore-{stamp}"));
-        let safety = PathBuf::from(safety);
-        self.backup_to(&safety)?;
+        let safety = sibling(&path, &format!(".before-restore-{stamp}"));
+        let staged = sibling(&path, &format!(".restore-staging-{stamp}"));
 
         let mut conn = self.lock();
+        vacuum_into(&conn, &safety)?;
+        // Fold the WAL into the main file so a source that aliases it is complete.
+        conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);")
+            .map_err(backend)?;
+        // Copy the backup next to the database first, so the live file is
+        // never the copy target of one of its own aliases (hard links
+        // included) and a failed copy leaves the database untouched.
+        if let Err(e) = std::fs::copy(source, &staged) {
+            let _ = std::fs::remove_file(&staged);
+            return Err(backend(e));
+        }
+
         // Close the live connection before touching its files.
         let old = std::mem::replace(&mut *conn, Connection::open_in_memory().map_err(backend)?);
-        old.close().map_err(|(_, e)| backend(e))?;
-        for suffix in ["-wal", "-shm"] {
-            let mut side = path.clone().into_os_string();
-            side.push(suffix);
-            match std::fs::remove_file(PathBuf::from(side)) {
-                Ok(()) => {}
-                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
-                Err(e) => return Err(backend(e)),
+        if let Err((old, e)) = old.close() {
+            *conn = old;
+            let _ = std::fs::remove_file(&staged);
+            return Err(backend(e));
+        }
+        match replace_and_open(&path, &staged) {
+            Ok(fresh) => {
+                *conn = fresh;
+                Ok(safety)
+            }
+            Err(e) => {
+                let _ = std::fs::remove_file(&staged);
+                // Put the pre-restore copy back so the store stays usable.
+                *conn = replace_and_open(&path, &safety).map_err(|_| e)?;
+                // `replace_and_open` moved the safety copy; recreate it.
+                vacuum_into(&conn, &safety)?;
+                Err(StoreError::Invalid(
+                    "the backup could not be restored; the previous data was kept".into(),
+                ))
             }
         }
-        std::fs::copy(source, &path).map_err(backend)?;
-        let fresh = Connection::open(&path).map_err(backend)?;
-        configure(&fresh)?;
-        migrate_db(&fresh)?;
-        *conn = fresh;
-        Ok(safety)
     }
 
     fn lock(&self) -> MutexGuard<'_, Connection> {
@@ -160,6 +180,51 @@ fn migrate_db(conn: &Connection) -> Result<()> {
 }
 
 /// Opens `source` read-only and checks it can be restored.
+/// Writes a consistent copy of the open database to `path`, which must not exist.
+fn vacuum_into(conn: &Connection, path: &Path) -> Result<()> {
+    let target = path
+        .to_str()
+        .ok_or_else(|| StoreError::Invalid("the backup path is not valid UTF-8".into()))?;
+    if path.exists() {
+        return Err(StoreError::Invalid("the backup file already exists".into()));
+    }
+    conn.execute("VACUUM INTO ?1", params![target])
+        .map_err(backend)?;
+    Ok(())
+}
+
+/// `path` with `suffix` appended to its file name.
+fn sibling(path: &Path, suffix: &str) -> PathBuf {
+    let mut name = path.as_os_str().to_owned();
+    name.push(suffix);
+    PathBuf::from(name)
+}
+
+/// True when both paths resolve to the same location (symlinks followed).
+fn same_path(a: &Path, b: &Path) -> bool {
+    match (a.canonicalize(), b.canonicalize()) {
+        (Ok(a), Ok(b)) => a == b,
+        _ => false,
+    }
+}
+
+/// Moves `staged` over the closed database at `path` (dropping its WAL
+/// sidecars) and opens it, configured and migrated.
+fn replace_and_open(path: &Path, staged: &Path) -> Result<Connection> {
+    for suffix in ["-wal", "-shm"] {
+        match std::fs::remove_file(sibling(path, suffix)) {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => return Err(backend(e)),
+        }
+    }
+    std::fs::rename(staged, path).map_err(backend)?;
+    let fresh = Connection::open(path).map_err(backend)?;
+    configure(&fresh)?;
+    migrate_db(&fresh)?;
+    Ok(fresh)
+}
+
 fn check_backup(source: &Path) -> Result<()> {
     let conn = Connection::open_with_flags(source, OpenFlags::SQLITE_OPEN_READ_ONLY)
         .map_err(|_| StoreError::Invalid("the backup file cannot be opened".into()))?;
@@ -787,16 +852,7 @@ impl Store for SqliteStore {
     }
 
     fn backup_to(&self, path: &Path) -> Result<()> {
-        let target = path
-            .to_str()
-            .ok_or_else(|| StoreError::Invalid("the backup path is not valid UTF-8".into()))?;
-        if path.exists() {
-            return Err(StoreError::Invalid("the backup file already exists".into()));
-        }
-        let conn = self.lock();
-        conn.execute("VACUUM INTO ?1", params![target])
-            .map_err(backend)?;
-        Ok(())
+        vacuum_into(&self.lock(), path)
     }
 }
 
