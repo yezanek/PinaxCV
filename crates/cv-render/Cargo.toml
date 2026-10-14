@@ -13,6 +13,10 @@ cv-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+typst.workspace = true
+typst-layout.workspace = true
+typst-pdf.workspace = true
+typst-render.workspace = true
 
 [lints]
 workspace = true

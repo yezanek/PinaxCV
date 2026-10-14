@@ -32,6 +32,10 @@ async-trait = "0.1.92"
 proptest = "1.12.0"
 regex = "1.13.1"
 tempfile = "3.27.0"
+typst = "=0.15.1"
+typst-layout = "=0.15.1"
+typst-pdf = "=0.15.1"
+typst-render = "=0.15.1"
 rusqlite = { version = "0.40.2", features = ["bundled"] }
 schemars = "1.2.3"
 serde = { version = "1.0.229", features = ["derive"] }
