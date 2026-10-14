@@ -35,7 +35,8 @@ impl Exporter for HtmlExporter {
     }
 }
 
-/// Renders `cv` as a complete HTML document.
+/// Renders `cv` as a complete HTML document. `options` are the user's export
+/// choices; callers without one should pass [`ExportOptions::html_default`].
 pub fn to_html(cv: &ResolvedCv, options: &ExportOptions) -> String {
     let d = to_typst_data(cv, options);
     let mut out = String::with_capacity(8 * 1024);
@@ -174,16 +175,21 @@ fn write_section(out: &mut String, section: &SectionData) {
 
 fn entries_section(out: &mut String, s: &EntriesData) {
     out.push_str("<section>\n");
-    if !s.heading.is_empty() {
+    // Untitled sections have no h2, so their entries move up a level and
+    // heading navigation never skips one.
+    let level = if s.heading.is_empty() {
+        2
+    } else {
         let _ = writeln!(out, "<h2>{}</h2>", esc(&s.heading));
-    }
+        3
+    };
     for e in &s.entries {
-        entry(out, e);
+        entry(out, e, level);
     }
     out.push_str("</section>\n");
 }
 
-fn entry(out: &mut String, e: &EntryData) {
+fn entry(out: &mut String, e: &EntryData, level: u8) {
     out.push_str("<article class=\"entry\">\n");
     let head = match (&e.title, &e.org) {
         (Some(t), Some(o)) => Some(format!("{}<span class=\"org\">, {}</span>", esc(t), esc(o))),
@@ -192,7 +198,7 @@ fn entry(out: &mut String, e: &EntryData) {
         (None, None) => None,
     };
     if let Some(head) = head {
-        let _ = writeln!(out, "<h3>{head}</h3>");
+        let _ = writeln!(out, "<h{level}>{head}</h{level}>");
     }
     let meta: Vec<String> = [&e.period, &e.location]
         .into_iter()
@@ -251,22 +257,118 @@ mod tests {
     fn html(name: &str) -> String {
         to_html(
             &testdata::fixture(name).resolve(None),
-            &ExportOptions::default(),
+            &ExportOptions::html_default(),
         )
     }
 
-    /// Every resource the document would load: `src=`, `<link>`, `<script>`,
-    /// `@import` and CSS `url(` that is not a `data:` URI. `<a href>` is
-    /// navigation and allowed.
+    /// Every resource the document would load. Tags are parsed: `<link>`,
+    /// `<script>`, `<img>`, `<iframe>`, `<object>`, `<embed>`, `<source>`,
+    /// `<video>` and `<audio>`; any `src`, `srcset`, `poster` or `data`
+    /// attribute; and `@import` or non-`data:` `url(` inside `<style>` or a
+    /// `style` attribute. Text between tags is never inspected, and
+    /// `<a href>` is navigation and allowed.
     fn external_resources(doc: &str) -> Vec<String> {
-        let lower = doc.to_lowercase();
+        const LOADING_TAGS: [&str; 9] = [
+            "link", "script", "img", "iframe", "object", "embed", "source", "video", "audio",
+        ];
+        const LOADING_ATTRS: [&str; 4] = ["src", "srcset", "poster", "data"];
         let mut found = Vec::new();
-        for needle in ["src=", "<link", "<script", "@import", "url("] {
-            for (i, _) in lower.match_indices(needle) {
-                let rest = lower[i + needle.len()..].trim_start_matches(['"', '\'', ' ']);
-                if !(needle == "url(" && rest.starts_with("data:")) {
-                    found.push(lower[i..lower.len().min(i + 40)].to_owned());
+        let mut rest = doc;
+        while let Some(open) = rest.find('<') {
+            rest = &rest[open + 1..];
+            let Some(close) = rest.find('>') else { break };
+            let tag = &rest[..close];
+            rest = &rest[close + 1..];
+            let (name, attrs) = parse_tag(tag);
+            if LOADING_TAGS.contains(&name.as_str()) {
+                found.push(format!("<{name}>"));
+            }
+            for (attr, value) in attrs {
+                if LOADING_ATTRS.contains(&attr.as_str()) {
+                    found.push(format!("{attr}={value}"));
+                } else if attr == "style" {
+                    found.extend(css_resources(&value));
                 }
+            }
+            if name == "style" {
+                let end = rest
+                    .to_ascii_lowercase()
+                    .find("</style")
+                    .unwrap_or(rest.len());
+                found.extend(css_resources(&rest[..end]));
+                rest = &rest[end..];
+            }
+        }
+        found
+    }
+
+    /// The lowercased tag name and its `(name, value)` attributes, allowing
+    /// whitespace around `=` and quoted or bare values.
+    fn parse_tag(tag: &str) -> (String, Vec<(String, String)>) {
+        let tag = tag.trim_start_matches('/');
+        let name_end = tag
+            .find(|c: char| c.is_whitespace() || c == '/')
+            .unwrap_or(tag.len());
+        let name = tag[..name_end].to_ascii_lowercase();
+        let mut attrs = Vec::new();
+        let chars: Vec<char> = tag[name_end..].chars().collect();
+        let mut i = 0;
+        while i < chars.len() {
+            while i < chars.len() && (chars[i].is_whitespace() || chars[i] == '/') {
+                i += 1;
+            }
+            let start = i;
+            while i < chars.len() && !chars[i].is_whitespace() && chars[i] != '=' && chars[i] != '/'
+            {
+                i += 1;
+            }
+            if start == i {
+                break;
+            }
+            let attr: String = chars[start..i]
+                .iter()
+                .collect::<String>()
+                .to_ascii_lowercase();
+            while i < chars.len() && chars[i].is_whitespace() {
+                i += 1;
+            }
+            let mut value = String::new();
+            if i < chars.len() && chars[i] == '=' {
+                i += 1;
+                while i < chars.len() && chars[i].is_whitespace() {
+                    i += 1;
+                }
+                if i < chars.len() && (chars[i] == '"' || chars[i] == '\'') {
+                    let quote = chars[i];
+                    i += 1;
+                    while i < chars.len() && chars[i] != quote {
+                        value.push(chars[i]);
+                        i += 1;
+                    }
+                    i += 1;
+                } else {
+                    while i < chars.len() && !chars[i].is_whitespace() {
+                        value.push(chars[i]);
+                        i += 1;
+                    }
+                }
+            }
+            attrs.push((attr, value));
+        }
+        (name, attrs)
+    }
+
+    /// `@import` and every `url(` that is not a `data:` URI in a stylesheet.
+    fn css_resources(css: &str) -> Vec<String> {
+        let lower = css.to_ascii_lowercase();
+        let mut found = Vec::new();
+        if lower.contains("@import") {
+            found.push("@import".to_owned());
+        }
+        for (i, m) in lower.match_indices("url(") {
+            let arg = lower[i + m.len()..].trim_start_matches(['"', '\'', ' ']);
+            if !arg.starts_with("data:") {
+                found.push(lower[i..lower.len().min(i + 40)].to_owned());
             }
         }
         found
@@ -300,15 +402,23 @@ mod tests {
     fn resource_detector_catches_loads() {
         for bad in [
             "<img src=\"https://x\">",
+            "<p src = 'https://x'>",
+            "<IMG SRC=https://x>",
             "<link rel=stylesheet href=x>",
             "<script>1</script>",
-            "@import 'x.css';",
-            "a { background: url(https://x) }",
+            "<style>@import 'x.css';</style>",
+            "<style>a { background: url(https://x) }</style>",
+            "<p style=\"background: url( 'https://x' )\">x</p>",
         ] {
             assert!(!external_resources(bad).is_empty(), "{bad}");
         }
-        assert!(external_resources("a { background: url(data:image/png;base64,AA) }").is_empty());
-        assert!(external_resources("<a href=\"https://x\">x</a>").is_empty());
+        for fine in [
+            "<style>a { background: url(data:image/png;base64,AA) }</style>",
+            "<a href=\"https://x\">x</a>",
+            "<p>Set src=x and url(y) and @import in text</p>",
+        ] {
+            assert!(external_resources(fine).is_empty(), "{fine}");
+        }
     }
 
     #[test]
@@ -344,7 +454,15 @@ mod tests {
     #[test]
     fn contact_options_control_email_and_phone() {
         let cv = testdata::fixture("typical").resolve(None);
-        let both = to_html(&cv, &ExportOptions::default());
+        let default = to_html(&cv, &ExportOptions::html_default());
+        assert!(default.contains("mailto:jane@example.com") && !default.contains("+49 30"));
+        let both = to_html(
+            &cv,
+            &ExportOptions {
+                include_email: true,
+                include_phone: true,
+            },
+        );
         assert!(both.contains("mailto:jane@example.com") && both.contains("+49 30 1234 5678"));
         let neither = to_html(
             &cv,
@@ -376,6 +494,26 @@ mod tests {
     }
 
     #[test]
+    fn entries_in_untitled_sections_do_not_skip_a_heading_level() {
+        let cv = testdata::fixture("typical").resolve(None);
+        let mut d = to_typst_data(&cv, &ExportOptions::html_default());
+        let SectionData::Experience(exp) = &mut d.sections[0] else {
+            panic!("experience")
+        };
+        let mut titled = String::new();
+        entries_section(&mut titled, exp);
+        assert!(
+            titled.contains("<h2>") && titled.contains("<h3>"),
+            "{titled}"
+        );
+
+        exp.heading = String::new();
+        let mut out = String::new();
+        entries_section(&mut out, exp);
+        assert!(!out.contains("<h3>") && out.contains("<h2>"), "{out}");
+    }
+
+    #[test]
     fn accent_is_sanitised() {
         assert_eq!(accent(Some("#1A2b3C")), "#1A2b3C");
         for bad in [
@@ -393,7 +531,7 @@ mod tests {
     fn exporter_returns_named_utf8_document() {
         let cv = testdata::fixture("unicode").resolve(None);
         let doc = HtmlExporter
-            .export(&cv, &ExportOptions::default())
+            .export(&cv, &ExportOptions::html_default())
             .expect("exports");
         assert_eq!(doc.media_type, "text/html; charset=utf-8");
         assert!(doc.suggested_file_name.ends_with("-CV.html"));
