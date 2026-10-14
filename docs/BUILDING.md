@@ -49,14 +49,11 @@ The Command Line Tools are enough; the full Xcode app is not needed. Apple Silic
 
 Install Rust with [rustup](https://rustup.rs) (on Windows, use the default MSVC toolchain). You do not need to pick a Rust version: `rust-toolchain.toml` pins Rust 1.97.0 with `rustfmt`, `clippy` and the `wasm32-unknown-unknown` target, and rustup installs them on the first `cargo` command inside the repository.
 
-Then install the two build tools at the versions CI uses:
+Then install Trunk, which builds the Leptos UI to WebAssembly, at the version CI uses:
 
 ```sh
 cargo install trunk --version 0.21.14 --locked
-cargo install tauri-cli --version 2.12.2 --locked
 ```
-
-Trunk builds the Leptos UI to WebAssembly. `tauri-cli` provides `cargo tauri` and is needed from M3 on.
 
 ## 3. Build and test
 
@@ -100,7 +97,13 @@ cargo run --release --locked
 
 ## 5. The desktop app (from M3)
 
-M3 adds the app itself. This section will then cover `cargo tauri dev` for a live-reloading development build and `cargo tauri build` for a release build:
+M3 adds the app itself. It needs `tauri-cli`, which provides `cargo tauri`, at the version the project pins:
+
+```sh
+cargo install tauri-cli --version 2.12.2 --locked
+```
+
+This section will then cover `cargo tauri dev` for a live-reloading development build and `cargo tauri build` for a release build:
 
 - Linux: AppImage and `.deb`.
 - Windows: NSIS installer.
