@@ -1,0 +1,21 @@
+:root { color-scheme: light dark; --border: #ccc; --muted: #666; --accent: #2b5cab; }
+@media (prefers-color-scheme: dark) { :root { --border: #444; --muted: #aaa; --accent: #7ea6f0; } }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 14px; }
+header.bar { display: flex; gap: 0.75rem; align-items: center; padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); }
+header.bar h1 { font-size: 1rem; margin: 0; flex: 1; }
+main.list { max-width: 40rem; margin: 2rem auto; padding: 0 1rem; }
+main.list ul { list-style: none; padding: 0; }
+main.list li { display: flex; gap: 0.5rem; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
+main.list li button.open { flex: 1; text-align: left; background: none; border: none; font: inherit; color: inherit; cursor: pointer; }
+.editor { display: grid; grid-template-columns: minmax(22rem, 1fr) minmax(24rem, 1.2fr); height: calc(100vh - 2.6rem); }
+.form { overflow: auto; padding: 1rem; border-right: 1px solid var(--border); }
+.form label { display: block; margin: 0 0 0.75rem; color: var(--muted); }
+.form input, .form textarea { display: block; width: 100%; margin-top: 0.2rem; padding: 0.4rem; font: inherit; }
+.form textarea { min-height: 6rem; resize: vertical; }
+.preview { overflow: auto; padding: 1rem; background: color-mix(in srgb, Canvas 92%, gray); }
+.preview img { display: block; width: 100%; max-width: 50rem; margin: 0 auto 1rem; box-shadow: 0 1px 4px rgb(0 0 0 / 0.3); background: white; }
+.status { color: var(--muted); }
+.error { color: #c0392b; }
+button { font: inherit; padding: 0.3rem 0.7rem; cursor: pointer; }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

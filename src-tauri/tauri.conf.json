@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "identifier": "dev.pinaxcv.app",
   "build": {
-    "frontendDist": "frontend-placeholder"
+    "frontendDist": "../ui/dist"
   },
   "app": {
     "windows": [
@@ -19,7 +19,8 @@
     ],
     "security": {
       "csp": "default-src 'self'; img-src 'self' data: blob: preview: http://preview.localhost; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self' ipc: http://ipc.localhost"
-    }
+    },
+    "withGlobalTauri": true
   },
   "bundle": {
     "active": false,

@@ -60,6 +60,7 @@ cargo install trunk --version 0.21.14 --locked
 ```sh
 git clone https://github.com/yezanek/PinaxCV.git
 cd PinaxCV
+(cd ui && trunk build --locked)   # the desktop shell embeds ui/dist
 cargo build --workspace --locked
 cargo test --workspace --locked
 ```
@@ -109,11 +110,14 @@ M3 adds the app itself. It needs `tauri-cli`, which provides `cargo tauri`, at t
 cargo install tauri-cli --version 2.12.2 --locked
 ```
 
-Until the editor UI lands, the shell can already be built and started. It opens the database in the app data folder and shows a placeholder page:
+To run the app, build the UI, then start the shell:
 
 ```sh
+(cd ui && trunk build --locked)
 cargo run -p pinaxcv
 ```
+
+Rebuild the UI with Trunk after changing anything under `ui/`. The first screen lists your CVs; the editor has the contact fields and summary with a live preview, autosave, and PDF and HTML export. Editing sections and entries comes in the next M3 change.
 
 The database is `pinaxcv.sqlite3` in `~/.local/share/dev.pinaxcv.app/` on Linux, `~/Library/Application Support/dev.pinaxcv.app/` on macOS and `%APPDATA%\dev.pinaxcv.app\` on Windows.
 

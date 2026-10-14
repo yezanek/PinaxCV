@@ -249,6 +249,13 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - `preview://localhost/{revision}/{page}.png` (`http://preview.localhost/...` on Windows) serves PNG bytes from the newest preview with `Cache-Control: no-store`: 404 for a replaced page, 503 before startup finishes.
 - Until the Leptos UI lands, `frontendDist` points at a static placeholder page so the shell builds and runs on its own. The Linux CI job now installs the WebKitGTK packages listed in `docs/BUILDING.md`.
 
+## ADR-038 — Editor UI foundation (M3)
+
+- `ui/` (package `pinaxcv-ui`) is a Leptos 0.8 CSR app built by Trunk into `ui/dist`, which the shell embeds (`frontendDist`). It is a workspace member, so `cargo build --workspace` needs `trunk build` first; CI runs Trunk before Clippy and lints the UI for `wasm32-unknown-unknown`.
+- The UI calls commands through Tauri's global `invoke` (`withGlobalTauri`), with `cv-api` and `cv-core` types on both sides. Tauri expects camelCase argument names, so command parameters are single words (`id`, `req`, `target`) wherever possible.
+- This first screen set covers the CV list (create, open, delete) and an editor for the title, contact fields and summary, with the live preview on the right. Each edit bumps a local counter; the preview runs 150 ms after the last edit and autosave 800 ms after, and preview answers for older edits are ignored. A save conflict is shown, not overwritten.
+- Checked by hand under Xvfb on Linux: creating a CV, typing the name and email updates the preview and saves, and the data is there after a restart. Sections, entries, the Style tab and keyboard shortcuts are the next M3 changes; `tauri-driver` smoke tests come with them.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

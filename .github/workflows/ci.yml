@@ -37,12 +37,19 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Format
         run: cargo fmt --all --check
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: trunk@0.21.14
+      # The desktop shell embeds ui/dist at compile time.
+      - name: Build UI (Trunk)
+        working-directory: ui
+        run: trunk build --locked
       - name: Clippy
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Test
         run: cargo test --workspace --locked
-      - name: UI-shared crates build for WASM
-        run: cargo build -p cv-core -p cv-api --target wasm32-unknown-unknown --locked
+      - name: UI and UI-shared crates build for WASM
+        run: cargo clippy -p cv-core -p cv-api -p pinaxcv-ui --target wasm32-unknown-unknown --locked -- -D warnings
       - name: Dependency boundaries
         shell: bash
         run: scripts/check-boundaries.sh

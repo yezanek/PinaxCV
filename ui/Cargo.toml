@@ -1,0 +1,24 @@
+[package]
+name = "pinaxcv-ui"
+description = "PinaxCV editor UI: Leptos (CSR), compiled to WASM and served by the desktop shell."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+console_error_panic_hook.workspace = true
+cv-api.workspace = true
+cv-core.workspace = true
+js-sys.workspace = true
+leptos.workspace = true
+serde.workspace = true
+serde-wasm-bindgen.workspace = true
+wasm-bindgen.workspace = true
+wasm-bindgen-futures.workspace = true
+web-sys.workspace = true
+
+[lints]
+workspace = true
