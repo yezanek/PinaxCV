@@ -140,6 +140,40 @@ pub fn VariantBar(
         });
     };
 
+    let rename = Callback::new({
+        let reload = reload.clone();
+        move |name: String| {
+            let name = name.trim().to_owned();
+            if name.is_empty() {
+                return;
+            }
+            edit(Box::new(move |v| v.name = name));
+            reload();
+        }
+    });
+    let confirming = RwSignal::new(false);
+    let delete = Callback::new({
+        let reload = reload.clone();
+        move |()| {
+            let Some(id) = variant.with_untracked(|v| v.as_ref().map(|v| v.variant.id.clone()))
+            else {
+                return;
+            };
+            let reload = reload.clone();
+            spawn_local(async move {
+                match call::<_, ()>("delete_variant", &IdArg { id: &id }).await {
+                    Ok(()) => {
+                        confirming.set(false);
+                        variant.set(None);
+                        reload();
+                        changed.run(());
+                    }
+                    Err(e) => error.set(Some(e.message)),
+                }
+            });
+        }
+    });
+
     let shown =
         move |id: &Id| variant.with(|v| v.as_ref().is_none_or(|v| !v.variant.hidden.contains(id)));
     let collapsed = move |id: &Id| {
@@ -181,6 +215,20 @@ pub fn VariantBar(
                     "Showing variant \u{201c}{}\u{201d}. Text edits below change the base CV; choose here what this variant shows.",
                     v.variant.name
                 )))}
+            </div>
+            <div class="variant-actions">
+                <label>"Variant name "
+                    <input prop:value=move || variant.with(|v| v.as_ref().map(|v| v.variant.name.clone()).unwrap_or_default())
+                        on:change=move |ev| rename.run(event_target_value(&ev)) />
+                </label>
+                <Show when=move || !confirming.get()
+                    fallback=move || view! {
+                        <span>"Delete this variant? The base CV is not changed."</span>
+                        <button on:click=move |_| delete.run(())>"Delete"</button>
+                        <button on:click=move |_| confirming.set(false)>"Cancel"</button>
+                    }>
+                    <button on:click=move |_| confirming.set(true)>"Delete variant"</button>
+                </Show>
             </div>
             <fieldset class="variant-visibility">
                 <legend>"Shown in this variant"</legend>
