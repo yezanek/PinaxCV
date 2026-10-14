@@ -50,9 +50,20 @@ pub fn ats_report(pdf: &[u8], cv: &ResolvedCv) -> AtsReport {
 
 /// [`ats_report`] with a chosen extractor.
 pub fn ats_report_with(extractor: &dyn TextExtractor, pdf: &[u8], cv: &ResolvedCv) -> AtsReport {
+    ats_report_with_options(extractor, pdf, cv, &ExportOptions::default())
+}
+
+/// [`ats_report_with`] for a PDF rendered with `options`, so contact details
+/// the export left out are not expected in the text.
+pub fn ats_report_with_options(
+    extractor: &dyn TextExtractor,
+    pdf: &[u8],
+    cv: &ResolvedCv,
+    options: &ExportOptions,
+) -> AtsReport {
     match extractor.extract(pdf) {
         Ok(text) => {
-            let checks = run_checks(&text, &Expected::from_cv(cv));
+            let checks = run_checks(&text, &Expected::from_cv(cv, options));
             AtsReport {
                 score: score(&checks),
                 extracted_text: text,
@@ -83,9 +94,8 @@ struct ExpectedEntry {
 }
 
 impl Expected {
-    fn from_cv(cv: &ResolvedCv) -> Self {
-        // The PDF always prints email and phone.
-        let data = to_typst_data(cv, &ExportOptions::default());
+    fn from_cv(cv: &ResolvedCv, options: &ExportOptions) -> Self {
+        let data = to_typst_data(cv, options);
         let mut e = Expected {
             name: norm(&data.basics.full_name),
             contacts: [&data.basics.email, &data.basics.phone]
@@ -259,9 +269,17 @@ fn check_characters(text: &str) -> AtsCheck {
     }
 }
 
-/// Private use area, U+FFFD and the Latin ligatures U+FB00..=U+FB06.
+/// The private use areas (BMP and planes 15 and 16), U+FFFD and the Latin
+/// ligatures U+FB00..=U+FB06.
 fn is_bad_char(c: char) -> bool {
-    matches!(c, '\u{E000}'..='\u{F8FF}' | '\u{FFFD}' | '\u{FB00}'..='\u{FB06}')
+    matches!(
+        c,
+        '\u{E000}'..='\u{F8FF}'
+            | '\u{F0000}'..='\u{FFFFD}'
+            | '\u{100000}'..='\u{10FFFD}'
+            | '\u{FFFD}'
+            | '\u{FB00}'..='\u{FB06}'
+    )
 }
 
 /// A bullet passes when its words appear in order, or, for wraps inside a
@@ -412,6 +430,33 @@ mod tests {
         assert!(
             detail.contains("U+FB01") && detail.contains("U+FFFD") && detail.contains("U+E000")
         );
+    }
+
+    #[test]
+    fn supplementary_private_use_characters_fail() {
+        let text = format!("{}\n\u{F0000} \u{10FFFD}", typical_text());
+        let r = report(text);
+        assert_eq!(failed(&r), [checks::CLEAN_CHARACTERS]);
+        let detail = r.checks[4].detail.as_deref().expect("detail");
+        assert!(detail.contains("U+F0000") && detail.contains("U+10FFFD"));
+    }
+
+    #[test]
+    fn contacts_left_out_of_the_export_are_not_expected() {
+        let cv = testdata::fixture("typical").resolve(None);
+        let options = ExportOptions {
+            include_email: false,
+            include_phone: false,
+        };
+        let pdf = crate::Renderer::new()
+            .compile(&cv, &options)
+            .expect("compiles")
+            .to_pdf()
+            .expect("pdf");
+        let r = ats_report_with_options(&LopdfExtractor, &pdf, &cv, &options);
+        assert_eq!(r.failed_checks().count(), 0, "{:?}", r.checks);
+        let r = ats_report_with(&LopdfExtractor, &pdf, &cv);
+        assert_eq!(failed(&r), [checks::CONTACT_AT_TOP]);
     }
 
     #[test]
