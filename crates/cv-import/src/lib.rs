@@ -20,3 +20,5 @@ pub use merge::{
 };
 pub mod import;
 pub use import::{ImportError, import_europass};
+pub mod pdf_text;
+pub use pdf_text::{Heading, NotReadable, page_text, split_sections};

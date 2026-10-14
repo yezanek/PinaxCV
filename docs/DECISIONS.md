@@ -319,6 +319,12 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
   - **Links** are merged as a union by URL.
 - Nothing in the base is deleted unless Replace is chosen. The caller takes a snapshot before merging (spec section 9.5).
 
+## ADR-047 — Generic PDF text importer (M4)
+
+- The product owner asked that any PDF be importable, as Workday-style parsers do it, in addition to the Europass importer, which stays a must-have. A PDF is tried as Europass first (ADR-043). Only a PDF without Europass data goes to the text importer.
+- The text importer reads the page text in content order (`page_text`) and splits it at standard CV headings and their common synonyms (`split_sections`). It drops blank lines and "Page N of M" footers, and a repeated heading continues its section.
+- Entry detection (dates, title and organisation lines) and LinkedIn's sidebar layout come next. LinkedIn's sidebar comes before the name in content order. Every guess will be an `ImportWarning`, and the result goes through the same merge review (ADR-046).
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
