@@ -18,3 +18,5 @@ pub mod merge;
 pub use merge::{
     EntryDecision, Field, FieldConflict, MergePlan, field_conflicts, merge, suggest_matches,
 };
+pub mod import;
+pub use import::{ImportError, import_europass};
