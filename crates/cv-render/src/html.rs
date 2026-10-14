@@ -30,6 +30,7 @@ impl Exporter for HtmlExporter {
             media_type: "text/html; charset=utf-8",
             suggested_file_name: suggested_file_name(&cv.basics.full_name, "html"),
             page_count: None,
+            warnings: Vec::new(),
         })
     }
 }
