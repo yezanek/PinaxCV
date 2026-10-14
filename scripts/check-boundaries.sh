@@ -41,8 +41,11 @@ for crate in cv-api cv-store cv-render cv-import cv-ai; do
     "leaf crates may depend internally only on cv-core"
 done
 
+# cv-app is the transport-neutral service layer shared with a future server: no Tauri.
+forbid cv-app 'tauri.*|wry|tao' "cv-app services stay independent of the desktop shell"
+
 # No PostgreSQL or SaaS server code anywhere in v1.
-for crate in cv-core cv-api cv-store cv-render cv-import cv-ai; do
+for crate in cv-core cv-api cv-store cv-render cv-import cv-ai cv-app; do
   forbid "$crate" 'postgres.*|tokio-postgres|sqlx.*|axum.*|actix.*' "no PostgreSQL or HTTP server in v1"
 done
 

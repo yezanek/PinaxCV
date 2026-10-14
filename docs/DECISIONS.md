@@ -231,6 +231,16 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Nearly all preview time is PNG rendering of every page, not compilation (ADR-025 measured incremental compiles under 1 ms). If a slower laptop misses the target, M3 renders only the visible pages first; that is not needed on this evidence.
 - The spec's reference machine is a mid-range laptop, so the target is marked met on this evidence and re-checked on the product owner's machines with the command above.
 
+## ADR-036 — Application services in `cv-app` (M3)
+
+- `cv_app::App` implements the CV, variant, preview, export, ATS and lint operations of spec section 10.2 on top of `Store`, `Renderer` and the exporters. The methods are synchronous; the Tauri shell runs each call in `spawn_blocking`, which is where ADR-019's async boundary now sits. This keeps `cv-app` free of an async runtime and of Tauri, and the boundary check forbids Tauri in it.
+- File dialogs are the `SaveDialog` trait, implemented by the shell with the Rust-side dialog plugin. The UI never sends a path. A cancelled dialog returns `ErrorCode::Cancelled`. Files are written to a hidden temporary file next to the target and renamed over it, so a failed export leaves nothing half-written.
+- `save_cv` runs `validate::for_save` (clamping options) and refuses structural errors with `Validation`, carrying every issue in `details`. Exports run `validate::for_export` first. A PDF export also returns the ATS report of the written bytes.
+- `preview` renders unsaved editor state without saving it and keeps only the newest revision's PNG pages for the `preview://` handler (`{base}/{revision}/{page}.png`, 1-based). An older revision arriving late is not cached.
+- `create_cv` makes a blank CV (title trimmed, "Untitled CV" if empty) with no sections. Templates for new CVs come later.
+- After a successful export, an export snapshot is requested; it is best effort because the file is already written, and the store throttles it to one per hour (ADR-031).
+- New IDs come from `UlidIds` (the `ulid` crate). Store and render errors map to `ApiError` codes without CV content in the message.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

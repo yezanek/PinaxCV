@@ -1,0 +1,23 @@
+[package]
+name = "cv-app"
+description = "PinaxCV: application services that load, resolve, render, export and save CVs."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+cv-api.workspace = true
+cv-core.workspace = true
+cv-render.workspace = true
+cv-store.workspace = true
+serde_json.workspace = true
+ulid.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true
