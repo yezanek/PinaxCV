@@ -1,0 +1,6 @@
+---
+source: crates/cv-render/tests/ats_golden.rs
+expression: report.extracted_text
+---
+Jane Doe  
+jane@example.com

@@ -3,6 +3,7 @@
 //!
 #![forbid(unsafe_code)]
 
+pub mod ats;
 pub mod data;
 mod render;
 #[cfg(test)]

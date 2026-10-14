@@ -206,6 +206,15 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - The template prints the period and location on a second line under "title, org" (spec 6.4 rule 1), uses real headings and lists, and only `https:`/`mailto:` URLs become links (the `clickable` flag in `data.json`).
 - One `Renderer` per process behind a mutex. `PageCounter for Renderer` compiles with the default export options.
 
+## ADR-033 — ATS check details (M2)
+
+- `cv_render::ats::ats_report` reads the PDF with `LopdfExtractor` (ADR-024) and compares it with the same template data the PDF was rendered from, so headings, dates and skipped blank fields match what is printed. `ats_report_with` takes any `TextExtractor`.
+- Seven checks: `name_at_top`, `contact_at_top`, `section_headings`, `entry_details`, `clean_characters`, `bullets`, `reading_order`. The score is the rounded share of passed checks. If the text cannot be read at all, the report has one failed `text_extracted` check and a score of 0.
+- A section heading must be a line of its own. Bullets match after whitespace is collapsed, or, for a long word such as a URL that wraps without a hyphen, with all whitespace removed.
+- Contact header lines end with a no-break space, so line-joining extractors such as `pdf-extract` keep the words apart. The golden suite checks this with `pdf-extract`.
+- The `cjk` fixture is the one expected failure. Inter has no CJK glyphs, so the export reports `missing_glyphs` and the ATS check fails on replacement characters instead of passing silently. CJK fonts are out of scope for v1.
+- Extracted-text snapshots live in `crates/cv-render/tests/snapshots/` and are checked out with LF line endings on every platform.
+
 ## Open decisions
 
 - Exact HTML CSS/template design (M2).

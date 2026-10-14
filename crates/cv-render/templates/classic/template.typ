@@ -26,18 +26,20 @@
 
 #let url-text(l) = if l.clickable { link(l.url, l.url) } else { l.url }
 
-// Contact block: body text at the top of page 1, one item per line.
-#block(below: 0.5em)[#text(size: 1.8em, weight: "bold")[#d.basics.full_name]]
-#if d.basics.headline != none { block(below: 0.4em)[#d.basics.headline] }
+// Contact block: body text at the top of page 1, one item per line. Each
+// line ends with a no-break space (`~`) so extractors that join lines still
+// see separate words (ADR-024).
+#block(below: 0.5em)[#text(size: 1.8em, weight: "bold")[#d.basics.full_name~]]
+#if d.basics.headline != none { block(below: 0.4em)[#d.basics.headline~] }
 #{
   let parts = ()
   if d.basics.email != none { parts.push(d.basics.email) }
   if d.basics.phone != none { parts.push(d.basics.phone) }
   if d.basics.location != none { parts.push(d.basics.location) }
-  if parts.len() > 0 { block(below: 0.4em, parts.join(" | ")) }
+  if parts.len() > 0 { block(below: 0.4em)[#parts.join(" | ")~] }
 }
 #for l in d.basics.links {
-  block(below: 0.4em)[#if l.label != none [#l.label: ]#url-text(l)]
+  block(below: 0.4em)[#if l.label != none [#l.label: ]#url-text(l)~]
 }
 
 #if d.summary != none [

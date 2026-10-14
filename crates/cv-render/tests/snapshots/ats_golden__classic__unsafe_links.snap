@@ -1,0 +1,23 @@
+---
+source: crates/cv-render/tests/ats_golden.rs
+expression: report.extracted_text
+---
+Jane Doe  
+jane@example.com | +1 555 0199  
+Site:  
+https://jane.example.com 
+ 
+Mail:  
+mailto:jane@example.com 
+ 
+Script: javascript:alert(1)  
+Data: data:text/html;base64,PHNjcmlwdD4=  
+Old: http://jane.example.com  
+Phone: tel:+15550199  
+Projects 
+Side project 
+, Self 
+Jan 2024 – Present 
+javascript:void(0) 
+•
+Built a tool used by 300 people.
