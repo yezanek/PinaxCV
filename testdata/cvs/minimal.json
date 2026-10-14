@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "id": "01J01000000000000000000001",
+  "title": "Minimal",
+  "locale": "en",
+  "paper": "a4",
+  "template": "classic",
+  "options": {
+    "font_size_pt": 10.0,
+    "line_spacing": 1.1,
+    "margin_mm": 18.0,
+    "accent": null,
+    "date_style": "month_name_year"
+  },
+  "basics": {
+    "full_name": "Jane Doe",
+    "headline": null,
+    "email": "jane@example.com",
+    "phone": null,
+    "location": null,
+    "links": []
+  },
+  "summary": null,
+  "sections": []
+}

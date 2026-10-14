@@ -19,6 +19,7 @@ mod variant;
 
 pub mod fit;
 pub mod lint;
+pub mod locale;
 pub mod validate;
 
 #[cfg(test)]

@@ -1,0 +1,188 @@
+{
+  "schema_version": 1,
+  "id": "01J02000000000000000000002",
+  "title": "Typical",
+  "locale": "en",
+  "paper": "a4",
+  "template": "classic",
+  "options": {
+    "font_size_pt": 10.0,
+    "line_spacing": 1.1,
+    "margin_mm": 18.0,
+    "accent": null,
+    "date_style": "month_name_year"
+  },
+  "basics": {
+    "full_name": "Jane Doe",
+    "headline": "Backend Engineer",
+    "email": "jane@example.com",
+    "phone": "+49 30 1234 5678",
+    "location": "Berlin, Germany",
+    "links": [
+      {
+        "id": "01J02000000000000000000001",
+        "label": "Website",
+        "url": "https://jane.example.com"
+      }
+    ]
+  },
+  "summary": "Backend engineer with eight years of experience building reliable distributed systems in Rust and Go.",
+  "sections": [
+    {
+      "type": "experience",
+      "id": "01J02000000000000000000010",
+      "title_override": null,
+      "entries": [
+        {
+          "id": "01J02000000000000000000003",
+          "title": "Senior Backend Engineer",
+          "org": "Acme GmbH",
+          "location": "Berlin",
+          "period": {
+            "start": {
+              "year": 2021,
+              "month": 3
+            },
+            "end": null,
+            "current": true
+          },
+          "bullets": [
+            {
+              "id": "01J02000000000000000000004",
+              "text": "Led the migration of the billing platform to Rust, cutting p99 latency by 43%."
+            },
+            {
+              "id": "01J02000000000000000000005",
+              "text": "Designed an event-sourced ledger processing 2.1 million transactions per day."
+            },
+            {
+              "id": "01J02000000000000000000006",
+              "text": "Mentored four engineers and introduced property-based testing across three services."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J02000000000000000000007",
+          "title": "Backend Engineer",
+          "org": "Example AG",
+          "location": "Munich",
+          "period": {
+            "start": {
+              "year": 2017,
+              "month": 1
+            },
+            "end": {
+              "year": 2021,
+              "month": 2
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J02000000000000000000008",
+              "text": "Built the search API (Go, PostgreSQL, Elasticsearch) serving 12k requests per second."
+            },
+            {
+              "id": "01J02000000000000000000009",
+              "text": "Reduced cloud costs by 28% through right-sizing and caching."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        }
+      ]
+    },
+    {
+      "type": "education",
+      "id": "01J02000000000000000000012",
+      "title_override": null,
+      "entries": [
+        {
+          "id": "01J02000000000000000000011",
+          "title": "M.Sc. Computer Science",
+          "org": "Technical University of Munich",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2014,
+              "month": 10
+            },
+            "end": {
+              "year": 2016,
+              "month": 9
+            },
+            "current": false
+          },
+          "bullets": [],
+          "description": null,
+          "url": null,
+          "locked": false
+        }
+      ]
+    },
+    {
+      "type": "skills",
+      "id": "01J02000000000000000000013",
+      "title_override": null,
+      "groups": [
+        {
+          "id": "01J02000000000000000000014",
+          "label": "Languages",
+          "skills": [
+            {
+              "id": "01J02000000000000000000015",
+              "name": "Rust"
+            },
+            {
+              "id": "01J02000000000000000000016",
+              "name": "Go"
+            },
+            {
+              "id": "01J02000000000000000000017",
+              "name": "SQL"
+            }
+          ]
+        },
+        {
+          "id": "01J02000000000000000000018",
+          "label": "Infrastructure",
+          "skills": [
+            {
+              "id": "01J02000000000000000000019",
+              "name": "PostgreSQL"
+            },
+            {
+              "id": "01J02000000000000000000020",
+              "name": "Kafka"
+            },
+            {
+              "id": "01J02000000000000000000021",
+              "name": "Kubernetes"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "languages",
+      "id": "01J02000000000000000000022",
+      "title_override": null,
+      "items": [
+        {
+          "id": "01J02000000000000000000023",
+          "name": "English",
+          "level": "Native"
+        },
+        {
+          "id": "01J02000000000000000000024",
+          "name": "German",
+          "level": "C1"
+        }
+      ]
+    }
+  ]
+}

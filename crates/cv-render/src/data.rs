@@ -1,0 +1,378 @@
+//! The JSON contract between `ResolvedCv` and the Typst template (spec section 6.3).
+//!
+//! User text reaches Typst only as data in `data.json`, never as markup.
+//! Absent or blank optional fields are `null`, so the template never prints
+//! stray separators. Dates and headings are formatted here, not in Typst.
+
+use cv_core::lint::is_clickable_url;
+use cv_core::locale::{self, Labels};
+use cv_core::{Locale, Paper, ResolvedCv, ResolvedEntry, ResolvedSection};
+use serde::Serialize;
+
+use crate::ExportOptions;
+
+#[derive(Serialize, Debug, PartialEq)]
+pub struct TypstData {
+    pub locale: &'static str,
+    pub labels: LabelsData,
+    pub paper: &'static str,
+    pub opts: OptsData,
+    pub basics: BasicsData,
+    pub summary: Option<String>,
+    pub sections: Vec<SectionData>,
+}
+
+#[derive(Serialize, Debug, PartialEq)]
+pub struct LabelsData {
+    pub experience: &'static str,
+    pub education: &'static str,
+    pub skills: &'static str,
+    pub languages: &'static str,
+    pub certifications: &'static str,
+    pub projects: &'static str,
+    pub summary: &'static str,
+    pub present: &'static str,
+}
+
+#[derive(Serialize, Debug, PartialEq)]
+pub struct OptsData {
+    pub font_size_pt: f32,
+    pub line_spacing: f32,
+    pub margin_mm: f32,
+    pub accent: Option<String>,
+}
+
+#[derive(Serialize, Debug, PartialEq)]
+pub struct BasicsData {
+    pub full_name: String,
+    pub headline: Option<String>,
+    pub email: Option<String>,
+    pub phone: Option<String>,
+    pub location: Option<String>,
+    pub links: Vec<LinkData>,
+}
+
+/// `clickable` is true only for `https:` and `mailto:` URLs.
+#[derive(Serialize, Debug, PartialEq)]
+pub struct LinkData {
+    pub label: Option<String>,
+    pub url: String,
+    pub clickable: bool,
+}
+
+#[derive(Serialize, Debug, PartialEq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum SectionData {
+    Experience(EntriesData),
+    Education(EntriesData),
+    Projects(EntriesData),
+    Certifications(EntriesData),
+    Custom(EntriesData),
+    Skills {
+        heading: String,
+        groups: Vec<GroupData>,
+    },
+    Languages {
+        heading: String,
+        items: Vec<LanguageData>,
+    },
+}
+
+#[derive(Serialize, Debug, PartialEq)]
+pub struct EntriesData {
+    pub heading: String,
+    pub entries: Vec<EntryData>,
+}
+
+#[derive(Serialize, Debug, PartialEq)]
+pub struct EntryData {
+    pub title: Option<String>,
+    pub org: Option<String>,
+    pub location: Option<String>,
+    pub period: Option<String>,
+    pub description: Option<String>,
+    pub link: Option<LinkData>,
+    pub bullets: Vec<String>,
+    pub collapsed: bool,
+}
+
+#[derive(Serialize, Debug, PartialEq)]
+pub struct GroupData {
+    pub label: Option<String>,
+    pub skills: Vec<String>,
+}
+
+#[derive(Serialize, Debug, PartialEq)]
+pub struct LanguageData {
+    pub name: String,
+    pub level: Option<String>,
+}
+
+/// Builds the template data for `cv`. `options` decides whether email and
+/// phone are printed.
+pub fn to_typst_data(cv: &ResolvedCv, options: &ExportOptions) -> TypstData {
+    let labels = locale::labels(cv.locale);
+    let b = &cv.basics;
+    TypstData {
+        locale: locale_code(cv.locale),
+        labels: labels_data(labels),
+        paper: match cv.paper {
+            Paper::A4 => "a4",
+            Paper::Letter => "us-letter",
+        },
+        opts: OptsData {
+            font_size_pt: cv.options.font_size_pt,
+            line_spacing: cv.options.line_spacing,
+            margin_mm: cv.options.margin_mm,
+            accent: cv.options.accent.clone(),
+        },
+        basics: BasicsData {
+            full_name: b.full_name.trim().to_owned(),
+            headline: text(&b.headline),
+            email: text(&b.email).filter(|_| options.include_email),
+            phone: text(&b.phone).filter(|_| options.include_phone),
+            location: text(&b.location),
+            links: b
+                .links
+                .iter()
+                .filter_map(|l| link(Some(&l.label), &l.url))
+                .collect(),
+        },
+        summary: text(&cv.summary),
+        sections: cv.sections.iter().filter_map(|s| section(s, cv)).collect(),
+    }
+}
+
+/// The Typst `lang` code for `locale`.
+pub fn locale_code(locale: Locale) -> &'static str {
+    match locale {
+        Locale::En => "en",
+    }
+}
+
+fn labels_data(l: Labels) -> LabelsData {
+    LabelsData {
+        experience: l.experience,
+        education: l.education,
+        skills: l.skills,
+        languages: l.languages,
+        certifications: l.certifications,
+        projects: l.projects,
+        summary: l.summary,
+        present: l.present,
+    }
+}
+
+/// Trims `s`; blank becomes `None`.
+fn text(s: &Option<String>) -> Option<String> {
+    s.as_deref()
+        .map(str::trim)
+        .filter(|t| !t.is_empty())
+        .map(str::to_owned)
+}
+
+fn link(label: Option<&String>, url: &str) -> Option<LinkData> {
+    let url = url.trim();
+    (!url.is_empty()).then(|| LinkData {
+        label: text(&label.cloned()),
+        url: url.to_owned(),
+        clickable: is_clickable_url(url),
+    })
+}
+
+fn section(s: &ResolvedSection, cv: &ResolvedCv) -> Option<SectionData> {
+    let heading = locale::heading(s, cv.locale);
+    let entries = |entries: &[ResolvedEntry]| EntriesData {
+        heading: heading.clone(),
+        entries: entries.iter().map(|e| entry(e, cv)).collect(),
+    };
+    let data = match s {
+        ResolvedSection::Experience(x) => SectionData::Experience(entries(&x.entries)),
+        ResolvedSection::Education(x) => SectionData::Education(entries(&x.entries)),
+        ResolvedSection::Projects(x) => SectionData::Projects(entries(&x.entries)),
+        ResolvedSection::Certifications(x) => SectionData::Certifications(entries(&x.entries)),
+        ResolvedSection::Custom(x) => SectionData::Custom(entries(&x.entries)),
+        ResolvedSection::Skills(x) => SectionData::Skills {
+            heading: heading.clone(),
+            groups: x
+                .groups
+                .iter()
+                .map(|g| GroupData {
+                    label: text(&g.label),
+                    skills: g
+                        .skills
+                        .iter()
+                        .filter_map(|k| text(&Some(k.name.clone())))
+                        .collect(),
+                })
+                .filter(|g| !g.skills.is_empty())
+                .collect(),
+        },
+        ResolvedSection::Languages(x) => SectionData::Languages {
+            heading: heading.clone(),
+            items: x
+                .items
+                .iter()
+                .filter_map(|i| {
+                    text(&Some(i.name.clone())).map(|name| LanguageData {
+                        name,
+                        level: text(&i.level),
+                    })
+                })
+                .collect(),
+        },
+    };
+    let empty = match &data {
+        SectionData::Experience(e)
+        | SectionData::Education(e)
+        | SectionData::Projects(e)
+        | SectionData::Certifications(e)
+        | SectionData::Custom(e) => e.entries.is_empty(),
+        SectionData::Skills { groups, .. } => groups.is_empty(),
+        SectionData::Languages { items, .. } => items.is_empty(),
+    };
+    (!empty).then_some(data)
+}
+
+fn entry(e: &ResolvedEntry, cv: &ResolvedCv) -> EntryData {
+    EntryData {
+        title: text(&Some(e.title.clone())),
+        org: text(&Some(e.org.clone())),
+        location: text(&e.location),
+        period: locale::format_period(&e.period, cv.options.date_style, cv.locale),
+        description: if e.collapsed {
+            None
+        } else {
+            text(&e.description)
+        },
+        link: if e.collapsed {
+            None
+        } else {
+            e.url.as_deref().and_then(|u| link(None, u))
+        },
+        bullets: if e.collapsed {
+            Vec::new()
+        } else {
+            e.bullets
+                .iter()
+                .filter_map(|b| text(&Some(b.text.clone())))
+                .collect()
+        },
+        collapsed: e.collapsed,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testdata;
+
+    fn data(name: &str) -> serde_json::Value {
+        let cv = testdata::fixture(name).resolve(None);
+        serde_json::to_value(to_typst_data(&cv, &ExportOptions::default())).expect("json")
+    }
+
+    #[test]
+    fn typical_matches_contract_shape() {
+        let d = data("typical");
+        assert_eq!(d["locale"], "en");
+        assert_eq!(d["paper"], "a4");
+        assert_eq!(d["labels"]["present"], "Present");
+        assert_eq!(d["basics"]["full_name"], "Jane Doe");
+        let exp = &d["sections"][0];
+        assert_eq!(exp["kind"], "experience");
+        assert_eq!(exp["heading"], "Work Experience");
+        assert_eq!(exp["entries"][0]["period"], "Mar 2021 – Present");
+        assert!(
+            exp["entries"][0]["bullets"]
+                .as_array()
+                .is_some_and(|b| !b.is_empty())
+        );
+        let kinds: Vec<_> = d["sections"]
+            .as_array()
+            .expect("sections")
+            .iter()
+            .map(|s| s["kind"].as_str().expect("kind").to_owned())
+            .collect();
+        assert_eq!(kinds, ["experience", "education", "skills", "languages"]);
+    }
+
+    #[test]
+    fn blank_optionals_are_null_never_empty_strings() {
+        let d = data("minimal");
+        for key in ["headline", "phone", "location"] {
+            assert!(d["basics"][key].is_null(), "{key}");
+        }
+        assert!(d["summary"].is_null());
+        assert_eq!(d["sections"], serde_json::json!([]));
+    }
+
+    #[test]
+    fn empty_sections_are_dropped() {
+        let d = data("empty_sections");
+        assert!(d["sections"].as_array().is_some_and(|s| s.len() == 1));
+    }
+
+    #[test]
+    fn links_are_clickable_only_for_https_and_mailto() {
+        let d = data("unsafe_links");
+        let clickable: Vec<(String, bool)> = d["basics"]["links"]
+            .as_array()
+            .expect("links")
+            .iter()
+            .map(|l| {
+                (
+                    l["url"].as_str().expect("url").to_owned(),
+                    l["clickable"] == true,
+                )
+            })
+            .collect();
+        assert!(clickable.iter().any(|(_, c)| *c), "{clickable:?}");
+        for (url, c) in &clickable {
+            assert_eq!(
+                *c,
+                url.starts_with("https:") || url.starts_with("mailto:"),
+                "{url}"
+            );
+        }
+    }
+
+    #[test]
+    fn contact_options_hide_email_and_phone() {
+        let cv = testdata::fixture("typical").resolve(None);
+        let opts = ExportOptions {
+            include_email: false,
+            include_phone: false,
+        };
+        let d = to_typst_data(&cv, &opts);
+        assert_eq!((d.basics.email, d.basics.phone), (None, None));
+    }
+
+    #[test]
+    fn letter_paper_maps_to_typst_name() {
+        let mut cv = testdata::fixture("minimal");
+        cv.paper = Paper::Letter;
+        assert_eq!(
+            to_typst_data(&cv.resolve(None), &ExportOptions::default()).paper,
+            "us-letter"
+        );
+        assert_eq!(locale_code(Locale::En), "en");
+    }
+
+    #[test]
+    fn collapsed_entries_drop_body() {
+        let cv = testdata::fixture("typical");
+        let mut v = cv_core::Variant::empty(cv.id.clone(), cv.id.clone(), "V");
+        let first_entry = cv.resolve(None);
+        let ResolvedSection::Experience(exp) = &first_entry.sections[0] else {
+            panic!("experience")
+        };
+        v.collapsed.insert(exp.entries[0].id.clone());
+        let d = to_typst_data(&cv.resolve(Some(&v)), &ExportOptions::default());
+        let SectionData::Experience(e) = &d.sections[0] else {
+            panic!("experience")
+        };
+        assert!(e.entries[0].collapsed && e.entries[0].bullets.is_empty());
+        assert!(e.entries[0].title.is_some() && e.entries[0].period.is_some());
+    }
+}

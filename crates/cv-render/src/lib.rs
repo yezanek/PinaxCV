@@ -1,10 +1,11 @@
 //! Typst PDF and preview rendering, the standalone HTML exporter and ATS text checks.
 //! Consumes `ResolvedCv` only and never touches persistence.
 //!
-//! This commit defines the exporter and text-extraction seams; the renderers
-//! arrive in M2.
-
 #![forbid(unsafe_code)]
+
+pub mod data;
+#[cfg(test)]
+mod testdata;
 
 use cv_core::{Diagnostic, ResolvedCv, ValidationIssue};
 

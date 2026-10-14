@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "id": "01J06000000000000000000001",
+  "title": "Empty sections",
+  "locale": "en",
+  "paper": "a4",
+  "template": "classic",
+  "options": {
+    "font_size_pt": 10.0,
+    "line_spacing": 1.1,
+    "margin_mm": 18.0,
+    "accent": null,
+    "date_style": "month_name_year"
+  },
+  "basics": {
+    "full_name": "Jane Doe",
+    "headline": null,
+    "email": "jane@example.com",
+    "phone": "+44 20 7946 0000",
+    "location": null,
+    "links": []
+  },
+  "summary": null,
+  "sections": [
+    {
+      "type": "experience",
+      "id": "01J06000000000000000000002",
+      "title_override": null,
+      "entries": []
+    },
+    {
+      "type": "education",
+      "id": "01J06000000000000000000003",
+      "title_override": null,
+      "entries": []
+    },
+    {
+      "type": "skills",
+      "id": "01J06000000000000000000004",
+      "title_override": null,
+      "groups": []
+    },
+    {
+      "type": "languages",
+      "id": "01J06000000000000000000005",
+      "title_override": null,
+      "items": []
+    },
+    {
+      "type": "custom",
+      "id": "01J06000000000000000000006",
+      "title": "Volunteering",
+      "entries": []
+    },
+    {
+      "type": "projects",
+      "id": "01J06000000000000000000009",
+      "title_override": null,
+      "entries": [
+        {
+          "id": "01J06000000000000000000007",
+          "title": "PinaxCV",
+          "org": "Open source",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2026,
+              "month": 1
+            },
+            "end": null,
+            "current": true
+          },
+          "bullets": [
+            {
+              "id": "01J06000000000000000000008",
+              "text": "Wrote the storage layer and its 24 tests."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        }
+      ]
+    }
+  ]
+}

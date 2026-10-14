@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "id": "01J04000000000000000000001",
+  "title": "Unicode",
+  "locale": "en",
+  "paper": "a4",
+  "template": "classic",
+  "options": {
+    "font_size_pt": 10.0,
+    "line_spacing": 1.1,
+    "margin_mm": 18.0,
+    "accent": null,
+    "date_style": "month_name_year"
+  },
+  "basics": {
+    "full_name": "Zoë Łukasz-Øster",
+    "headline": "Ingénieure logicielle",
+    "email": "jane@example.com",
+    "phone": null,
+    "location": "Zürich, Schweiz",
+    "links": []
+  },
+  "summary": "Straße, façade, naïve café, Ærøskøbing, Dvořák, Ελληνικά, Привет мир.",
+  "sections": [
+    {
+      "type": "experience",
+      "id": "01J04000000000000000000008",
+      "title_override": null,
+      "entries": [
+        {
+          "id": "01J04000000000000000000002",
+          "title": "Разработчик",
+          "org": "ООО «Пример»",
+          "location": "Москва",
+          "period": {
+            "start": {
+              "year": 2019,
+              "month": 5
+            },
+            "end": {
+              "year": 2022,
+              "month": 8
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J04000000000000000000003",
+              "text": "Разработала систему отчётности для 40 команд."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J04000000000000000000004",
+          "title": "Μηχανικός λογισμικού",
+          "org": "Εταιρεία Αθηνών",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2016,
+              "month": 2
+            },
+            "end": {
+              "year": 2019,
+              "month": 4
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J04000000000000000000005",
+              "text": "Σχεδίασα το API πληρωμών για 3 τράπεζες."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J04000000000000000000006",
+          "title": "Développeuse",
+          "org": "Société Générale de Logiciels",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2012,
+              "month": 9
+            },
+            "end": {
+              "year": 2016,
+              "month": 1
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J04000000000000000000007",
+              "text": "Améliorée la qualité: 12 % de défauts en moins, groß und klein."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        }
+      ]
+    }
+  ]
+}
