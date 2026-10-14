@@ -11,7 +11,9 @@ mod testdata;
 
 use cv_core::{Diagnostic, ResolvedCv, ValidationIssue};
 
-pub use render::{CLASSIC_MANIFEST, Compiled, MISSING_GLYPHS, PdfExporter, Renderer};
+pub use render::{
+    CLASSIC_MANIFEST, Compiled, MAX_PIXELS_PER_PT, MISSING_GLYPHS, PdfExporter, Renderer,
+};
 
 /// Options shared by every export format.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -32,13 +34,15 @@ impl Default for ExportOptions {
 }
 
 /// A finished export, ready to be written to the path the user chose.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ExportedDocument {
     pub bytes: Vec<u8>,
     pub media_type: &'static str,
     pub suggested_file_name: String,
     /// PDF only.
     pub page_count: Option<u32>,
+    /// Warnings that did not block the export, such as missing glyphs.
+    pub warnings: Vec<Diagnostic>,
 }
 
 #[derive(Debug, thiserror::Error)]
