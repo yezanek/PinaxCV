@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>PinaxCV</title>
+    <link rel="stylesheet" href="/style-7480ad4a185864c5.css" integrity="sha384-QHTYmdLEMKf7q/UNzeX/zu+vVffvBh2FqVM+eF5k1Dpy7XbqaF2He2Snwg4PmXrH"/>
+    
+<script type="module">
+import init, * as bindings from '/pinaxcv-ui-a1bf21530647d8eb.js';
+const wasm = await init({ module_or_path: '/pinaxcv-ui-a1bf21530647d8eb_bg.wasm' });
+
+
+window.wasmBindings = bindings;
+
+
+dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
+
+</script>
+  <link rel="modulepreload" href="/pinaxcv-ui-a1bf21530647d8eb.js" crossorigin="anonymous" integrity="sha384-vq3zChf/TweGegGvLXD8ezHcZwr65iFpV4SqJDhZHp2CsjadKKwmHGLH5hYQh2Wr"><link rel="preload" href="/pinaxcv-ui-a1bf21530647d8eb_bg.wasm" crossorigin="anonymous" integrity="sha384-2JxTDK/T1LMoDRs0ZARYEMg3IPp8clMp6PtZudkljV6pM6YYfUvFpu4gTjWcXant" as="fetch" type="application/wasm"></head>
+  <body></body>
+</html>
