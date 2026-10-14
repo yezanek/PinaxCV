@@ -8,4 +8,9 @@ pub mod europass;
 
 pub use europass::{AttachmentError, embedded_xml};
 pub use europass_xml::{EuropassCv, XmlError, parse_candidate};
+pub mod europass_map;
 pub mod europass_xml;
+pub mod partial;
+
+pub use europass_map::to_partial;
+pub use partial::{CvPartial, ImportResult, ImportWarning};

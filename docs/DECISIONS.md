@@ -297,6 +297,19 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Descriptions are stored as escaped HTML. `html_text` drops every tag without interpreting it and splits the text into paragraphs and list items, which become bullets.
 - XML parsing uses roxmltree 0.21.1, which the workspace already locks through Typst. It is pure Rust and needs no system libraries.
 
+## ADR-045 — CvPartial and the Europass mapping (M4)
+
+- `CvPartial` (in `cv-import`) has optional header fields, plus links, a summary and sections built from `cv-core` types with fresh IDs. `ImportResult` pairs it with user-readable `ImportWarning`s (spec section 9).
+- `to_partial` maps Europass records as follows:
+  - positions become one Experience section, and description list items become bullets;
+  - education becomes one Education section, with the degree as the title;
+  - languages become one Languages section, whose level is the most common CEFR score (the highest on a tie);
+  - the location is "City, CC";
+  - the first email and phone are used, with a warning when there are more.
+- Dates accept `YYYY`, `YYYY-MM` and `YYYY-MM-DD`; the day is dropped. A date that can't be read is left empty and reported as a warning.
+- Language codes map to English names for common ISO 639 codes. Other codes are kept as written.
+- Checked locally against the real export: it maps into 3 sections with no warnings.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
