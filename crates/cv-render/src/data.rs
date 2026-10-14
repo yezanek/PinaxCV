@@ -141,7 +141,7 @@ pub fn to_typst_data(cv: &ResolvedCv, options: &ExportOptions) -> TypstData {
             font_size_pt: cv.options.font_size_pt,
             line_spacing: cv.options.line_spacing,
             margin_mm: cv.options.margin_mm,
-            accent: cv.options.accent.clone(),
+            accent: text(&cv.options.accent),
         },
         basics: BasicsData {
             full_name: b.full_name.trim().to_owned(),
@@ -365,6 +365,15 @@ mod tests {
         };
         let d = to_typst_data(&cv, &opts);
         assert_eq!((d.basics.email, d.basics.phone), (None, None));
+    }
+
+    #[test]
+    fn blank_accent_is_null() {
+        let mut cv = testdata::fixture("minimal");
+        cv.options.accent = Some("  ".to_owned());
+        let d = serde_json::to_value(to_typst_data(&cv.resolve(None), &ExportOptions::default()))
+            .expect("json");
+        assert!(d["options"]["accent"].is_null());
     }
 
     #[test]
