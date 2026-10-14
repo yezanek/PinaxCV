@@ -177,6 +177,15 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Collapsed entries are not flagged by `no_bullets`, since hiding their bullets was the user's choice.
 - Findings are ordered by the spec's table, then by document order.
 
+## ADR-030 — Fit-to-length details (M1)
+
+- `fit` takes an `&mut dyn IdSource` for the suggestion IDs and returns `Result<FitResult, PageCountError>`, so a render failure is reported instead of being mistaken for a page count. `FitResult::Fits { pages, cuts }` carries the pending cuts; `CannotFit { pages }` carries none.
+- `RelevanceScores` (per entry, bullet and skill, 0..=100) is a plain lookup in `cv-core`; `cv-ai` fills it from the relevance stage (spec 11.5).
+- Unscored bullets have priority 50 and ties go to the bullet latest in the document, which gives the spec's position rule: later bullets of older entries go first.
+- "Collapse instead" applies to the last visible bullet of an entry whose relevance is below 40, or unscored. Entries at 40 or above keep their heading and lose the bullet. Locked entries are never collapsed.
+- The most recent experience entry is the current one, else the one with the latest start date.
+- A cut's reason is "Removed to fit N page(s)" for both hidden bullets and collapsed entries. A page target of 0 counts as 1. After 200 rounds, `fit` reports `CannotFit` unless the last cut made it fit.
+
 ## Open decisions
 
 - Tagged PDF (accessibility tags) for the pinned Typst version (M2).
