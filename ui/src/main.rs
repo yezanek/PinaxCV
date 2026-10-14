@@ -12,6 +12,7 @@ mod ipc;
 mod list;
 mod lists;
 mod order;
+mod variants;
 
 #[component]
 fn App() -> impl IntoView {

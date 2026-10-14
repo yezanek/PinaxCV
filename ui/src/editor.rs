@@ -7,13 +7,14 @@ use cv_api::{
     ApiError, ErrorCode, ExportHtmlRequest, ExportPdfRequest, ExportResult, PreviewRequest,
     PreviewResponse, SaveCv, Target,
 };
-use cv_core::{Cv, Id, StoredCv};
+use cv_core::{Cv, Id, StoredCv, StoredVariant};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 
 use crate::entries::EntrySections;
 use crate::ipc::{IdArg, ReqArg, call};
 use crate::lists::ListSections;
+use crate::variants::VariantBar;
 
 /// Preview debounce from spec section 16.
 const PREVIEW_DELAY: Duration = Duration::from_millis(150);
@@ -35,19 +36,22 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
     let pages: RwSignal<Vec<String>> = RwSignal::new(Vec::new());
     let status = RwSignal::new(String::from("Loading…"));
     let error: RwSignal<Option<String>> = RwSignal::new(None);
+    // The variant being viewed; `None` is the base CV.
+    let variant: RwSignal<Option<StoredVariant>> = RwSignal::new(None);
 
     let preview_now = move |edit: u64| {
         let Some(current) = cv.get_untracked() else {
             return;
         };
+        let shown = variant.get_untracked().map(|v| v.variant);
         let req = PreviewRequest {
             target: Target {
                 cv_id: current.id.clone(),
-                variant_id: None,
+                variant_id: shown.as_ref().map(|v| v.id.clone()),
             },
             revision: edit,
             unsaved_cv: Some(current),
-            unsaved_variant: None,
+            unsaved_variant: shown,
         };
         spawn_local(async move {
             match call::<_, PreviewResponse>("preview", &ReqArg { req: &req }).await {
@@ -141,10 +145,18 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
         }
     };
 
+    // Re-renders the preview after the variant or its overlay changed.
+    let variant_changed = Callback::new(move |()| {
+        let n = edits.get_untracked() + 1;
+        edits.set(n);
+        preview_now(n);
+    });
+
+    let export_id = id.clone();
     let export = move |pdf: bool| {
         let target = Target {
-            cv_id: id.clone(),
-            variant_id: None,
+            cv_id: export_id.clone(),
+            variant_id: variant.with_untracked(|v| v.as_ref().map(|v| v.variant.id.clone())),
         };
         status.set("Exporting…".into());
         spawn_local(async move {
@@ -198,6 +210,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
         <div class="editor">
             <section class="form" aria-label="Content">
                 <p class="error">{move || error.get()}</p>
+                <VariantBar cv_id=id.clone() cv=cv variant=variant error=error changed=variant_changed />
                 {field("CV title (only you see this)", |c| c.title.clone(), |c, v| c.title = v)}
                 {field("Full name", |c| c.basics.full_name.clone(), |c, v| c.basics.full_name = v)}
                 {field("Headline", |c| c.basics.headline.clone().unwrap_or_default(), |c, v| c.basics.headline = opt(v))}

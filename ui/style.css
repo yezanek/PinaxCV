@@ -29,3 +29,11 @@ fieldset.section legend { font-weight: 600; padding: 0 0.3rem; }
 .form label.check input { width: auto; display: inline; margin: 0; }
 fieldset.section > .order { display: flex; justify-content: flex-end; gap: 0.3rem; margin: -0.4rem 0 0.4rem; }
 .language { display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.4rem; margin-bottom: 0.4rem; }
+
+.variants { display: flex; gap: 0.5rem; align-items: end; margin-bottom: 0.5rem; }
+.banner { background: #fff4d6; border: 1px solid #e0c060; padding: 0.4rem 0.6rem; margin-bottom: 0.5rem; }
+.variant-visibility ul { list-style: none; padding-left: 1.2rem; margin: 0.2rem 0 0.6rem; }
+.variant-visibility .collapse { margin-left: 1rem; font-size: 0.9em; }
+.variant-visibility label { display: flex; align-items: center; gap: 0.4rem; }
+.variant-visibility input[type="checkbox"] { width: auto; margin: 0; }
+.variant-visibility li { display: flex; gap: 1rem; }
