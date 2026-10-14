@@ -394,6 +394,17 @@ fn file_database_survives_reopen_backup_and_restore() {
     assert!(matches!(s.restore_from(&junk), Err(StoreError::Invalid(_))));
     assert_eq!(s.list_cvs().expect("list").len(), 1);
 
+    // The live database itself, or a hard link to it, is refused or restored
+    // without truncating it.
+    assert!(matches!(s.restore_from(&db), Err(StoreError::Invalid(_))));
+    assert_eq!(s.list_cvs().expect("list").len(), 1);
+    let alias = dir.path().join("alias.sqlite3");
+    if std::fs::hard_link(&db, &alias).is_ok() {
+        clock.advance(Duration::from_secs(1));
+        let _ = s.restore_from(&alias);
+        assert_eq!(s.list_cvs().expect("list after alias").len(), 1);
+    }
+
     let memory = SqliteStore::open_in_memory(Box::new(clock)).expect("open");
     assert!(matches!(
         memory.restore_from(&backup),
