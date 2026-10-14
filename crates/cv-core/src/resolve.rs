@@ -89,7 +89,7 @@ impl Variant {
         let mut removed = BTreeSet::new();
 
         self.hidden
-            .retain(|id| keep(index.all.contains(id), id, &mut removed));
+            .retain(|id| keep(index.hideable.contains(id), id, &mut removed));
         self.collapsed
             .retain(|id| keep(index.entries.contains(id), id, &mut removed));
         self.text_overrides.retain(|id, _| {
@@ -118,7 +118,9 @@ fn keep(known: bool, id: &Id, removed: &mut BTreeSet<Id>) -> bool {
 
 /// ID sets used by [`Variant::prune`].
 struct Index {
-    all: BTreeSet<Id>,
+    /// IDs that `hidden` may reference: everything except links, which
+    /// `resolve` never hides.
+    hideable: BTreeSet<Id>,
     entries: BTreeSet<Id>,
     bullets: BTreeSet<Id>,
 }
@@ -131,8 +133,13 @@ impl Index {
             entries.insert(entry.id.clone());
             bullets.extend(entry.bullets.iter().map(|b| b.id.clone()));
         }
+        let links: BTreeSet<&Id> = cv.basics.links.iter().map(|l| &l.id).collect();
         Self {
-            all: cv.entity_ids().into_iter().collect(),
+            hideable: cv
+                .entity_ids()
+                .into_iter()
+                .filter(|id| !links.contains(id))
+                .collect(),
             entries,
             bullets,
         }
@@ -571,6 +578,16 @@ mod tests {
         assert!(!v.order.contains_key(&id(901)));
 
         assert_eq!(v.prune(&cv), vec![], "pruning twice removes nothing");
+    }
+
+    #[test]
+    fn prune_removes_hidden_links() {
+        let cv = cv();
+        let link = cv.basics.links[0].id.clone();
+        let mut v = variant();
+        v.hidden.insert(link.clone());
+        assert_eq!(v.prune(&cv), [link]);
+        assert!(v.hidden.is_empty());
     }
 
     #[test]
