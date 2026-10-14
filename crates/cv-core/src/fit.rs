@@ -190,7 +190,7 @@ fn length_cut(
         confidence: 1.0,
         warnings: Vec::new(),
         status: SuggestionStatus::Pending,
-        source: SuggestionSource::Tailor,
+        source: SuggestionSource::Fit,
     }
 }
 
@@ -383,6 +383,7 @@ mod tests {
         assert_eq!(cut.kind, SuggestionKind::LengthCut);
         assert_eq!(cut.status, SuggestionStatus::Pending);
         assert_eq!(cut.reason, "Removed to fit 1 page");
+        assert_eq!(cut.source, SuggestionSource::Fit);
         assert_eq!(cut.before.as_deref(), Some("Old bullet 12"));
     }
 
