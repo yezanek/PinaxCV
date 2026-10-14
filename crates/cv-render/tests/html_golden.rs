@@ -30,10 +30,7 @@ fn fixture(name: &str) -> Cv {
 #[test]
 fn html_exports_match_snapshots() {
     // The HTML defaults the export dialog offers: email on, phone off.
-    let options = ExportOptions {
-        include_email: true,
-        include_phone: false,
-    };
+    let options = ExportOptions::html_default();
     for name in FIXTURES {
         let doc = to_html(&fixture(name).resolve(None), &options);
         // The stylesheet is the same in every file; snapshot the content.
