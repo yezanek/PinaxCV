@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-ats-check"
+description = "Enables the ats_check command without any pre-configured scope."
+commands.allow = ["ats_check"]
+
+[[permission]]
+identifier = "deny-ats-check"
+description = "Denies the ats_check command without any pre-configured scope."
+commands.deny = ["ats_check"]

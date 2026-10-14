@@ -29,6 +29,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install pinned toolchain
         run: rustup show active-toolchain || rustup toolchain install
+      - name: Install Tauri system libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev librsvg2-dev libayatana-appindicator3-dev
       - uses: Swatinem/rust-cache@v2
       - name: Format
         run: cargo fmt --all --check

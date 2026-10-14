@@ -1,0 +1,29 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main",
+  "description": "The main window may call PinaxCV's own commands and nothing else. Dialogs run from Rust, so no dialog or fs permission is granted to the webview.",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "allow-list-cvs",
+    "allow-get-cv",
+    "allow-create-cv",
+    "allow-save-cv",
+    "allow-duplicate-cv",
+    "allow-delete-cv",
+    "allow-restore-cv",
+    "allow-list-variants",
+    "allow-get-variant",
+    "allow-create-variant",
+    "allow-save-variant",
+    "allow-delete-variant",
+    "allow-duplicate-variant",
+    "allow-prune-variant",
+    "allow-preview",
+    "allow-export-pdf",
+    "allow-export-html",
+    "allow-ats-check",
+    "allow-lint"
+  ]
+}

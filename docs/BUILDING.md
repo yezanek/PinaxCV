@@ -109,6 +109,14 @@ M3 adds the app itself. It needs `tauri-cli`, which provides `cargo tauri`, at t
 cargo install tauri-cli --version 2.12.2 --locked
 ```
 
+Until the editor UI lands, the shell can already be built and started. It opens the database in the app data folder and shows a placeholder page:
+
+```sh
+cargo run -p pinaxcv
+```
+
+The database is `pinaxcv.sqlite3` in `~/.local/share/dev.pinaxcv.app/` on Linux, `~/Library/Application Support/dev.pinaxcv.app/` on macOS and `%APPDATA%\dev.pinaxcv.app\` on Windows.
+
 This section will then cover `cargo tauri dev` for a live-reloading development build and `cargo tauri build` for a release build:
 
 - Linux: AppImage and `.deb`.

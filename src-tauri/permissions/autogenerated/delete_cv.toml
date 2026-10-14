@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-delete-cv"
+description = "Enables the delete_cv command without any pre-configured scope."
+commands.allow = ["delete_cv"]
+
+[[permission]]
+identifier = "deny-delete-cv"
+description = "Denies the delete_cv command without any pre-configured scope."
+commands.deny = ["delete_cv"]

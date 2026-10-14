@@ -1,0 +1,23 @@
+[package]
+name = "pinaxcv"
+description = "PinaxCV desktop app: the Tauri shell around cv-app."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[build-dependencies]
+tauri-build.workspace = true
+
+[dependencies]
+cv-api.workspace = true
+cv-app.workspace = true
+cv-core.workspace = true
+cv-store.workspace = true
+tauri.workspace = true
+tauri-plugin-dialog.workspace = true
+
+[lints]
+workspace = true
