@@ -218,11 +218,11 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 ## ADR-034 — HTML export details (M2)
 
 - `HtmlExporter` and `to_html` build the page from the same template data as the PDF (`to_typst_data`), so both formats print the same headings, dates, contact choices and link rules. The HTML template is separate Rust code plus one stylesheet, `templates/html/cv.css`.
-- Structure: `header` with an `h1` name, headline and contact list; `main` with one `section` and `h2` per CV section; one `article` and `h3` per entry; real lists for bullets, skills and languages. A custom section without a title has no `h2`.
+- Structure: `header` with an `h1` name, headline and contact list; `main` with one `section` and `h2` per CV section; one `article` and `h3` per entry (`h2` in a section without a title, so no level is skipped); real lists for bullets, skills and languages. A custom section without a title has no `h2`. The `ExportOptions::html_default()` starting choices are email on, phone off; the app passes the user's dialog choices. The keyboard focus outline uses the text colour, so it stays visible whatever the accent.
 - Every piece of user text, including attribute values, escapes `& < > " '`. A stored accent is used only if it is `#RRGGBB`; anything else falls back to the text colour, so a bad value cannot inject CSS.
 - The email is a `mailto:` link. Phone, location and every non-`https:`/`mailto:` URL are plain text.
 - Styling: single column up to 46rem, system font stack, light and dark through `prefers-color-scheme`, a narrow-screen rule and a print stylesheet. No scripts, web fonts or images.
-- Tests parse each fixture's output for `src=`, `<link>`, `<script>`, `@import` and non-`data:` `url(`, check every `href`, and snapshot the body of each fixture's HTML with the dialog defaults (email on, phone off).
+- Tests parse each fixture's tags and attributes (loading tags, `src`/`srcset`/`poster`/`data` with any spacing around `=`) and the CSS in `<style>` and `style` attributes (`@import`, non-`data:` `url(`), never text between tags, check every `href`, and snapshot the body of each fixture's HTML with the dialog defaults (email on, phone off).
 
 ## ADR-035 — Preview and export speed with the real template (M2)
 
