@@ -160,6 +160,14 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - An end date before the start date is content, not structure, so it is left to lint (spec section 7.1) and never blocks a save.
 - `validate::for_export` repeats the structural checks and requires a non-blank full name and a non-blank email or phone. It does not clamp, because export works on the saved document.
 
+## ADR-028 — Resolve and prune details (M1)
+
+- Hiding a section or a skill group hides everything under it. A skill group with no visible skills is omitted like an empty section, so the PDF never prints an empty group label. A section that is empty in the base CV is omitted too.
+- A summary override replaces the base summary; with no override the base summary is used.
+- `order` lists skip unknown and repeated IDs. Children that are not listed follow in base order.
+- `Variant::prune(&mut self, &Cv)` removes stale references and returns the removed IDs. It also removes references to the wrong kind of entity (a bullet in `collapsed`, a language item in `text_overrides`, a child listed under the wrong parent). Suggestions are not pruned; their targets are checked when a suggestion is accepted (M5).
+- The idempotence property (spec 4.4, d) is tested by turning the resolved output back into a base CV and resolving it with an empty variant. `collapsed` is a rendering flag, so it is not compared.
+
 ## Open decisions
 
 - Tagged PDF (accessibility tags) for the pinned Typst version (M2).

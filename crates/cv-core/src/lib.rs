@@ -12,6 +12,7 @@ mod job;
 mod pages;
 mod records;
 mod report;
+mod resolve;
 mod resolved;
 mod suggestion;
 mod variant;
