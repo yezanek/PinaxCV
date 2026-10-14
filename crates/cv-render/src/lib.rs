@@ -35,6 +35,18 @@ impl Default for ExportOptions {
     }
 }
 
+impl ExportOptions {
+    /// The HTML export dialog's starting choices (spec section 6.0): email
+    /// on, phone off. A page meant for a public website does not publish a
+    /// phone number unless the user ticks it.
+    pub const fn html_default() -> Self {
+        Self {
+            include_email: true,
+            include_phone: false,
+        }
+    }
+}
+
 /// A finished export, ready to be written to the path the user chose.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExportedDocument {
