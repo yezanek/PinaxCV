@@ -2,26 +2,27 @@
 
 use std::sync::{Mutex, PoisonError};
 
-/// Holds the pages of the newest preview revision only.
+/// Holds the pages of the newest preview only, keyed by the app-wide
+/// preview id from `App::preview`.
 #[derive(Debug, Default)]
 pub struct PreviewCache {
     latest: Mutex<Option<(u64, Vec<Vec<u8>>)>>,
 }
 
 impl PreviewCache {
-    /// Stores `pages` unless a newer revision is already cached.
-    pub fn put(&self, revision: u64, pages: Vec<Vec<u8>>) {
+    /// Stores `pages` unless a later preview is already cached.
+    pub fn put(&self, id: u64, pages: Vec<Vec<u8>>) {
         let mut latest = self.latest.lock().unwrap_or_else(PoisonError::into_inner);
-        if latest.as_ref().is_none_or(|(r, _)| *r <= revision) {
-            *latest = Some((revision, pages));
+        if latest.as_ref().is_none_or(|(r, _)| *r <= id) {
+            *latest = Some((id, pages));
         }
     }
 
-    /// Page `page` (1-based) of `revision`, if that revision is still cached.
-    pub fn get(&self, revision: u64, page: u32) -> Option<Vec<u8>> {
+    /// Page `page` (1-based) of preview `id`, if it is still cached.
+    pub fn get(&self, id: u64, page: u32) -> Option<Vec<u8>> {
         let latest = self.latest.lock().unwrap_or_else(PoisonError::into_inner);
         let (r, pages) = latest.as_ref()?;
-        if *r != revision {
+        if *r != id {
             return None;
         }
         let index = usize::try_from(page.checked_sub(1)?).ok()?;
@@ -34,7 +35,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn keeps_only_the_newest_revision() {
+    fn keeps_only_the_newest_preview() {
         let cache = PreviewCache::default();
         assert_eq!(cache.get(1, 1), None);
         cache.put(2, vec![b"p1".to_vec(), b"p2".to_vec()]);
