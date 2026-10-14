@@ -4,8 +4,7 @@
 //! what the CV says the PDF should contain. It is a best-practice check, not
 //! a vendor specification (docs/ATS_RULES.md).
 
-use cv_core::ResolvedCv;
-use serde::Serialize;
+use cv_core::{AtsCheck, AtsReport, ResolvedCv};
 
 use crate::data::{SectionData, to_typst_data};
 use crate::{ExportOptions, RenderError, TextExtractor};
@@ -28,28 +27,6 @@ const NAME_LINES: usize = 3;
 const CONTACT_LINES: usize = 8;
 /// An entry's title, org and period within this many lines.
 const ENTRY_WINDOW: usize = 4;
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-pub struct AtsReport {
-    pub extracted_text: String,
-    /// Share of passed checks, 0..=100.
-    pub score: u8,
-    pub checks: Vec<AtsCheck>,
-}
-
-impl AtsReport {
-    pub fn all_passed(&self) -> bool {
-        self.checks.iter().all(|c| c.passed)
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-pub struct AtsCheck {
-    pub name: &'static str,
-    pub passed: bool,
-    /// What failed, for the UI. `None` when the check passed.
-    pub detail: Option<String>,
-}
 
 /// Reads text with `lopdf`, which keeps one output line per PDF text line
 /// (ADR-024).
@@ -342,17 +319,17 @@ fn score(checks: &[AtsCheck]) -> u8 {
     u8::try_from(pct).unwrap_or(100)
 }
 
-fn pass(name: &'static str) -> AtsCheck {
+fn pass(name: &str) -> AtsCheck {
     AtsCheck {
-        name,
+        name: name.to_owned(),
         passed: true,
         detail: None,
     }
 }
 
-fn fail(name: &'static str, detail: String) -> AtsCheck {
+fn fail(name: &str, detail: String) -> AtsCheck {
     AtsCheck {
-        name,
+        name: name.to_owned(),
         passed: false,
         detail: Some(detail),
     }
@@ -390,18 +367,14 @@ mod tests {
         ats_report_with(&FakeExtractor(Ok(text)), b"", &cv)
     }
 
-    fn failed(r: &AtsReport) -> Vec<&'static str> {
-        r.checks
-            .iter()
-            .filter(|c| !c.passed)
-            .map(|c| c.name)
-            .collect()
+    fn failed(r: &AtsReport) -> Vec<String> {
+        r.failed_checks().map(|c| c.name.clone()).collect()
     }
 
     #[test]
     fn faithful_text_passes_every_check() {
         let r = report(typical_text());
-        assert!(r.all_passed(), "{:?}", r.checks);
+        assert_eq!(r.failed_checks().count(), 0, "{:?}", r.checks);
         assert_eq!(r.score, 100);
         assert_eq!(r.checks.len(), 7);
     }
@@ -415,15 +388,19 @@ mod tests {
     #[test]
     fn split_email_fails() {
         let text = typical_text().replacen("@example", "@\nexample", 1);
-        assert!(failed(&report(text)).contains(&checks::CONTACT_AT_TOP));
+        assert!(
+            failed(&report(text))
+                .iter()
+                .any(|n| n == checks::CONTACT_AT_TOP)
+        );
     }
 
     #[test]
     fn reordered_sections_fail_headings_and_order() {
         let text = typical_text().replacen("Education", "Educat1on", 1);
         let f = failed(&report(text));
-        assert!(f.contains(&checks::SECTION_HEADINGS), "{f:?}");
-        assert!(f.contains(&checks::READING_ORDER), "{f:?}");
+        assert!(f.iter().any(|n| n == checks::SECTION_HEADINGS), "{f:?}");
+        assert!(f.iter().any(|n| n == checks::READING_ORDER), "{f:?}");
     }
 
     #[test]
@@ -450,7 +427,11 @@ mod tests {
 
         let period = exp.entries[0].period.clone().expect("period");
         let text = typical_text().replacen(&period, "", 1);
-        assert!(failed(&report(text)).contains(&checks::ENTRY_DETAILS));
+        assert!(
+            failed(&report(text))
+                .iter()
+                .any(|n| n == checks::ENTRY_DETAILS)
+        );
     }
 
     #[test]
@@ -473,7 +454,7 @@ mod tests {
         let r = ats_report_with(&FakeExtractor(Err("broken")), b"", &cv);
         assert_eq!(r.score, 0);
         assert_eq!(failed(&r), [checks::TEXT_EXTRACTED]);
-        assert!(!r.all_passed());
+        assert_eq!(r.failed_checks().count(), 1);
     }
 
     #[test]
@@ -489,7 +470,7 @@ mod tests {
     #[test]
     fn score_rounds_share_of_passed_checks() {
         let c = |p| AtsCheck {
-            name: "x",
+            name: "x".to_owned(),
             passed: p,
             detail: None,
         };
