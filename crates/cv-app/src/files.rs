@@ -27,25 +27,81 @@ pub trait SaveDialog: Send + Sync {
 
 /// Writes `bytes` to a temporary file next to `path`, then renames it over
 /// `path`, so a failed export never leaves a half-written file behind.
+///
+/// Each call gets its own temporary file, created exclusively, so two exports
+/// to the same path cannot share or truncate each other's file. On Unix the
+/// temporary file is private (`0600`) until it takes over the destination's
+/// permissions when one exists, and the folder is synced after the rename so
+/// the new entry survives a crash.
 pub fn write_atomically(path: &Path, bytes: &[u8]) -> io::Result<()> {
     let name = path
         .file_name()
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "no file name"))?;
     let mut tmp_name = std::ffi::OsString::from(".");
     tmp_name.push(name);
-    tmp_name.push(".pinaxcv-tmp");
+    tmp_name.push(format!(".{}.pinaxcv-tmp", ulid::Ulid::generate()));
     let tmp = path.with_file_name(tmp_name);
+    let mut file = create_private(&tmp)?;
     let result = (|| {
-        let mut file = fs::File::create(&tmp)?;
         file.write_all(bytes)?;
+        if let Ok(existing) = fs::metadata(path) {
+            file.set_permissions(existing.permissions())?;
+        }
         file.sync_all()?;
-        drop(file);
         fs::rename(&tmp, path)
     })();
+    drop(file);
     if result.is_err() {
         let _ = fs::remove_file(&tmp);
+        return result;
     }
-    result
+    sync_parent(path)
+}
+
+#[cfg(unix)]
+fn create_private(path: &Path) -> io::Result<fs::File> {
+    use std::os::unix::fs::OpenOptionsExt;
+    fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(path)
+}
+
+#[cfg(not(unix))]
+fn create_private(path: &Path) -> io::Result<fs::File> {
+    fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+}
+
+/// Makes the renamed entry durable. Filesystems that cannot sync a folder
+/// report `InvalidInput` or `Unsupported`; the file itself is already synced.
+#[cfg(unix)]
+fn sync_parent(path: &Path) -> io::Result<()> {
+    let parent = match path.parent() {
+        Some(p) if !p.as_os_str().is_empty() => p,
+        _ => Path::new("."),
+    };
+    match fs::File::open(parent).and_then(|dir| dir.sync_all()) {
+        Err(e)
+            if matches!(
+                e.kind(),
+                io::ErrorKind::InvalidInput | io::ErrorKind::Unsupported
+            ) =>
+        {
+            Ok(())
+        }
+        other => other,
+    }
+}
+
+/// Windows cannot open a folder as a file without platform flags; NTFS
+/// journals the rename itself.
+#[cfg(not(unix))]
+fn sync_parent(_path: &Path) -> io::Result<()> {
+    Ok(())
 }
 
 #[cfg(test)]
@@ -73,6 +129,32 @@ mod tests {
         assert!(write_atomically(&missing, b"x").is_err());
         assert!(write_atomically(Path::new(""), b"x").is_err());
         assert_eq!(fs::read_dir(dir.path()).expect("list").count(), 0);
+    }
+
+    #[test]
+    fn a_leftover_temporary_file_does_not_block_or_get_truncated() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("cv.pdf");
+        let other = dir.path().join(".cv.pdf.pinaxcv-tmp");
+        fs::write(&other, b"other export").expect("seed");
+        write_atomically(&path, b"mine").expect("write");
+        assert_eq!(fs::read(&path).expect("read"), b"mine");
+        assert_eq!(fs::read(&other).expect("other"), b"other export");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn new_files_are_private_and_replacements_keep_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("cv.pdf");
+        write_atomically(&path, b"first").expect("write");
+        let mode = |p: &Path| fs::metadata(p).expect("meta").permissions().mode() & 0o777;
+        assert_eq!(mode(&path), 0o600);
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o640)).expect("chmod");
+        write_atomically(&path, b"second").expect("replace");
+        assert_eq!(mode(&path), 0o640);
+        assert_eq!(fs::read(&path).expect("read"), b"second");
     }
 
     #[test]
