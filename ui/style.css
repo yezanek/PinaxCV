@@ -19,3 +19,8 @@ main.list li button.open { flex: 1; text-align: left; background: none; border: 
 .error { color: #c0392b; }
 button { font: inherit; padding: 0.3rem 0.7rem; cursor: pointer; }
 button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+fieldset.section { border: 1px solid var(--border); margin: 1rem 0; padding: 0.75rem; }
+fieldset.section legend { font-weight: 600; padding: 0 0.3rem; }
+.entry { border-left: 3px solid var(--border); padding-left: 0.75rem; margin-bottom: 1rem; }
+.bullet { display: flex; gap: 0.4rem; align-items: flex-start; margin-bottom: 0.4rem; }
+.bullet textarea { min-height: 2.6rem; flex: 1; }

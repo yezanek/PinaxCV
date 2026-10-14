@@ -11,6 +11,7 @@ use cv_core::{Cv, Id, StoredCv};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 
+use crate::entries::EntrySections;
 use crate::ipc::{IdArg, ReqArg, call};
 
 /// Preview debounce from spec section 16.
@@ -100,7 +101,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
     });
 
     // Applies `f` to the CV and schedules preview and autosave.
-    let edit = move |f: Box<dyn FnOnce(&mut Cv)>| {
+    let edit = Callback::new(move |f: Box<dyn FnOnce(&mut Cv)>| {
         cv.update(|c| {
             if let Some(c) = c {
                 f(c);
@@ -125,7 +126,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
             },
             SAVE_DELAY,
         );
-    };
+    });
 
     let field = move |label: &'static str, get: fn(&Cv) -> String, set: fn(&mut Cv, String)| {
         view! {
@@ -133,7 +134,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                 <input prop:value=move || cv.with(|c| c.as_ref().map(get).unwrap_or_default())
                     on:input=move |ev| {
                         let v = event_target_value(&ev);
-                        edit(Box::new(move |c| set(c, v)));
+                        edit.run(Box::new(move |c| set(c, v)));
                     } />
             </label>
         }
@@ -206,9 +207,10 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                     <textarea prop:value=move || cv.with(|c| c.as_ref().and_then(|c| c.summary.clone()).unwrap_or_default())
                         on:input=move |ev| {
                             let v = event_target_value(&ev);
-                            edit(Box::new(move |c| c.summary = opt(v)));
+                            edit.run(Box::new(move |c| c.summary = opt(v)));
                         }></textarea>
                 </label>
+                <EntrySections cv=cv edit=edit />
             </section>
             <section class="preview" aria-label="Preview">
                 <For each=move || pages.get() key=|u| u.clone() let:url>
