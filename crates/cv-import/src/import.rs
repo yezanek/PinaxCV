@@ -6,6 +6,8 @@ use crate::europass::{AttachmentError, MAX_ATTACHMENT, embedded_xml};
 use crate::europass_map::to_partial;
 use crate::europass_xml::{XmlError, parse_candidate};
 use crate::partial::ImportResult;
+use crate::pdf_map::text_to_partial;
+use crate::pdf_text::page_text;
 
 /// Largest input file (spec section 9: 20 MB).
 pub const MAX_INPUT: usize = 20 * 1024 * 1024;
@@ -59,6 +61,27 @@ pub fn import_europass(
     Ok(to_partial(&cv, fresh))
 }
 
+/// Imports any CV file: Europass first, and for a PDF without Europass data,
+/// the generic text importer (ADR-047).
+pub fn import_any(
+    bytes: &[u8],
+    fresh: &mut dyn FnMut() -> Id,
+) -> Result<ImportResult, ImportError> {
+    match import_europass(bytes, fresh) {
+        Err(ImportError::UnsupportedFormat(_)) if bytes.starts_with(b"%PDF") => {
+            let text = page_text(bytes)
+                .map_err(|_| ImportError::Malformed("The PDF file could not be read.".into()))?;
+            if text.trim().is_empty() {
+                return Err(ImportError::UnsupportedFormat(
+                    "This PDF has no text to import. It may be a scanned image.".into(),
+                ));
+            }
+            Ok(text_to_partial(&text, fresh))
+        }
+        other => other,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -77,6 +100,26 @@ mod tests {
     fn bare_xml_imports() {
         let r = import_europass(XML.as_bytes(), &mut ids()).expect("import");
         assert_eq!(r.cv_partial.full_name.as_deref(), Some("Jane Doe"));
+    }
+
+    #[test]
+    fn import_any_tries_europass_then_falls_back_to_text() {
+        let r = import_any(XML.as_bytes(), &mut ids()).expect("europass");
+        assert_eq!(r.cv_partial.full_name.as_deref(), Some("Jane Doe"));
+        // A PDF with no pages has no Europass data and no text.
+        let mut doc = lopdf::Document::with_version("1.7");
+        let pages = doc.add_object(lopdf::dictionary! { "Type" => "Pages", "Kids" => Vec::<lopdf::Object>::new(), "Count" => 0 });
+        let catalog = doc.add_object(lopdf::dictionary! { "Type" => "Catalog", "Pages" => pages });
+        doc.trailer.set("Root", catalog);
+        let mut pdf = Vec::new();
+        doc.save_to(&mut pdf).expect("save");
+        assert!(
+            matches!(import_any(&pdf, &mut ids()), Err(ImportError::UnsupportedFormat(m)) if m.contains("no text"))
+        );
+        assert!(matches!(
+            import_any(b"<resume/>", &mut ids()),
+            Err(ImportError::UnsupportedFormat(_))
+        ));
     }
 
     #[test]
