@@ -208,7 +208,7 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 
 ## ADR-033 — ATS check details (M2)
 
-- `cv_render::ats::ats_report` reads the PDF with `LopdfExtractor` (ADR-024) and compares it with the same template data the PDF was rendered from, so headings, dates and skipped blank fields match what is printed. `ats_report_with` takes any `TextExtractor`.
+- `cv_render::ats::ats_report` returns the `cv_core::AtsReport` that `cv-api` already carries. It reads the PDF with `LopdfExtractor` (ADR-024) and compares it with the same template data the PDF was rendered from, so headings, dates and skipped blank fields match what is printed. `ats_report_with` takes any `TextExtractor`.
 - Seven checks: `name_at_top`, `contact_at_top`, `section_headings`, `entry_details`, `clean_characters`, `bullets`, `reading_order`. The score is the rounded share of passed checks. If the text cannot be read at all, the report has one failed `text_extracted` check and a score of 0.
 - A section heading must be a line of its own. Bullets match after whitespace is collapsed, or, for a long word such as a URL that wraps without a hyphen, with all whitespace removed.
 - Contact header lines end with a no-break space, so line-joining extractors such as `pdf-extract` keep the words apart. The golden suite checks this with `pdf-extract`.

@@ -46,7 +46,7 @@ fn every_fixture_passes_the_ats_check() {
             let cv = fixture(name);
             let (bytes, warnings) = pdf(&cv);
             let report = ats_report(&bytes, &cv.resolve(None));
-            let failed: Vec<_> = report.checks.iter().filter(|c| !c.passed).collect();
+            let failed: Vec<_> = report.failed_checks().collect();
             if name == "cjk" {
                 // Inter has no CJK glyphs (ADR-033): the export warns and the
                 // ATS check fails instead of passing silently.
