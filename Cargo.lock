@@ -4296,6 +4296,7 @@ dependencies = [
  "cv-app",
  "cv-core",
  "cv-store",
+ "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
