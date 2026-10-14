@@ -12,6 +12,7 @@ mod files;
 mod ids;
 mod preview;
 
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, PoisonError};
 
 use cv_api::{
@@ -45,6 +46,7 @@ pub struct App {
     ids: Mutex<Box<dyn IdSource + Send>>,
     dialog: Box<dyn SaveDialog>,
     previews: PreviewCache,
+    next_preview: AtomicU64,
     preview_base: String,
 }
 
@@ -63,6 +65,7 @@ impl App {
             ids: Mutex::new(ids),
             dialog,
             previews: PreviewCache::default(),
+            next_preview: AtomicU64::new(0),
             preview_base: preview_base.into(),
         }
     }
@@ -178,10 +181,13 @@ impl App {
 
     // Rendering and export
 
-    /// Renders the editor's current state, saved or not. Pages are kept for
-    /// [`App::preview_page`] until a newer revision replaces them; a response
-    /// for an older revision than the cached one is not cached.
+    /// Renders the editor's current state, saved or not. Each call gets its
+    /// own preview id, taken before rendering, so pages from two CVs that share
+    /// an editor revision never collide. Pages are kept for
+    /// [`App::preview_page`] until a later preview replaces them; a slow
+    /// preview that finishes after a later one is not cached.
     pub fn preview(&self, req: PreviewRequest) -> Result<PreviewResponse> {
+        let preview_id = self.next_preview.fetch_add(1, Ordering::Relaxed) + 1;
         let mut cv = match req.unsaved_cv {
             Some(cv) => cv,
             None => {
@@ -207,21 +213,22 @@ impl App {
             .preview_png(PREVIEW_PIXELS_PER_PT)
             .map_err(render_error)?;
         let page_count = compiled.page_count();
-        self.previews.put(req.revision, pages);
+        self.previews.put(preview_id, pages);
         Ok(PreviewResponse {
             revision: req.revision,
             page_count,
             page_urls: (1..=page_count)
-                .map(|page| preview_url(&self.preview_base, req.revision, page))
+                .map(|page| preview_url(&self.preview_base, preview_id, page))
                 .collect(),
             diagnostics: compiled.warnings().to_vec(),
         })
     }
 
-    /// PNG bytes of `page` (1-based) from preview `revision`, for the
-    /// `preview://` handler. `None` once a newer revision replaced it.
-    pub fn preview_page(&self, revision: u64, page: u32) -> Option<Vec<u8>> {
-        self.previews.get(revision, page)
+    /// PNG bytes of `page` (1-based) from preview `preview_id` (the number in
+    /// the page URL), for the `preview://` handler. `None` once a later
+    /// preview replaced it.
+    pub fn preview_page(&self, preview_id: u64, page: u32) -> Option<Vec<u8>> {
+        self.previews.get(preview_id, page)
     }
 
     /// Validates, renders and ATS-checks the PDF, then asks where to save it.
@@ -327,13 +334,13 @@ impl App {
             .dialog
             .choose_save_path(suggested, kind)
             .ok_or_else(|| ApiError::new(ErrorCode::Cancelled, "Export cancelled."))?;
+        // The io::Error text can carry the path, which holds the user's name.
         write_atomically(&path, bytes).map_err(|e| {
             ApiError::new(
                 ErrorCode::Io,
-                format!(
-                    "Could not write the file: {e}. Check the folder's permissions and free space."
-                ),
+                "Could not write the file. Check the folder's permissions and free space.",
             )
+            .with_details(serde_json::json!({ "kind": format!("{:?}", e.kind()) }))
         })?;
         Ok(path.display().to_string())
     }
@@ -373,9 +380,9 @@ pub fn blank_cv(id: Id, title: &str) -> Cv {
     }
 }
 
-/// `{base}/{revision}/{page}.png`, page 1-based.
-pub fn preview_url(base: &str, revision: u64, page: u32) -> String {
-    format!("{}/{revision}/{page}.png", base.trim_end_matches('/'))
+/// `{base}/{preview_id}/{page}.png`, page 1-based.
+pub fn preview_url(base: &str, preview_id: u64, page: u32) -> String {
+    format!("{}/{preview_id}/{page}.png", base.trim_end_matches('/'))
 }
 
 fn validation_error(issues: &[cv_core::ValidationIssue]) -> ApiError {

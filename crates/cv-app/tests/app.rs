@@ -163,10 +163,10 @@ fn preview_serves_png_pages_for_unsaved_edits() {
         .expect("preview");
     assert_eq!(resp.revision, 5);
     assert_eq!(resp.page_count, 1);
-    assert_eq!(resp.page_urls, ["preview://localhost/5/1.png"]);
-    let png = app.preview_page(5, 1).expect("page");
+    assert_eq!(resp.page_urls, ["preview://localhost/1/1.png"]);
+    let png = app.preview_page(1, 1).expect("page");
     assert!(png.starts_with(b"\x89PNG"));
-    assert_eq!(app.preview_page(4, 1), None);
+    assert_eq!(app.preview_page(5, 1), None);
     // The unsaved edit was rendered, not saved.
     assert_eq!(
         app.get_cv(&stored.cv.id).expect("get").cv.basics.full_name,
