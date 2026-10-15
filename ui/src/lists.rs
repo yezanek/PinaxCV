@@ -77,9 +77,15 @@ fn new_language(id: Id) -> LanguageItem {
     }
 }
 
+/// A blank field becomes `None`; other text is kept as typed, so the input
+/// is not rewritten mid-word. Fields trim on `change` instead.
 fn opt(s: String) -> Option<String> {
-    let t = s.trim();
-    (!t.is_empty()).then(|| t.to_owned())
+    (!s.trim().is_empty()).then_some(s)
+}
+
+/// The trimmed text, when trimming changes it (for `on:change` handlers).
+fn needs_trim(v: &str) -> Option<String> {
+    (v.trim().len() != v.len()).then(|| v.trim().to_owned())
 }
 
 /// The skills and languages sections, in CV order, with buttons to add them.
@@ -237,7 +243,9 @@ fn GroupEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> imp
             .unwrap_or_default(),
         )
     });
-    let (s1, g1, s2, g2, s3, g3) = (
+    let (s1, g1, s2, g2, s3, g3, s4, g4) = (
+        section.clone(),
+        id.clone(),
         section.clone(),
         id.clone(),
         section.clone(),
@@ -245,6 +253,22 @@ fn GroupEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> imp
         section.clone(),
         id.clone(),
     );
+    let move_group = {
+        let (s, g) = (section.clone(), id.clone());
+        move |up: bool| {
+            let (s, g) = (s.clone(), g.clone());
+            edit.run(Box::new(move |c| {
+                if let Some(x) = skills_mut(c, &s) {
+                    shift(&mut x.groups, |gr| gr.id == g, up);
+                }
+            }))
+        }
+    };
+    let group_up = {
+        let m = move_group.clone();
+        move |_| m(true)
+    };
+    let group_down = move |_| move_group(false);
     view! {
         <div class="entry">
             <label>"Group label (optional)"
@@ -252,6 +276,12 @@ fn GroupEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> imp
                     let v = event_target_value(&ev);
                     let (s, g) = (s1.clone(), g1.clone());
                     edit.run(Box::new(move |c| if let Some(x) = group_mut(c, &s, &g) { x.label = opt(v) }));
+                }
+                // Trim when the field loses focus, not while typing.
+                on:change=move |ev| {
+                    let Some(t) = needs_trim(&event_target_value(&ev)) else { return };
+                    let (s, g) = (s4.clone(), g4.clone());
+                    edit.run(Box::new(move |c| if let Some(x) = group_mut(c, &s, &g) { x.label = opt(t) }));
                 } />
             </label>
             <label>"Skills, separated by commas"
@@ -269,6 +299,9 @@ fn GroupEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> imp
                 let (s, g) = (s3.clone(), g3.clone());
                 edit.run(Box::new(move |c| if let Some(x) = skills_mut(c, &s) { x.groups.retain(|gr| gr.id != g) }));
             }>"Remove group"</button>
+            " "
+            <button aria-label="Move skill group up" on:click=group_up>"↑"</button>
+            <button aria-label="Move skill group down" on:click=group_down>"↓"</button>
         </div>
     }
 }
@@ -355,6 +388,40 @@ fn LanguageEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> 
             }
         }
     };
+    // Trim when a field loses focus, not while typing.
+    let tidy = {
+        let (s, i) = (section.clone(), id.clone());
+        move |set: fn(&mut LanguageItem, String)| {
+            let (s, i) = (s.clone(), i.clone());
+            move |ev| {
+                let Some(v) = needs_trim(&event_target_value(&ev)) else {
+                    return;
+                };
+                let (s, i) = (s.clone(), i.clone());
+                edit.run(Box::new(move |c| {
+                    if let Some(x) = language_mut(c, &s, &i) {
+                        set(x, v)
+                    }
+                }))
+            }
+        }
+    };
+    let move_item = {
+        let (s, i) = (section.clone(), id.clone());
+        move |up: bool| {
+            let (s, i) = (s.clone(), i.clone());
+            edit.run(Box::new(move |c| {
+                if let Some(x) = languages_mut(c, &s) {
+                    shift(&mut x.items, |it| it.id == i, up);
+                }
+            }))
+        }
+    };
+    let item_up = {
+        let m = move_item.clone();
+        move |_| m(true)
+    };
+    let item_down = move |_| move_item(false);
     let remove = move |_| {
         let (s, i) = (section.clone(), id.clone());
         edit.run(Box::new(move |c| {
@@ -366,9 +433,13 @@ fn LanguageEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> 
     view! {
         <div class="language">
             <input aria-label="Language" placeholder="Language"
-                prop:value=read(|l| l.name.clone()) on:input=write(|l, v| l.name = v) />
+                prop:value=read(|l| l.name.clone()) on:input=write(|l, v| l.name = v)
+                on:change=tidy(|l, v| l.name = v) />
             <input aria-label="Level" placeholder="Level, for example C1"
-                prop:value=read(|l| l.level.clone().unwrap_or_default()) on:input=write(|l, v| l.level = opt(v)) />
+                prop:value=read(|l| l.level.clone().unwrap_or_default()) on:input=write(|l, v| l.level = opt(v))
+                on:change=tidy(|l, v| l.level = opt(v)) />
+            <button aria-label="Move language up" on:click=item_up>"↑"</button>
+            <button aria-label="Move language down" on:click=item_down>"↓"</button>
             <button aria-label="Remove language" on:click=remove>"×"</button>
         </div>
     }
@@ -380,6 +451,18 @@ mod tests {
 
     fn id(n: u8) -> Id {
         Id::parse(&format!("01HZX3M8Q4V7K2N9P5R6T0W1{:02}", n)).expect("id")
+    }
+
+    #[test]
+    fn opt_keeps_spaces_and_blanks_become_none() {
+        assert_eq!(opt("Native ".into()), Some("Native ".into()));
+        assert_eq!(opt("  ".into()), None);
+    }
+
+    #[test]
+    fn needs_trim_only_when_trimming_changes_text() {
+        assert_eq!(needs_trim(" B2 "), Some("B2".into()));
+        assert_eq!(needs_trim("Native speaker"), None);
     }
 
     #[test]
