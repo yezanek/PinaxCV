@@ -17,10 +17,7 @@ pub fn to_partial(cv: &EuropassCv, fresh: &mut dyn FnMut() -> Id) -> ImportResul
         full_name: Some(name.trim().to_owned()).filter(|n| !n.is_empty()),
         email: p.emails.first().cloned(),
         phone: p.phones.first().cloned(),
-        location: match (&p.city, &p.country) {
-            (Some(c), Some(k)) => Some(format!("{c}, {}", k.to_uppercase())),
-            (c, k) => c.clone().or_else(|| k.as_ref().map(|k| k.to_uppercase())),
-        },
+        location: place(&p.city, &p.country),
         summary: p.summary.clone(),
         links: p
             .web
@@ -42,6 +39,11 @@ pub fn to_partial(cv: &EuropassCv, fresh: &mut dyn FnMut() -> Id) -> ImportResul
             "More than one email address was found; the first one was used.",
         ));
     }
+    if p.phones.len() > 1 {
+        warnings.push(ImportWarning::new(
+            "More than one phone number was found; the first one was used.",
+        ));
+    }
 
     let date = |value: &Option<String>, what: &str, warnings: &mut Vec<ImportWarning>| {
         let value = value.as_deref()?;
@@ -61,7 +63,7 @@ pub fn to_partial(cv: &EuropassCv, fresh: &mut dyn FnMut() -> Id) -> ImportResul
             id: fresh(),
             title: job.title.clone(),
             org: job.organisation.clone(),
-            location: job.city.clone(),
+            location: place(&job.city, &job.country),
             period: Period {
                 start: date(&job.start, &what, &mut warnings),
                 end: date(&job.end, &what, &mut warnings),
@@ -138,21 +140,36 @@ pub fn to_partial(cv: &EuropassCv, fresh: &mut dyn FnMut() -> Id) -> ImportResul
     }
 }
 
-/// `YYYY`, `YYYY-MM` or `YYYY-MM-DD`; the day is dropped.
+/// "City, CC", or whichever of the two is known.
+fn place(city: &Option<String>, country: &Option<String>) -> Option<String> {
+    match (city, country) {
+        (Some(c), Some(k)) => Some(format!("{c}, {}", k.to_uppercase())),
+        (c, k) => c.clone().or_else(|| k.as_ref().map(|k| k.to_uppercase())),
+    }
+}
+
+/// Exactly `YYYY`, `YYYY-MM` or `YYYY-MM-DD`; the day is checked, then dropped.
 fn parse_date(value: &str) -> Option<PartialDate> {
-    let mut parts = value.trim().split('-');
-    let year: u16 = parts.next()?.parse().ok()?;
-    if !(1900..=2100).contains(&year) {
+    let parts: Vec<&str> = value.trim().split('-').collect();
+    let number = |part: &str, len: usize| -> Option<u16> {
+        (part.len() == len && part.bytes().all(|b| b.is_ascii_digit()))
+            .then(|| part.parse().ok())?
+    };
+    let year = number(parts.first()?, 4)?;
+    if !(1900..=2100).contains(&year) || parts.len() > 3 {
         return None;
     }
-    let month = match parts.next() {
+    let month = match parts.get(1) {
         None => None,
-        Some(m) => {
-            let m: u8 = m.parse().ok()?;
-            (1..=12).contains(&m).then_some(m)?;
-            Some(m)
-        }
+        Some(m) => Some(
+            u8::try_from(number(m, 2)?)
+                .ok()
+                .filter(|m| (1..=12).contains(m))?,
+        ),
     };
+    if let Some(d) = parts.get(2) {
+        number(d, 2).filter(|d| (1..=31).contains(d))?;
+    }
     Some(PartialDate { year, month })
 }
 
@@ -207,7 +224,7 @@ mod tests {
                 given_name: "Jane".into(),
                 family_name: "Doe".into(),
                 emails: vec!["jane@example.com".into(), "other@example.com".into()],
-                phones: vec!["+49 301234567".into()],
+                phones: vec!["+49 301234567".into(), "+49 307654321".into()],
                 web: vec!["https://example.com/".into()],
                 city: Some("Berlin".into()),
                 country: Some("de".into()),
@@ -216,6 +233,8 @@ mod tests {
             positions: vec![EuropassPosition {
                 organisation: "Acme GmbH".into(),
                 title: "Senior Engineer".into(),
+                city: Some("Munich".into()),
+                country: Some("de".into()),
                 start: Some("2021-03".into()),
                 end: Some("2023-13".into()),
                 bullets: vec!["Cut latency.".into()],
@@ -244,6 +263,7 @@ mod tests {
         let p = &r.cv_partial;
         assert_eq!(p.full_name.as_deref(), Some("Jane Doe"));
         assert_eq!(p.email.as_deref(), Some("jane@example.com"));
+        assert_eq!(p.phone.as_deref(), Some("+49 301234567"));
         assert_eq!(p.location.as_deref(), Some("Berlin, DE"));
         assert_eq!(p.links[0].label, "example.com");
         assert_eq!(p.sections.len(), 3);
@@ -258,6 +278,7 @@ mod tests {
                 month: Some(3)
             })
         );
+        assert_eq!(job.location.as_deref(), Some("Munich, DE"));
         assert_eq!(job.period.end, None);
         assert_eq!(job.bullets[0].text, "Cut latency.");
         let Section::Education(e) = &p.sections[1] else {
@@ -275,8 +296,8 @@ mod tests {
         };
         assert_eq!(l.items[0].name, "English");
         assert_eq!(l.items[0].level.as_deref(), Some("C1"));
-        // Two emails and one unreadable date.
-        assert_eq!(r.warnings.len(), 2, "{:?}", r.warnings);
+        // Two emails, two phones and one unreadable date.
+        assert_eq!(r.warnings.len(), 3, "{:?}", r.warnings);
     }
 
     #[test]
@@ -307,6 +328,24 @@ mod tests {
         );
         assert_eq!(parse_date("1800-01"), None);
         assert_eq!(parse_date("x"), None);
+        for bad in [
+            "2024-02-invalid",
+            "2024-02-32",
+            "2024-02-01-05",
+            "2024-2",
+            "+2024",
+        ] {
+            assert_eq!(parse_date(bad), None, "{bad}");
+        }
+        assert_eq!(
+            parse_date("2024-02-29"),
+            Some(PartialDate {
+                year: 2024,
+                month: Some(2)
+            })
+        );
+        assert_eq!(place(&None, &Some("it".into())).as_deref(), Some("IT"));
+        assert_eq!(place(&Some("Rome".into()), &None).as_deref(), Some("Rome"));
         let tie = EuropassLanguage {
             code: "xx".into(),
             scores: vec![("a".into(), "A2".into()), ("b".into(), "B1".into())],
