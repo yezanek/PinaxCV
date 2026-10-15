@@ -13,6 +13,7 @@ use crate::ExportOptions;
 
 #[derive(Serialize, Debug, PartialEq)]
 pub struct TypstData {
+    pub meta: MetaData,
     pub locale: &'static str,
     pub labels: LabelsData,
     pub paper: &'static str,
@@ -20,6 +21,13 @@ pub struct TypstData {
     pub basics: BasicsData,
     pub summary: Option<String>,
     pub sections: Vec<SectionData>,
+}
+
+/// PDF metadata: title "<Full name>, CV" and author = full name.
+#[derive(Serialize, Debug, PartialEq)]
+pub struct MetaData {
+    pub title: String,
+    pub author: String,
 }
 
 #[derive(Serialize, Debug, PartialEq)]
@@ -113,7 +121,16 @@ pub struct LanguageData {
 pub fn to_typst_data(cv: &ResolvedCv, options: &ExportOptions) -> TypstData {
     let labels = locale::labels(cv.locale);
     let b = &cv.basics;
+    let name = b.full_name.trim();
     TypstData {
+        meta: MetaData {
+            title: if name.is_empty() {
+                "CV".to_owned()
+            } else {
+                format!("{name}, CV")
+            },
+            author: name.to_owned(),
+        },
         locale: locale_code(cv.locale),
         labels: labels_data(labels),
         paper: match cv.paper {
@@ -279,6 +296,8 @@ mod tests {
         assert_eq!(d["paper"], "a4");
         assert_eq!(d["labels"]["present"], "Present");
         assert_eq!(d["basics"]["full_name"], "Jane Doe");
+        assert_eq!(d["meta"]["title"], "Jane Doe, CV");
+        assert_eq!(d["meta"]["author"], "Jane Doe");
         let exp = &d["sections"][0];
         assert_eq!(exp["kind"], "experience");
         assert_eq!(exp["heading"], "Work Experience");

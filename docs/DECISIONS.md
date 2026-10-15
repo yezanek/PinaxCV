@@ -198,8 +198,15 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - `CvSummary::page_count` is `None` until M2 records the last render's page count.
 - Contract tests use only `&dyn Store`; the few tests that need raw SQL (migration of v0 content, user_version) live inside the crate.
 
+## ADR-032 — Typst renderer (M2)
+
+- `cv-render` embeds Inter (regular, bold, semibold, italic) and the `classic` template. The Typst World resolves only `template.typ` and the virtual `data.json`; every other file read is denied, there are no system fonts and no packages, and `today()` is `None`.
+- PDFs are tagged (`PdfOptions::tagged`, on by default in Typst 0.15.1) with no timestamp, a fixed identifier and no creator string, so the same input gives the same bytes. Title is "<Full name>, CV" and author the full name, set from `data.json`.
+- Before each compile, every printed character is checked against the embedded fonts' coverage; uncovered characters give one `missing_glyphs` warning (the first 20 listed). The CJK fixture triggers it; the Latin, Greek and Cyrillic fixture does not.
+- The template prints the period and location on a second line under "title, org" (spec 6.4 rule 1), uses real headings and lists, and only `https:`/`mailto:` URLs become links (the `clickable` flag in `data.json`).
+- One `Renderer` per process behind a mutex. `PageCounter for Renderer` compiles with the default export options.
+
 ## Open decisions
 
-- Tagged PDF (accessibility tags) for the pinned Typst version (M2).
 - Exact HTML CSS/template design (M2).
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
