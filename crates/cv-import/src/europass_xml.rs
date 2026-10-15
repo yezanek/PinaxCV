@@ -4,6 +4,7 @@
 //! CV happens in a later step.
 
 use roxmltree::{Document, Node};
+use unicode_normalization::UnicodeNormalization;
 
 use crate::europass::EUROPASS_NS;
 
@@ -87,7 +88,7 @@ pub fn parse_candidate(xml: &[u8]) -> Result<EuropassCv, XmlError> {
     }
     if let Some(profile) = child(root, "CandidateProfile") {
         cv.person.summary = child(profile, "ExecutiveSummary")
-            .map(|n| html_text(&text_of(n)).0)
+            .map(|n| summary_text(&text_of(n)))
             .filter(|s| !s.is_empty());
         for employer in descendants(profile, "EmployerHistory") {
             let organisation = child_text(employer, "OrganizationName").unwrap_or_default();
@@ -210,9 +211,31 @@ fn text_of(n: Node) -> String {
         .collect()
 }
 
+/// Normalizes imported text (spec section 9): NFC, control characters
+/// stripped, whitespace collapsed and trimmed. Empty text becomes `None`.
 fn non_empty(s: String) -> Option<String> {
-    let t = s.split_whitespace().collect::<Vec<_>>().join(" ");
+    let clean: String = s
+        .nfc()
+        .filter(|c| !c.is_control() || c.is_whitespace())
+        .collect();
+    let t = clean.split_whitespace().collect::<Vec<_>>().join(" ");
     (!t.is_empty()).then_some(t)
+}
+
+/// The summary is one text field, so its list items follow the paragraphs
+/// as "- item" lines instead of being dropped.
+fn summary_text(html: &str) -> String {
+    let (text, items) = html_text(html);
+    let items = items
+        .iter()
+        .map(|i| format!("- {i}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    [text, items]
+        .into_iter()
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("\n\n")
 }
 
 fn child_text(n: Node, name: &'static str) -> Option<String> {
@@ -413,5 +436,24 @@ mod tests {
         assert_eq!(text, "One\n\ntwo\n\nx\n\ntail");
         assert_eq!(items, ["a & b"]);
         assert_eq!(html_text("unclosed <b"), ("unclosed".into(), vec![]));
+    }
+
+    #[test]
+    fn text_is_nfc_without_control_characters() {
+        // "e" + combining acute becomes the single NFC character.
+        assert_eq!(
+            non_empty("Cafe\u{301}\u{7}\tbar\u{0}".into()),
+            Some("Caf\u{e9} bar".into())
+        );
+        assert_eq!(non_empty("\u{1b}\u{7f}".into()), None);
+    }
+
+    #[test]
+    fn summary_keeps_list_items() {
+        assert_eq!(
+            summary_text("<p>Engineer.</p><ul><li>Rust</li><li>Go</li></ul>"),
+            "Engineer.\n\n- Rust\n- Go"
+        );
+        assert_eq!(summary_text("<ul><li>Only</li></ul>"), "- Only");
     }
 }
