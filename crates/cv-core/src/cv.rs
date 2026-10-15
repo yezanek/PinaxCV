@@ -3,7 +3,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::Id;
+use crate::{Id, IdSource};
 
 /// Current version of the [`Cv`] JSON shape. Bumped together with a migration step.
 pub const CV_SCHEMA_VERSION: u32 = 1;
@@ -25,6 +25,59 @@ pub struct Cv {
     pub summary: Option<String>,
     /// Sections in display order.
     pub sections: Vec<Section>,
+}
+
+impl Cv {
+    /// Returns a copy in which the CV and every entity in it has a new ID
+    /// from `ids`. Used when duplicating a CV, so overlays and suggestions of
+    /// the original never match the copy.
+    pub fn with_fresh_ids(&self, ids: &mut dyn IdSource) -> Cv {
+        let mut cv = self.clone();
+        cv.id = ids.next_id();
+        for link in &mut cv.basics.links {
+            link.id = ids.next_id();
+        }
+        for section in &mut cv.sections {
+            match section {
+                Section::Experience(s)
+                | Section::Education(s)
+                | Section::Projects(s)
+                | Section::Certifications(s) => {
+                    s.id = ids.next_id();
+                    refresh_entries(&mut s.entries, ids);
+                }
+                Section::Custom(s) => {
+                    s.id = ids.next_id();
+                    refresh_entries(&mut s.entries, ids);
+                }
+                Section::Skills(s) => {
+                    s.id = ids.next_id();
+                    for group in &mut s.groups {
+                        group.id = ids.next_id();
+                        for skill in &mut group.skills {
+                            skill.id = ids.next_id();
+                        }
+                    }
+                }
+                Section::Languages(s) => {
+                    s.id = ids.next_id();
+                    for item in &mut s.items {
+                        item.id = ids.next_id();
+                    }
+                }
+            }
+        }
+        cv
+    }
+}
+
+fn refresh_entries(entries: &mut [Entry], ids: &mut dyn IdSource) {
+    for entry in entries {
+        entry.id = ids.next_id();
+        for bullet in &mut entry.bullets {
+            bullet.id = ids.next_id();
+        }
+    }
 }
 
 /// Name, headline and contact details.
@@ -310,5 +363,25 @@ mod tests {
             month: Some(1),
         };
         assert!(a < b && b < c);
+    }
+
+    #[test]
+    fn with_fresh_ids_replaces_every_id_and_keeps_content() {
+        struct Counter(u32);
+        impl IdSource for Counter {
+            fn next_id(&mut self) -> Id {
+                self.0 += 1;
+                id(self.0)
+            }
+        }
+        let cv = sample_cv();
+        let copy = cv.with_fresh_ids(&mut Counter(500));
+        assert_eq!(copy.id, id(501));
+        let old: std::collections::BTreeSet<Id> = cv.entity_ids().into_iter().collect();
+        let new = copy.entity_ids();
+        assert_eq!(new.len(), old.len());
+        assert!(new.iter().all(|i| !old.contains(i)));
+        assert_eq!(copy.basics.full_name, cv.basics.full_name);
+        assert_eq!(copy.title, cv.title);
     }
 }

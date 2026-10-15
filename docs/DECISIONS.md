@@ -186,6 +186,18 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - The most recent experience entry is the current one, else the one with the latest start date.
 - A cut's reason is "Removed to fit N page(s)" for both hidden bullets and collapsed entries. A page target of 0 counts as 1. After 200 rounds, `fit` reports `CannotFit` unless the last cut made it fit.
 
+## ADR-031 — SQLite store details (M1)
+
+- `rusqlite` 0.40 with the `bundled` feature, so every platform gets the same SQLite (3.27 or newer is needed for `VACUUM INTO`) and Windows needs no system library. Database schema migrations are SQL files applied in order, each in a transaction, with `PRAGMA user_version` as the counter. A database newer than the app is refused with `NewerSchema`.
+- The store injects a `Clock` and writes RFC 3339 UTC timestamps with milliseconds (`2026-10-13T15:03:33.120Z`) in a fixed width, so SQL text comparison is time order. No date-time crate is needed.
+- `create_cv`, `save_cv`, `duplicate_cv` and `restore_snapshot` run `validate::for_save` and refuse a CV with structural errors (ADR-027). Variants are stored as given; `Variant::prune` is the UI's job.
+- A soft-deleted CV and its variants and snapshots are invisible (`NotFound`) until restored; `purge_deleted` removes them for good, and foreign keys cascade.
+- `duplicate_cv` copies the base CV only, with fresh IDs (`Cv::with_fresh_ids`); variants are not copied, because their IDs would no longer match. `duplicate_variant` gives the copy and its suggestions fresh IDs.
+- Export snapshots are skipped when the CV already has one from the last hour, so `add_snapshot` can be called on every export. Only the latest 50 snapshots per CV are kept. Restoring a snapshot keeps the current title, because the title column is authoritative.
+- `SqliteStore::restore_from(path)` checks the backup (opens read-only, `PRAGMA integrity_check`, schema version 1..=current), saves the live database next to itself as `<name>.before-restore-<timestamp>`, closes the connection, removes the `-wal` and `-shm` files, copies the backup in and reopens. It is a method of `SqliteStore`, not of `Store`, because it is about database files.
+- `CvSummary::page_count` is `None` until M2 records the last render's page count.
+- Contract tests use only `&dyn Store`; the few tests that need raw SQL (migration of v0 content, user_version) live inside the crate.
+
 ## Open decisions
 
 - Tagged PDF (accessibility tags) for the pinned Typst version (M2).

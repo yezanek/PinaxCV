@@ -1,0 +1,49 @@
+{
+  "id": "01HZX3M8Q4V7K2N9P5R0000001",
+  "title": "Main CV",
+  "locale": "en",
+  "paper": "a4",
+  "template": "classic",
+  "options": {
+    "font_size_pt": 10.0,
+    "line_spacing": 1.1,
+    "margin_mm": 18.0,
+    "accent": null,
+    "date_style": "month_name_year"
+  },
+  "basics": {
+    "name": "Jane Doe",
+    "headline": "Backend Engineer",
+    "email": "jane@example.com",
+    "phone": null,
+    "location": "Berlin, Germany",
+    "links": []
+  },
+  "summary": null,
+  "sections": [
+    {
+      "type": "experience",
+      "id": "01HZX3M8Q4V7K2N9P5R0000003",
+      "title_override": null,
+      "entries": [
+        {
+          "id": "01HZX3M8Q4V7K2N9P5R0000004",
+          "title": "Engineer",
+          "org": "Acme",
+          "location": null,
+          "period": {
+            "start": { "year": 2021, "month": 3 },
+            "end": null,
+            "current": true
+          },
+          "bullets": [
+            { "id": "01HZX3M8Q4V7K2N9P5R0000005", "text": "Built a billing service used by 40 teams" }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        }
+      ]
+    }
+  ]
+}

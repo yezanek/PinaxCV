@@ -1,10 +1,18 @@
 //! SQLite persistence behind the storage interface. No rusqlite types leave this crate.
 //!
-//! This commit defines the [`Store`] interface only; the SQLite implementation
-//! arrives in M1. The trait uses `cv-core` and `std` types exclusively, so a
-//! future PostgreSQL-backed implementation can provide the same interface.
+//! [`Store`] is the storage interface; [`SqliteStore`] is the only
+//! implementation in v1. The trait uses `cv-core` and `std` types exclusively,
+//! so a future PostgreSQL-backed implementation can provide the same interface.
 
 #![forbid(unsafe_code)]
+
+mod clock;
+mod migrate;
+mod sqlite;
+
+pub use clock::{Clock, SystemClock, timestamp};
+pub use migrate::{migrate_cv_json, migrate_variant_json};
+pub use sqlite::{DB_SCHEMA_VERSION, EXPORT_SNAPSHOT_INTERVAL, SNAPSHOTS_PER_CV, SqliteStore};
 
 use std::path::Path;
 use std::time::Duration;
