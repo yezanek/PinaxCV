@@ -54,26 +54,35 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
     let after_save: RwSignal<Option<AfterSave>> = RwSignal::new(None);
     // True while a newer preview is rendering; the old pages show dimmed.
     let rendering = RwSignal::new(false);
+    // Bumped on every preview request, separately from `edits`, so a variant
+    // change re-renders without touching the CV's autosave.
+    let previews = RwSignal::new(0u64);
+    // True while variant overlay edits are being saved, and what to run once
+    // they are (export and leave read the variant from storage).
+    let variant_busy = RwSignal::new(false);
+    let after_variant: RwSignal<Option<AfterSave>> = RwSignal::new(None);
 
-    let preview_now = move |edit: u64| {
+    let preview_now = move || {
         let Some(current) = cv.get_untracked() else {
             return;
         };
         let shown = variant.get_untracked().map(|v| v.variant);
+        let n = previews.get_untracked() + 1;
+        previews.set(n);
         let req = PreviewRequest {
             target: Target {
                 cv_id: current.id.clone(),
                 variant_id: shown.as_ref().map(|v| v.id.clone()),
             },
-            revision: edit,
+            revision: n,
             unsaved_cv: Some(current),
             unsaved_variant: shown,
         };
         rendering.set(true);
         spawn_local(async move {
             let result = call::<_, PreviewResponse>("preview", &ReqArg { req: &req }).await;
-            // Ignore answers to older edits; the newest one clears the spinner.
-            if edits.try_get_untracked() != Some(edit) {
+            // Ignore answers to older requests; the newest clears the spinner.
+            if previews.try_get_untracked() != Some(n) {
                 return;
             }
             rendering.set(false);
@@ -86,14 +95,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
 
     // Re-renders the preview after the variant or its overlay changed.
     // Variants save themselves, so this does not make the CV unsaved.
-    let variant_changed = Callback::new(move |()| {
-        let n = edits.get_untracked() + 1;
-        if saved_edit.get_untracked() + 1 == n {
-            saved_edit.set(n);
-        }
-        edits.set(n);
-        preview_now(n);
-    });
+    let variant_changed = Callback::new(move |()| preview_now());
 
     // Kept in a stored value so the closures below stay `Copy`.
     let cv_id = StoredValue::new(id.clone());
@@ -138,6 +140,32 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
         });
     };
 
+    // Runs `then` once variant edits are on disk too.
+    let finish = move |then: AfterSave| {
+        if variant_busy.get_untracked() {
+            after_variant.set(Some(then));
+            status.set("Saving…".into());
+            return;
+        }
+        match then {
+            AfterSave::Export(pdf) => export(pdf),
+            AfterSave::Leave => open.set(None),
+        }
+    };
+    // The variant save queue emptied; `ok` is false if a save failed, and
+    // then the waiting export or leave is dropped.
+    let variant_settled = Callback::new(move |ok: bool| {
+        let Some(then) = after_variant.get_untracked() else {
+            return;
+        };
+        after_variant.set(None);
+        if ok {
+            finish(then);
+        } else {
+            status.set("Not saved".into());
+        }
+    });
+
     // Saves until the newest edit is on disk. Only one save runs at a time:
     // an edit made while a save is in flight is sent next, with the revision
     // that save returned. When everything is saved, the queued action runs.
@@ -170,13 +198,9 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                         saving.set(false);
                         status.set("Saved".into());
                         error.set(None);
-                        match after_save.get_untracked() {
-                            Some(AfterSave::Export(pdf)) => {
-                                after_save.set(None);
-                                export(pdf);
-                            }
-                            Some(AfterSave::Leave) => open.set(None),
-                            None => {}
+                        if let Some(then) = after_save.get_untracked() {
+                            after_save.set(None);
+                            finish(then);
                         }
                         return;
                     }
@@ -200,10 +224,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
     // Runs `then` once the newest edit is saved, saving first if needed.
     let flush_then = move |then: AfterSave| {
         if !saving.get_untracked() && saved_edit.get_untracked() == edits.get_untracked() {
-            match then {
-                AfterSave::Export(pdf) => export(pdf),
-                AfterSave::Leave => open.set(None),
-            }
+            finish(then);
             return;
         }
         after_save.set(Some(then));
@@ -219,7 +240,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                     revision.set(stored.revision);
                     cv.set(Some(stored.cv));
                     status.set("Saved".into());
-                    preview_now(0);
+                    preview_now();
                 }
                 Err(e) => error.set(Some(e.message)),
             }
@@ -240,7 +261,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
         set_timeout(
             move || {
                 if edits.try_get_untracked() == Some(n) {
-                    preview_now(n)
+                    preview_now()
                 }
             },
             PREVIEW_DELAY,
@@ -290,7 +311,8 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
         <div class="editor">
             <section class="form" aria-label="Content">
                 <p class="error">{move || error.get()}</p>
-                <VariantBar cv_id=id.clone() cv=cv variant=variant error=error changed=variant_changed />
+                <VariantBar cv_id=id.clone() cv=cv variant=variant error=error changed=variant_changed
+                    busy=variant_busy settled=variant_settled />
                 {field("CV title (only you see this)", |c| c.title.clone(), |c, v| c.title = v)}
                 {field("Full name", |c| c.basics.full_name.clone(), |c, v| c.basics.full_name = v)}
                 {field("Headline", |c| c.basics.headline.clone().unwrap_or_default(), |c, v| c.basics.headline = opt(v))}

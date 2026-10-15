@@ -329,6 +329,16 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - `text_to_partial` builds the `CvPartial`. A date range line ("March 2021 - Present", "(2010 - 2014)", no-break spaces allowed) marks an entry, and the two lines before it are the organisation and title (LinkedIn order). A short first line after it is the location, and the rest is the description. Education entries are school and degree line pairs. Languages read "Name (Level)". Contact gives the email and phone.
 - LinkedIn's sidebar comes before the name in content order. When the text starts with sidebar sections, the last three lines of the last sidebar section become the name, headline and location, with a warning. If that section has fewer than three lines it is left as it is. Skills and certifications are reported as not imported yet. Every guess is an `ImportWarning`, and the result goes through the same merge review (ADR-046).
 
+## ADR-048 — Variant screen in the editor (M5)
+
+- A "Version" selector above the form picks the base CV or a variant. Text edits always change the base CV; the variant panel only changes what the selected variant hides or collapses.
+- The panel lists every item a variant can hide (ADR-015): sections, entries and their bullets, skill groups and their skills, and language items. Only entries can be collapsed to one line.
+- Overlay edits save one at a time. An edit made while a save is in flight is sent next with the revision that save returned. The selector, "New variant" and "Delete" are disabled while a save runs, so the queue only holds the selected variant.
+- Export and "← CVs" wait for both the CV save and the variant save queue, because export reads the variant from storage. If a variant save fails, the export or leave is dropped and the error is shown.
+- Preview requests have their own counter, so selecting a variant re-renders without affecting the CV's autosave.
+- A delete confirmation remembers the variant it was opened for; changing the selection cancels it.
+- UI strings are still literal English, like every other screen so far. Moving them into the `i18n` module is a separate change that covers all screens at once.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
