@@ -296,7 +296,9 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Elements are matched by local name, so the `hr:`, `oa:` and `eures:` prefixes don't matter, and unknown elements are ignored (spec section 9.2). Field paths were checked against a real export, which is not committed. Tests use synthetic XML in the same shape.
 - Only the candidate's own contact channels are read. Organisation contacts and the `CandidateSupplier` block are ignored. Birth date, gender and nationality are never read, because the CV model has no fields for them.
 - Descriptions are stored as escaped HTML. `html_text` drops every tag without interpreting it and splits the text into paragraphs and list items, which become bullets.
-- XML parsing uses roxmltree 0.21.1, which the workspace already locks through Typst. It is pure Rust and needs no system libraries.
+- The executive summary is a single text field, so its list items are kept as "- item" lines after the paragraphs rather than dropped.
+- Every text value is normalized as spec section 9 requires: Unicode NFC (unicode-normalization 0.1.25, already locked through other dependencies), control characters stripped, whitespace collapsed and trimmed.
+- XML parsing uses roxmltree 0.21.1 (added in ADR-043 for the attachment check), which the workspace already locks through Typst. It is pure Rust and needs no system libraries.
 
 ## Open decisions
 
