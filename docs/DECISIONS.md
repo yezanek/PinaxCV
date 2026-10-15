@@ -262,6 +262,13 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - New IDs are ULIDs made in the UI from `Date.now()` and `crypto.getRandomValues` (`ui/src/ids.rs`), so adding an item needs no extra round trip. The encoding is unit-tested; the store still refuses duplicate IDs (ADR-027).
 - Section, entry and bullet lists are keyed by ID and each input reads its value by ID, so an edit never rebuilds the field being typed in. Checked under Xvfb: typing a title, organisation and bullet keeps focus and updates the preview.
 
+## ADR-040 — Entry dates, description and link (M3)
+
+- Entry start and end dates are typed as `YYYY`, `YYYY-MM`, `MM/YYYY` or `M/YYYY` (years 1900 to 2100, `ui/src/dates.rs`, unit-tested). The model changes only when the text parses or is cleared, so a half-typed date never reaches autosave or the preview.
+- A "current" checkbox sets the entry's ongoing flag; the renderer prints "Present" as the end.
+- Each entry also edits its description and link text. Link scheme rules stay in the exporters (ADR-034).
+- Checked under Xvfb: typing `2021-03` shows "Mar 2021" in the preview.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
