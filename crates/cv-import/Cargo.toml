@@ -1,0 +1,15 @@
+[package]
+name = "cv-import"
+description = "PinaxCV: Importers from JSON Resume, Europass, LinkedIn exports and text into CvPartial."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+cv-core.workspace = true
+
+[lints]
+workspace = true

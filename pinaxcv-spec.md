@@ -39,7 +39,7 @@ Status: v1 spec, revised 2026-10-13 with the product owner's decisions (see `doc
 ### 1.3 Non-goals (v1)
 
 - No accounts, sync, cloud, telemetry, or auto-fill of job sites.
-- No macOS build (may come later).
+- No macOS release (may come later). CI runs a non-blocking macOS build-and-test job as an early warning only.
 - No DOCX/ODT export in v1.
 - No hosted SaaS in v1; PostgreSQL, accounts, sync, multi-tenancy, billing, and server infrastructure are deferred until product demand justifies them.
 - No rich text editing; bullets are plain text.

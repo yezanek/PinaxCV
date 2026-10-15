@@ -1,0 +1,15 @@
+[package]
+name = "cv-store"
+description = "PinaxCV: SQLite persistence behind the storage interface."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+cv-core.workspace = true
+
+[lints]
+workspace = true
