@@ -11,6 +11,7 @@ publish.workspace = true
 [dependencies]
 cv-core.workspace = true
 lopdf.workspace = true
+roxmltree.workspace = true
 
 [lints]
 workspace = true
