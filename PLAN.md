@@ -77,7 +77,7 @@ Rewrite with verification, summary, gaps, review, AI text import, evals (recorde
 
 ## M8 — Linux/Windows Release (1.0)
 
-AppImage, deb, Flatpak, NSIS, portable executable, updater, Windows signing, licenses, privacy, backup/restore, manual pass in a Windows 11 evaluation VM.
+AppImage, Flatpak, Snap, NSIS, portable executable, updater, Windows signing, licenses, privacy, backup/restore, manual pass in a Windows 11 evaluation VM.
 
 ## M9 — Product Validation
 
