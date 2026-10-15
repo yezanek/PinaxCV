@@ -238,5 +238,9 @@ mod tests {
         assert!(declares_europass(XML.as_bytes()));
         let pdf = pdf_with(&[("a.xml", other_root, true), ("b.xml", XML.as_bytes(), true)]);
         assert_eq!(embedded_xml(&pdf).expect("xml"), XML.as_bytes());
+        // A malformed Candidate first doesn't hide a valid one after it.
+        let broken = br#"<Candidate xmlns="http://www.europass.eu/1.0"><x>"#;
+        let pdf = pdf_with(&[("a.xml", broken, true), ("b.xml", XML.as_bytes(), true)]);
+        assert_eq!(embedded_xml(&pdf).expect("xml"), XML.as_bytes());
     }
 }
