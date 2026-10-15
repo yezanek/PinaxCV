@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "id": "01J10000000000000000000007",
+  "title": "Unsafe links",
+  "locale": "en",
+  "paper": "a4",
+  "template": "classic",
+  "options": {
+    "font_size_pt": 10.0,
+    "line_spacing": 1.1,
+    "margin_mm": 18.0,
+    "accent": null,
+    "date_style": "month_name_year"
+  },
+  "basics": {
+    "full_name": "Jane Doe",
+    "headline": null,
+    "email": "jane@example.com",
+    "phone": "+1 555 0199",
+    "location": null,
+    "links": [
+      {
+        "id": "01J10000000000000000000001",
+        "label": "Site",
+        "url": "https://jane.example.com"
+      },
+      {
+        "id": "01J10000000000000000000002",
+        "label": "Mail",
+        "url": "mailto:jane@example.com"
+      },
+      {
+        "id": "01J10000000000000000000003",
+        "label": "Script",
+        "url": "javascript:alert(1)"
+      },
+      {
+        "id": "01J10000000000000000000004",
+        "label": "Data",
+        "url": "data:text/html;base64,PHNjcmlwdD4="
+      },
+      {
+        "id": "01J10000000000000000000005",
+        "label": "Old",
+        "url": "http://jane.example.com"
+      },
+      {
+        "id": "01J10000000000000000000006",
+        "label": "Phone",
+        "url": "tel:+15550199"
+      }
+    ]
+  },
+  "summary": null,
+  "sections": [
+    {
+      "type": "projects",
+      "id": "01J10000000000000000000010",
+      "title_override": null,
+      "entries": [
+        {
+          "id": "01J10000000000000000000008",
+          "title": "Side project",
+          "org": "Self",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2024,
+              "month": 1
+            },
+            "end": null,
+            "current": true
+          },
+          "bullets": [
+            {
+              "id": "01J10000000000000000000009",
+              "text": "Built a tool used by 300 people."
+            }
+          ],
+          "description": null,
+          "url": "javascript:void(0)",
+          "locked": false
+        }
+      ]
+    }
+  ]
+}

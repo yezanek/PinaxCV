@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "id": "01J09000000000000000000001",
+  "title": "Special characters",
+  "locale": "en",
+  "paper": "a4",
+  "template": "classic",
+  "options": {
+    "font_size_pt": 10.0,
+    "line_spacing": 1.1,
+    "margin_mm": 18.0,
+    "accent": null,
+    "date_style": "month_name_year"
+  },
+  "basics": {
+    "full_name": "Jane \"JD\" O'Doe & Co",
+    "headline": "C# / F# dev @ #1 shop, 100% $ value",
+    "email": "jane@example.com",
+    "phone": null,
+    "location": null,
+    "links": []
+  },
+  "summary": "Uses *bold*, _emph_, `raw`, #set, $math$, \\backslash, <label>, @ref, [brackets], {braces}, // comment, /* block */ and ~ tilde.",
+  "sections": [
+    {
+      "type": "experience",
+      "id": "01J09000000000000000000006",
+      "title_override": null,
+      "entries": [
+        {
+          "id": "01J09000000000000000000002",
+          "title": "*Not bold*",
+          "org": "_Not emph_ & Sons",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2020,
+              "month": 1
+            },
+            "end": {
+              "year": 2022,
+              "month": 12
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J09000000000000000000003",
+              "text": "#import \"evil.typ\": * should print literally."
+            },
+            {
+              "id": "01J09000000000000000000004",
+              "text": "Escapes \\# and \\$ and $x^2$ stay text."
+            },
+            {
+              "id": "01J09000000000000000000005",
+              "text": "Raw `#eval(\"1+1\")` is not evaluated."
+            }
+          ],
+          "description": "<script>alert(1)</script> & \"quotes\"",
+          "url": null,
+          "locked": false
+        }
+      ]
+    }
+  ]
+}

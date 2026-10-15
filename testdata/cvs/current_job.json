@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "id": "01J08000000000000000000001",
+  "title": "Current job",
+  "locale": "en",
+  "paper": "a4",
+  "template": "classic",
+  "options": {
+    "font_size_pt": 10.0,
+    "line_spacing": 1.1,
+    "margin_mm": 18.0,
+    "accent": null,
+    "date_style": "month_name_year"
+  },
+  "basics": {
+    "full_name": "Jane Doe",
+    "headline": null,
+    "email": "jane@example.com",
+    "phone": "+33 1 23 45 67 89",
+    "location": null,
+    "links": []
+  },
+  "summary": null,
+  "sections": [
+    {
+      "type": "experience",
+      "id": "01J08000000000000000000004",
+      "title_override": null,
+      "entries": [
+        {
+          "id": "01J08000000000000000000002",
+          "title": "Product Designer",
+          "org": "Studio Nord",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2023,
+              "month": 9
+            },
+            "end": {
+              "year": 2020,
+              "month": 1
+            },
+            "current": true
+          },
+          "bullets": [
+            {
+              "id": "01J08000000000000000000003",
+              "text": "Redesigned the onboarding flow, raising activation by 18%."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        }
+      ]
+    }
+  ]
+}
