@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-get-cv"
+description = "Enables the get_cv command without any pre-configured scope."
+commands.allow = ["get_cv"]
+
+[[permission]]
+identifier = "deny-get-cv"
+description = "Denies the get_cv command without any pre-configured scope."
+commands.deny = ["get_cv"]
