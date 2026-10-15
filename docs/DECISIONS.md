@@ -269,6 +269,11 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Each entry also edits its description and link text. Link scheme rules stay in the exporters (ADR-034).
 - Checked under Xvfb: typing `2021-03` shows "Mar 2021" in the preview.
 
+## ADR-041 — Reordering sections, entries and bullets (M3)
+
+- Sections, entries and bullets get ↑ and ↓ buttons that swap the item with its neighbour (`ui/src/order.rs`, unit-tested). Buttons rather than drag and drop: they work from the keyboard, need no extra library and behave the same in WebKitGTK and WebView2. Drag and drop can come later on top of the same `shift` helper.
+- Lists stay keyed by ID, so moving an item moves its fields without rebuilding them. Checked under Xvfb: moving a bullet up reorders the form and the preview.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

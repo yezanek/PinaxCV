@@ -1,5 +1,5 @@
 //! Editing entry sections (experience, education, projects, certifications):
-//! add and remove sections, entries and bullets, and edit their text.
+//! add, remove and reorder sections, entries and bullets, and edit their text.
 //! Lists are keyed by ID, so typing never rebuilds the input in focus.
 
 use cv_core::{Bullet, Cv, Entry, EntrySection, Id, PartialDate, Period, Section};
@@ -7,6 +7,7 @@ use leptos::prelude::*;
 
 use crate::dates;
 use crate::ids::new_id;
+use crate::order::shift;
 
 /// Applies an edit to the CV and schedules preview and autosave.
 pub type Edit = Callback<Box<dyn FnOnce(&mut Cv)>>;
@@ -164,10 +165,28 @@ fn SectionEditor(
             edit.run(Box::new(move |c| c.sections.retain(|s| s.id() != &id)));
         }
     };
+    let move_section = {
+        let id = id.clone();
+        move |up: bool| {
+            let id = id.clone();
+            edit.run(Box::new(move |c| {
+                shift(&mut c.sections, |s| s.id() == &id, up);
+            }));
+        }
+    };
+    let section_up = {
+        let m = move_section.clone();
+        move |_| m(true)
+    };
+    let section_down = move |_| move_section(false);
     let section_id = id.clone();
     view! {
         <fieldset class="section">
             <legend>{label}</legend>
+            <div class="order">
+                <button aria-label="Move section up" on:click=section_up>"↑"</button>
+                <button aria-label="Move section down" on:click=section_down>"↓"</button>
+            </div>
             <For each=entries key=|e| e.clone() let:entry>
                 <EntryEditor cv=cv edit=edit section=section_id.clone() id=entry />
             </For>
@@ -246,6 +265,22 @@ fn EntryEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> imp
             }));
         }
     };
+    let move_entry = {
+        let (s, e) = (section.clone(), id.clone());
+        move |up: bool| {
+            let (s, e) = (s.clone(), e.clone());
+            edit.run(Box::new(move |c| {
+                if let Some(x) = entry_section_mut(c, &s) {
+                    shift(&mut x.entries, |en| en.id == e, up);
+                }
+            }));
+        }
+    };
+    let entry_up = {
+        let m = move_entry.clone();
+        move |_| m(true)
+    };
+    let entry_down = move |_| move_entry(false);
     // Dates keep what the user typed: the model only changes once the text
     // parses (or is cleared), so a half-typed "20" is not wiped out.
     let date = {
@@ -323,6 +358,9 @@ fn EntryEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> imp
             <button on:click=add_bullet>"+ Bullet"</button>
             " "
             <button on:click=remove_entry>"Remove entry"</button>
+            " "
+            <button aria-label="Move entry up" on:click=entry_up>"↑"</button>
+            <button aria-label="Move entry down" on:click=entry_down>"↓"</button>
         </div>
     }
 }
@@ -346,6 +384,22 @@ fn BulletEditor(
                 .unwrap_or_default()
         })
     };
+    let move_bullet = {
+        let (s, e, b) = (section.clone(), entry.clone(), id.clone());
+        move |up: bool| {
+            let (s, e, b) = (s.clone(), e.clone(), b.clone());
+            edit.run(Box::new(move |c| {
+                if let Some(x) = entry_mut(c, &s, &e) {
+                    shift(&mut x.bullets, |bl| bl.id == b, up);
+                }
+            }));
+        }
+    };
+    let bullet_up = {
+        let m = move_bullet.clone();
+        move |_| m(true)
+    };
+    let bullet_down = move |_| move_bullet(false);
     let remove = move |_| {
         let (s, e, b) = (section.clone(), entry.clone(), id.clone());
         edit.run(Box::new(move |c| {
@@ -366,6 +420,8 @@ fn BulletEditor(
                         }
                     }));
                 }></textarea>
+            <button aria-label="Move bullet up" on:click=bullet_up>"↑"</button>
+            <button aria-label="Move bullet down" on:click=bullet_down>"↓"</button>
             <button aria-label="Remove bullet" on:click=remove>"×"</button>
         </div>
     }

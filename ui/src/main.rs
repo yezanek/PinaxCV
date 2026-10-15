@@ -10,6 +10,7 @@ mod entries;
 mod ids;
 mod ipc;
 mod list;
+mod order;
 
 #[component]
 fn App() -> impl IntoView {
