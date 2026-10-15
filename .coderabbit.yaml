@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: en-US
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  auto_review:
+    enabled: true
+    drafts: true
+  path_instructions:
+    - path: "**/*"
+      instructions: >-
+        PinaxCV follows pinaxcv-spec.md (authoritative), AGENTS.md and docs/DECISIONS.md.
+        Flag changes that break the architecture rules in AGENTS.md: cv-core must not depend
+        on Tauri, SQLite, HTTP, filesystem or OS APIs; rusqlite types must not leave cv-store;
+        Tauri commands must stay thin adapters; cv-import never writes to storage; cv-ai never
+        reads the database; no PostgreSQL, accounts, sync, telemetry or SaaS code in v1.
+    - path: "crates/**/*.rs"
+      instructions: >-
+        Check for #![forbid(unsafe_code)], a test for every public function in cv-core,
+        cv-render, cv-import and cv-ai, no panics on user input, and that user data never
+        reaches Typst markup except as data.json. Flag any logging of CV content, prompts,
+        job descriptions or secrets.
+    - path: "**/*.md"
+      instructions: >-
+        Check that documentation stays consistent with pinaxcv-spec.md and docs/DECISIONS.md,
+        and that cross-references point to sections that exist.
+chat:
+  auto_reply: true
