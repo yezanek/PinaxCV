@@ -13,6 +13,7 @@ use leptos::task::spawn_local;
 
 use crate::entries::EntrySections;
 use crate::ipc::{IdArg, ReqArg, call};
+use crate::lists::ListSections;
 
 /// Preview debounce from spec section 16.
 const PREVIEW_DELAY: Duration = Duration::from_millis(150);
@@ -288,6 +289,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                         }></textarea>
                 </label>
                 <EntrySections cv=cv edit=edit />
+                <ListSections cv=cv edit=edit />
             </section>
             <section class="preview" class:stale=move || rendering.get() aria-label="Preview"
                 aria-busy=move || rendering.get().to_string()>

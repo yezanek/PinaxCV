@@ -274,6 +274,14 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Sections, entries and bullets get ↑ and ↓ buttons that swap the item with its neighbour (`ui/src/order.rs`, unit-tested). Buttons rather than drag and drop: they work from the keyboard, need no extra library and behave the same in WebKitGTK and WebView2. Drag and drop can come later on top of the same `shift` helper.
 - Lists stay keyed by ID, so moving an item moves its fields without rebuilding them. Checked under Xvfb: moving a bullet up reorders the form and the preview.
 
+## ADR-042 — Editing skills and languages (M3)
+
+- Skills sections hold groups, each with an optional label and its skills typed as one comma-separated line. `merge_skills` (`ui/src/lists.rs`, unit-tested) keeps each position's existing ID, so renaming a skill keeps variant references to it; inserting a name in the middle shifts the IDs after it, which is acceptable until skills get their own rows.
+- Languages are rows of name and level. Text fields keep what is typed (spaces included) and trim when they lose focus, like the basics fields.
+- Skill groups and language rows have their own ↑ ↓ buttons (ADR-041), as the spec asks for every editor list.
+- The form shows entry sections first, then skills and languages. Section order in the CV (and preview) is set with the ↑ ↓ buttons (ADR-041).
+- Checked under Xvfb: adding a skills group updates the preview.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
