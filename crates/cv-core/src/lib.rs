@@ -17,6 +17,7 @@ mod resolved;
 mod suggestion;
 mod variant;
 
+pub mod fit;
 pub mod lint;
 pub mod validate;
 
