@@ -5,17 +5,25 @@ use cv_core::Id;
 
 const CROCKFORD: &[u8; 32] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
-/// A fresh ULID.
-pub fn new_id() -> Id {
+/// A fresh ULID, or `None` (after telling the user) when the browser's
+/// secure random source is unavailable. IDs are never made from zero
+/// randomness, which could repeat within one millisecond.
+pub fn new_id() -> Option<Id> {
     let mut random = [0u8; 10];
-    if let Some(crypto) = web_sys::window().and_then(|w| w.crypto().ok()) {
-        // Without a crypto source the bytes stay zero; the timestamp and the
-        // store's duplicate-ID check still apply.
-        let _ = crypto.get_random_values_with_u8_array(&mut random);
+    let window = web_sys::window()?;
+    let filled = window
+        .crypto()
+        .ok()
+        .is_some_and(|c| c.get_random_values_with_u8_array(&mut random).is_ok());
+    if !filled {
+        let _ = window.alert_with_message(
+            "Could not add the item: the system's secure random source is unavailable.",
+        );
+        return None;
     }
     // Milliseconds since 1970 fit in the 48-bit ULID timestamp until 10889.
     let ms = js_sys::Date::now() as u64;
-    encode(ms, random)
+    Some(encode(ms, random))
 }
 
 /// Encodes a 48-bit millisecond timestamp and 80 random bits as a ULID.

@@ -61,9 +61,9 @@ fn entry_sections(cv: &Cv) -> Vec<(Id, &'static str)> {
         .collect()
 }
 
-fn new_entry() -> Entry {
+fn new_entry(id: Id) -> Entry {
     Entry {
-        id: new_id(),
+        id,
         title: String::new(),
         org: String::new(),
         location: None,
@@ -79,19 +79,23 @@ fn new_entry() -> Entry {
     }
 }
 
+/// A blank field becomes `None`; other text is kept as typed, so the input
+/// is not rewritten mid-word (trailing spaces survive until the next key).
 fn opt(s: String) -> Option<String> {
-    let t = s.trim();
-    (!t.is_empty()).then(|| t.to_owned())
+    (!s.trim().is_empty()).then_some(s)
 }
 
 #[component]
 pub fn EntrySections(cv: RwSignal<Option<Cv>>, edit: Edit) -> impl IntoView {
     let add_section = move |make: fn(EntrySection) -> Section| {
+        let (Some(section_id), Some(entry_id)) = (new_id(), new_id()) else {
+            return;
+        };
         edit.run(Box::new(move |c| {
             c.sections.push(make(EntrySection {
-                id: new_id(),
+                id: section_id,
                 title_override: None,
-                entries: vec![new_entry()],
+                entries: vec![new_entry(entry_id)],
             }));
         }));
     };
@@ -143,10 +147,13 @@ fn SectionEditor(
     let add = {
         let id = id.clone();
         move |_| {
+            let Some(entry_id) = new_id() else {
+                return;
+            };
             let id = id.clone();
             edit.run(Box::new(move |c| {
                 if let Some(s) = entry_section_mut(c, &id) {
-                    s.entries.push(new_entry());
+                    s.entries.push(new_entry(entry_id));
                 }
             }));
         }
@@ -196,6 +203,7 @@ fn EntryEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> imp
         let (section, id) = (section.clone(), id.clone());
         move |label: &'static str, get: fn(&Entry) -> String, set: fn(&mut Entry, String)| {
             let (s1, e1, s2, e2) = (section.clone(), id.clone(), section.clone(), id.clone());
+            let (s3, e3) = (section.clone(), id.clone());
             view! {
                 <label>{label}
                     <input
@@ -204,6 +212,15 @@ fn EntryEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> imp
                             let v = event_target_value(&ev);
                             let (s, e) = (s2.clone(), e2.clone());
                             edit.run(Box::new(move |c| if let Some(x) = entry_mut(c, &s, &e) { set(x, v) }));
+                        }
+                        // Trim when the field loses focus, not while typing.
+                        on:change=move |ev| {
+                            let v = event_target_value(&ev);
+                            if v.trim().len() != v.len() {
+                                let t = v.trim().to_owned();
+                                let (s, e) = (s3.clone(), e3.clone());
+                                edit.run(Box::new(move |c| if let Some(x) = entry_mut(c, &s, &e) { set(x, t) }));
+                            }
                         } />
                 </label>
             }
@@ -223,11 +240,14 @@ fn EntryEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> imp
     let add_bullet = {
         let (s, e) = (section.clone(), id.clone());
         move |_| {
+            let Some(bullet_id) = new_id() else {
+                return;
+            };
             let (s, e) = (s.clone(), e.clone());
             edit.run(Box::new(move |c| {
                 if let Some(x) = entry_mut(c, &s, &e) {
                     x.bullets.push(Bullet {
-                        id: new_id(),
+                        id: bullet_id,
                         text: String::new(),
                     });
                 }
