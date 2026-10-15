@@ -287,7 +287,7 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - The Europass editor's PDF export embeds the structured CV as an XML attachment in the current `Candidate` format (namespace `http://www.europass.eu/1.0`, HR-XML based). Checked against a real export supplied by the product owner, which is not committed.
 - This refines spec section 9.2: a Europass PDF is imported from that attachment, exactly, and `UnsupportedFormat` is returned only when no Europass XML is embedded (for example a printed or scanned CV).
 - `cv_import::embedded_xml` checks every embedded file and returns the first whose XML parses with a `Candidate` root element in the Europass namespace (roxmltree), whatever its file name. PDFs over 20 MB are refused before parsing. Attachments over 10 MB (spec section 9) are refused by declared size before decompressing, and decompression itself stops at 10 MB (lopdf `get_plain_content_with_limit`), so a decompression bomb cannot exhaust memory. A bare XML file is limited only by the 20 MB input cap.
-- A LinkedIn "Save to PDF" profile has no embedded data and gets its own layout-based importer (planned).
+- A LinkedIn "Save to PDF" profile has no embedded data and is read by the generic text importer (ADR-047).
 - Tests build synthetic PDFs in code; personal data never enters the repository.
 
 ## ADR-044 — Reading the Europass Candidate XML (M4)
@@ -327,7 +327,7 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - The product owner asked that any PDF be importable, as Workday-style parsers do it, in addition to the Europass importer, which stays a must-have. A PDF is tried as Europass first (ADR-043). Only a PDF without Europass data goes to the text importer.
 - The text importer reads the page text in content order (`page_text`) and splits it at standard CV headings and their common synonyms (`split_sections`). It drops blank lines and "Page N of M" footers, and a repeated heading continues its section.
 - `text_to_partial` builds the `CvPartial`. A date range line ("March 2021 - Present", "(2010 - 2014)", no-break spaces allowed) marks an entry, and the two lines before it are the organisation and title (LinkedIn order). A short first line after it is the location, and the rest is the description. Education entries are school and degree line pairs. Languages read "Name (Level)". Contact gives the email and phone.
-- LinkedIn's sidebar comes before the name in content order. When the text starts with sidebar sections, the last three lines of the last sidebar section become the name, headline and location, with a warning. Skills and certifications are reported as not imported yet. Every guess is an `ImportWarning`, and the result goes through the same merge review (ADR-046).
+- LinkedIn's sidebar comes before the name in content order. When the text starts with sidebar sections, the last three lines of the last sidebar section become the name, headline and location, with a warning. If that section has fewer than three lines it is left as it is. Skills and certifications are reported as not imported yet. Every guess is an `ImportWarning`, and the result goes through the same merge review (ADR-046).
 
 ## Open decisions
 
