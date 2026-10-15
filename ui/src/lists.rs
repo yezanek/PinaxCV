@@ -11,14 +11,24 @@ use crate::order::shift;
 /// Turns a comma-separated line into skills. Positions keep their existing
 /// IDs, so editing a name keeps variant references to it; extra names get
 /// fresh IDs and empty names are dropped.
-pub fn merge_skills(existing: &[Skill], line: &str, mut fresh: impl FnMut() -> Id) -> Vec<Skill> {
+pub fn merge_skills(
+    existing: &[Skill],
+    line: &str,
+    mut fresh: impl FnMut() -> Option<Id>,
+) -> Option<Vec<Skill>> {
     let mut old = existing.iter();
     line.split(',')
         .map(str::trim)
         .filter(|n| !n.is_empty())
-        .map(|name| Skill {
-            id: old.next().map(|s| s.id.clone()).unwrap_or_else(&mut fresh),
-            name: name.to_owned(),
+        .map(|name| {
+            let id = match old.next() {
+                Some(s) => s.id.clone(),
+                None => fresh()?,
+            };
+            Some(Skill {
+                id,
+                name: name.to_owned(),
+            })
         })
         .collect()
 }
@@ -51,17 +61,17 @@ fn language_mut<'a>(cv: &'a mut Cv, section: &Id, item: &Id) -> Option<&'a mut L
         .find(|i| &i.id == item)
 }
 
-fn new_group() -> SkillGroup {
+fn new_group(id: Id) -> SkillGroup {
     SkillGroup {
-        id: new_id(),
+        id,
         label: None,
         skills: Vec::new(),
     }
 }
 
-fn new_language() -> LanguageItem {
+fn new_language(id: Id) -> LanguageItem {
     LanguageItem {
-        id: new_id(),
+        id,
         name: String::new(),
         level: None,
     }
@@ -92,20 +102,26 @@ pub fn ListSections(cv: RwSignal<Option<Cv>>, edit: Edit) -> impl IntoView {
         })
     };
     let add_skills = move |_| {
-        edit.run(Box::new(|c| {
+        let (Some(section_id), Some(group_id)) = (new_id(), new_id()) else {
+            return;
+        };
+        edit.run(Box::new(move |c| {
             c.sections.push(Section::Skills(SkillsSection {
-                id: new_id(),
+                id: section_id,
                 title_override: None,
-                groups: vec![new_group()],
+                groups: vec![new_group(group_id)],
             }))
         }))
     };
     let add_languages = move |_| {
-        edit.run(Box::new(|c| {
+        let (Some(section_id), Some(item_id)) = (new_id(), new_id()) else {
+            return;
+        };
+        edit.run(Box::new(move |c| {
             c.sections.push(Section::Languages(LanguagesSection {
-                id: new_id(),
+                id: section_id,
                 title_override: None,
-                items: vec![new_language()],
+                items: vec![new_language(item_id)],
             }))
         }))
     };
@@ -174,10 +190,13 @@ fn SkillsEditor(cv: RwSignal<Option<Cv>>, edit: Edit, id: Id) -> impl IntoView {
     let add = {
         let id = id.clone();
         move |_| {
+            let Some(new) = new_id() else {
+                return;
+            };
             let id = id.clone();
             edit.run(Box::new(move |c| {
                 if let Some(s) = skills_mut(c, &id) {
-                    s.groups.push(new_group());
+                    s.groups.push(new_group(new));
                 }
             }))
         }
@@ -239,8 +258,10 @@ fn GroupEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> imp
                 <input value=line on:input=move |ev| {
                     let v = event_target_value(&ev);
                     let (s, g) = (s2.clone(), g2.clone());
-                    edit.run(Box::new(move |c| if let Some(x) = group_mut(c, &s, &g) {
-                        x.skills = merge_skills(&x.skills, &v, new_id);
+                    edit.run(Box::new(move |c| if let Some(x) = group_mut(c, &s, &g)
+                        && let Some(merged) = merge_skills(&x.skills, &v, new_id)
+                    {
+                        x.skills = merged;
                     }));
                 } />
             </label>
@@ -272,10 +293,13 @@ fn LanguagesEditor(cv: RwSignal<Option<Cv>>, edit: Edit, id: Id) -> impl IntoVie
     let add = {
         let id = id.clone();
         move |_| {
+            let Some(new) = new_id() else {
+                return;
+            };
             let id = id.clone();
             edit.run(Box::new(move |c| {
                 if let Some(s) = languages_mut(c, &id) {
-                    s.items.push(new_language());
+                    s.items.push(new_language(new));
                 }
             }))
         }
@@ -373,14 +397,21 @@ mod tests {
         let mut n = 10;
         let mut fresh = || {
             n += 1;
-            id(n)
+            Some(id(n))
         };
-        let merged = merge_skills(&existing, " Rust , Golang,, SQL, ", &mut fresh);
+        let merged = merge_skills(&existing, " Rust , Golang,, SQL, ", &mut fresh).unwrap();
         let names: Vec<_> = merged.iter().map(|s| s.name.as_str()).collect();
         assert_eq!(names, ["Rust", "Golang", "SQL"]);
         assert_eq!(merged[0].id, id(1));
         assert_eq!(merged[1].id, id(2));
         assert_eq!(merged[2].id, id(11));
-        assert!(merge_skills(&existing, " , ", &mut fresh).is_empty());
+        assert!(
+            merge_skills(&existing, " , ", &mut fresh)
+                .unwrap()
+                .is_empty()
+        );
+        // No new skill is made without a fresh ID.
+        assert!(merge_skills(&existing, "Rust, Go, SQL", || None).is_none());
+        assert_eq!(merge_skills(&existing, "Rust", || None).unwrap().len(), 1);
     }
 }
