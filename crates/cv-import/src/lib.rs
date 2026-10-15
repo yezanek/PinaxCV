@@ -7,3 +7,5 @@
 pub mod europass;
 
 pub use europass::{AttachmentError, embedded_xml};
+pub use europass_xml::{EuropassCv, XmlError, parse_candidate};
+pub mod europass_xml;
