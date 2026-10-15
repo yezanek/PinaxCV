@@ -399,7 +399,8 @@ mod tests {
             n += 1;
             Some(id(n))
         };
-        let merged = merge_skills(&existing, " Rust , Golang,, SQL, ", &mut fresh).unwrap();
+        let merged = merge_skills(&existing, " Rust , Golang,, SQL, ", &mut fresh)
+            .expect("fresh IDs available");
         let names: Vec<_> = merged.iter().map(|s| s.name.as_str()).collect();
         assert_eq!(names, ["Rust", "Golang", "SQL"]);
         assert_eq!(merged[0].id, id(1));
@@ -407,11 +408,16 @@ mod tests {
         assert_eq!(merged[2].id, id(11));
         assert!(
             merge_skills(&existing, " , ", &mut fresh)
-                .unwrap()
+                .expect("fresh IDs available")
                 .is_empty()
         );
         // No new skill is made without a fresh ID.
         assert!(merge_skills(&existing, "Rust, Go, SQL", || None).is_none());
-        assert_eq!(merge_skills(&existing, "Rust", || None).unwrap().len(), 1);
+        assert_eq!(
+            merge_skills(&existing, "Rust", || None)
+                .expect("fresh IDs available")
+                .len(),
+            1
+        );
     }
 }
