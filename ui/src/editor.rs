@@ -20,10 +20,10 @@ const PREVIEW_DELAY: Duration = Duration::from_millis(150);
 /// Autosave debounce from spec section 12.
 const SAVE_DELAY: Duration = Duration::from_millis(600);
 
-/// Trims; an empty field becomes `None`.
+/// A blank field becomes `None`; other text is kept as typed, so the input
+/// is not rewritten mid-word (trailing spaces survive until the next key).
 fn opt(s: String) -> Option<String> {
-    let t = s.trim();
-    (!t.is_empty()).then(|| t.to_owned())
+    (!s.trim().is_empty()).then_some(s)
 }
 
 /// What to do once the newest edit is saved.
@@ -247,6 +247,14 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                     on:input=move |ev| {
                         let v = event_target_value(&ev);
                         edit.run(Box::new(move |c| set(c, v)));
+                    }
+                    // Trim when the field loses focus, not while typing.
+                    on:change=move |ev| {
+                        let v = event_target_value(&ev);
+                        if v.trim().len() != v.len() {
+                            let t = v.trim().to_owned();
+                            edit.run(Box::new(move |c| set(c, t)));
+                        }
                     } />
             </label>
         }
