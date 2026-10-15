@@ -121,8 +121,10 @@ fn pdf_import_merges_into_an_existing_cv() {
     assert_eq!(entry_count(&cv), before + 1);
     assert!(!validate::has_errors(&validate::for_save(&mut cv)));
 
-    // Importing the same file again matches the entry; Replace keeps one copy.
-    let again = import_europass(&europass_pdf(Some(XML)), &mut ids()).expect("import");
+    // Importing an updated export matches the entry; Replace keeps one copy
+    // and takes the new content.
+    let updated = XML.replace("Ran the build farm.", "Ran the build farm and CI.");
+    let again = import_europass(&europass_pdf(Some(&updated)), &mut ids()).expect("import");
     let matches = suggest_matches(&cv, &again.cv_partial);
     assert_eq!(matches.len(), 1);
     let entries: HashMap<Id, EntryDecision> = matches
@@ -138,6 +140,22 @@ fn pdf_import_merges_into_an_existing_cv() {
         },
     );
     assert_eq!(entry_count(&cv), before + 1);
+    let bullets: Vec<&str> = cv
+        .sections
+        .iter()
+        .filter_map(|s| match s {
+            Section::Experience(x) => Some(x),
+            _ => None,
+        })
+        .flat_map(|x| &x.entries)
+        .flat_map(|e| &e.bullets)
+        .map(|b| b.text.as_str())
+        .collect();
+    assert!(
+        bullets.contains(&"Ran the build farm and CI."),
+        "{bullets:?}"
+    );
+    assert!(!bullets.contains(&"Ran the build farm."), "{bullets:?}");
     assert!(!validate::has_errors(&validate::for_save(&mut cv)));
 }
 
