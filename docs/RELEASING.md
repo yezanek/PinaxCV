@@ -8,8 +8,8 @@
 Artifacts:
 
 - Linux AppImage
-- Linux `.deb`
 - Linux Flatpak
+- Linux Snap
 - Windows NSIS installer (signed from 1.0)
 - Windows portable executable (no auto-update; signed from 1.0)
 

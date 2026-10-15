@@ -52,7 +52,7 @@ English only in v1, for both the UI and CV content. AI prompts still tell the mo
 ## ADR-012 — Platforms, packaging and testing
 
 - Development happens on Linux. CI runs on `ubuntu-22.04` and `windows-latest` from the first commit; the Windows runner (including `tauri-driver` end-to-end tests) is the Windows test machine until a manual pass in a Windows 11 evaluation VM before 1.0.
-- Linux: AppImage, `.deb` and Flatpak.
+- Linux: AppImage, Flatpak and Snap (ADR-049 replaced `.deb` with Snap).
 - Windows: NSIS installer plus a portable exe labelled "no auto-update".
 - Windows builds are unsigned before 1.0 and signed from 1.0.
 - Update checks are asked on first run with "off" preselected.
@@ -338,6 +338,13 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Preview requests have their own counter, so selecting a variant re-renders without affecting the CV's autosave.
 - A delete confirmation remembers the variant it was opened for; changing the selection cancels it.
 - UI strings are still literal English, like every other screen so far. Moving them into the `i18n` module is a separate change that covers all screens at once.
+
+## ADR-049 — Linux packages: AppImage, Flatpak and Snap
+
+- Status: accepted (Dan, 2026-10-15).
+- Linux ships as AppImage, Flatpak and Snap. The `.deb` package is dropped.
+- Debian and Ubuntu users install the Snap, the Flatpak or the AppImage instead.
+- Changes spec section 14 and the M8 acceptance criteria. Tracked in #33 (Flatpak), #34 (Snap) and #68 (AppImage).
 
 ## Open decisions
 

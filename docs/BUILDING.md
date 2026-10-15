@@ -123,7 +123,7 @@ The database is `pinaxcv.sqlite3` in `~/.local/share/dev.pinaxcv.app/` on Linux,
 
 This section will then cover `cargo tauri dev` for a live-reloading development build and `cargo tauri build` for a release build:
 
-- Linux: AppImage and `.deb`.
+- Linux: AppImage. Flatpak (#33) and Snap (#34) are planned and will be built from their own manifests.
 - Windows: NSIS installer.
 - macOS: an unsigned `.app` for your own machine. A locally built app is not quarantined, so it opens without Gatekeeper prompts.
 

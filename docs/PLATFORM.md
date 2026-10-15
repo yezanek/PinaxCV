@@ -10,7 +10,7 @@ Platform-specific concerns include:
 - keychain/credential store;
 - file dialogs;
 - update mechanisms;
-- packaging (AppImage, deb and Flatpak on Linux; NSIS installer and a portable exe on Windows);
+- packaging (AppImage, Flatpak and Snap on Linux; NSIS installer and a portable exe on Windows);
 - native webview behavior.
 
 Keep these concerns behind adapters where practical.

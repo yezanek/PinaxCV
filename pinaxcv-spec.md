@@ -1313,7 +1313,7 @@ If no keychain is available (for example the Linux Secret Service is missing), `
 ## 14. Packaging and CI
 
 - GitHub Actions matrix: `ubuntu-22.04` and `windows-latest`, from the first commit (development happens on Linux; the Windows runner is the Windows test machine). Steps: checkout, Rust toolchain, `wasm32-unknown-unknown` target, Trunk, Tauri CLI, `cargo test --workspace`, `tauri-driver` end-to-end smoke tests, `tauri-action` build.
-- Outputs: Windows NSIS installer (WebView2 bootstrapper referenced) and a portable exe labelled "no auto-update"; Linux AppImage, `.deb` and Flatpak.
+- Outputs: Windows NSIS installer (WebView2 bootstrapper referenced) and a portable exe labelled "no auto-update"; Linux AppImage, Flatpak and Snap (no `.deb`; ADR-049).
 - Before 1.0: a manual test pass in a Windows 11 evaluation VM (free from Microsoft's Evaluation Center).
 - Updater: `tauri-plugin-updater` with signed manifests on GitHub Releases; the update signing key is a repo secret; the public key is in `tauri.conf.json`.
 - Windows code signing: pre-1.0 test builds are unsigned (document SmartScreen behavior); builds are signed from 1.0 (SignPath for open source, or a certificate).
@@ -1373,7 +1373,7 @@ If no keychain is available (for example the Linux Secret Service is missing), `
 *Accept (M7a + M7b):* with `FakeLlm` the full flow works in tests; with a real key, tailoring a fixture CV to a fixture JD produces reviewable suggestions, verification drops or flags every fabricated number/term in the adversarial fixture, and the injection fixture does not alter behavior. No contact details appear in any captured request payload of any stage other than `IMPORT_EXTRACT` (assert in a test using a recording `Llm`).
 
 **M8: Linux/Windows packaging.** CI builds, installers, updater, licenses, privacy doc, backup/restore and release process.
-*Accept:* a clean Windows 11 VM and a clean Ubuntu 22.04 VM install and run the app with no manual dependency installation beyond what the installer/AppImage/Flatpak handles; PDF and HTML exports work; update flow works between two tagged test releases; 1.0 Windows builds are signed.
+*Accept:* a clean Windows 11 VM and a clean Ubuntu 22.04 VM install and run the app with no manual dependency installation beyond what the installer/AppImage/Flatpak/Snap handles; PDF and HTML exports work; update flow works between two tagged test releases; 1.0 Windows builds are signed.
 
 **M9: Product validation.** No feature implementation milestone. Measure real usage and collect evidence of demand before funding additional platform or hosted infrastructure work.
 *Accept:* product owner reviews downloads/active usage, repeat usage, feedback, feature requests, export/import usage, AI usage, willingness-to-pay signals, and requests for additional platforms or synchronization.
