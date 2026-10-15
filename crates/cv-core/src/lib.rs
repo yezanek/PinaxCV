@@ -16,6 +16,11 @@ mod resolved;
 mod suggestion;
 mod variant;
 
+pub mod validate;
+
+#[cfg(test)]
+mod test_fixtures;
+
 pub use cv::*;
 pub use id::{Id, IdSource, InvalidId};
 pub use job::{JobRequirements, Requirement, RequirementKind};

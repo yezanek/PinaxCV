@@ -154,6 +154,12 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Supporting a macOS source build does not change ADR-007: no macOS release, signing or notarization in v1. A local `cargo tauri build` on macOS gives an unsigned app for the builder's own machine.
 - Fedora and Arch are not tested in CI; their package lists follow the Tauri 2 prerequisites and are checked by hand.
 
+## ADR-027 — Validation details (M1)
+
+- `validate::for_save` mutates the CV: out-of-range template options are clamped, a non-finite option takes its default, and an accent that is not `#RRGGBB` is reset to black. Each change is a warning. Duplicate IDs, months outside 1..=12 and a stale `schema_version` are errors, and the store refuses to save a CV with errors.
+- An end date before the start date is content, not structure, so it is left to lint (spec section 7.1) and never blocks a save.
+- `validate::for_export` repeats the structural checks and requires a non-blank full name and a non-blank email or phone. It does not clamp, because export works on the saved document.
+
 ## Open decisions
 
 - Tagged PDF (accessibility tags) for the pinned Typst version (M2).
