@@ -181,14 +181,15 @@ pub fn text_to_partial(text: &str, fresh: &mut dyn FnMut() -> Id) -> ImportResul
     let mut partial = CvPartial::default();
 
     // LinkedIn puts its sidebar first, so the name, headline and location end
-    // the last sidebar section before the main column starts.
+    // the last sidebar section before the main column starts. A section with
+    // fewer than three lines is left alone, so its own content stays put.
     if sections.first().is_some_and(|(h, _)| *h != Heading::Top)
         && let Some(main) = sections.iter().position(|(h, _)| !is_sidebar(*h))
         && main > 0
+        && sections[main - 1].1.len() >= 3
     {
         let lines = &mut sections[main - 1].1;
-        let take = lines.len().min(3);
-        let top = lines.split_off(lines.len() - take);
+        let top = lines.split_off(lines.len() - 3);
         sections.insert(0, (Heading::Top, top));
         warnings.push(ImportWarning::new(
             "The name and headline were taken from a sidebar layout. Check them.".to_owned(),
@@ -341,6 +342,17 @@ mod tests {
         assert_eq!(e.entries[0].period.end, d(2017, None));
         assert!(r.warnings.iter().any(|w| w.message.contains("sidebar")));
         assert!(r.warnings.iter().any(|w| w.message.contains("Skills")));
+    }
+
+    #[test]
+    fn short_last_sidebar_section_is_not_split() {
+        let r = text_to_partial(
+            "Contact\nalex@example.org\nExperience\nno dates here",
+            &mut ids(),
+        );
+        assert_eq!(r.cv_partial.email.as_deref(), Some("alex@example.org"));
+        assert_eq!(r.cv_partial.full_name, None);
+        assert!(!r.warnings.iter().any(|w| w.message.contains("sidebar")));
     }
 
     #[test]
