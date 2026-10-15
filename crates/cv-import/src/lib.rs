@@ -14,3 +14,7 @@ pub mod partial;
 
 pub use europass_map::to_partial;
 pub use partial::{CvPartial, ImportResult, ImportWarning};
+pub mod merge;
+pub use merge::{
+    EntryDecision, Field, FieldConflict, MergePlan, field_conflicts, merge, suggest_matches,
+};

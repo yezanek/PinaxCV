@@ -313,6 +313,15 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Language codes map to English names for common ISO 639 codes. Other codes are kept as written.
 - Checked locally against the real export: it maps into 3 sections with no warnings.
 
+## ADR-046 — Merging an import with manual conflict choices (M4)
+
+- The product owner asked to merge imports from two sources by hand. `cv_import::merge` applies a `MergePlan`:
+  - **Header fields** (name, headline, email, phone, location, summary): `field_conflicts` lists the fields both sides fill with different values, ignoring case and spacing. The base value is kept unless the user picks "use imported". A field that is empty (or blank) on one side takes the filled value without asking; a blank imported value never overwrites anything. This extends spec section 9.5 to the header fields.
+  - **Entries**: each imported entry gets Skip, Add as new or Replace. `suggest_matches` pairs entries by normalized organisation, title and start year within the same kind of section (spec section 9.5). Replace keeps the base entry's ID, so variant references to the entry survive. With no decision, an entry is added as new.
+  - **Skills and languages** are merged as a union by case-insensitive name; duplicate incoming skills are dropped first. A language level is filled in only when the base has none.
+  - **Links** are merged as a union by URL.
+- Nothing in the base is deleted unless Replace is chosen. The caller takes a snapshot before merging (spec section 9.5).
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
