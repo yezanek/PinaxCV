@@ -147,6 +147,13 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Tauri 2.12 + Leptos 0.8 (CSR) + Trunk 0.21 builds on `ubuntu-22.04` and `windows-latest` (Linux needs `libwebkit2gtk-4.1-dev`, `libsoup-3.0-dev`, `librsvg2-dev`, `libayatana-appindicator3-dev`). Cold CI builds: Trunk 55 s / 216 s, Tauri shell 119 s / 239 s (Linux / Windows). On Linux the app was run under Xvfb and showed the page served over `preview://`.
 - The CSP allows `img-src 'self' preview: http://preview.localhost` and `script-src 'self' 'wasm-unsafe-eval'`; M3 keeps exactly these additions.
 
+## ADR-026 — Building from source on Linux, macOS and Windows
+
+- The product owner builds PinaxCV from source on a Linux laptop and a MacBook, so `docs/BUILDING.md` documents the system packages for Debian/Ubuntu, Fedora, Arch, macOS and Windows, the Rust and tool versions CI uses, and the build, test and check commands.
+- A milestone that changes how PinaxCV is built (new system library, new tool, the app in M3, packaging in M8) updates `docs/BUILDING.md` in the same PR.
+- Supporting a macOS source build does not change ADR-007: no macOS release, signing or notarization in v1. A local `cargo tauri build` on macOS gives an unsigned app for the builder's own machine.
+- Fedora and Arch are not tested in CI; their package lists follow the Tauri 2 prerequisites and are checked by hand.
+
 ## Open decisions
 
 - Tagged PDF (accessibility tags) for the pinned Typst version (M2).

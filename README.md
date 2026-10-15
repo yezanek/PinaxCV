@@ -29,6 +29,7 @@ Read in this order:
 9. [`docs/AI_ARCHITECTURE.md`](docs/AI_ARCHITECTURE.md): AI pipeline, privacy and verification.
 10. [`docs/PRODUCT_EVOLUTION.md`](docs/PRODUCT_EVOLUTION.md) and [`docs/SAAS_MIGRATION.md`](docs/SAAS_MIGRATION.md): future phases.
 11. [`PROMPTS.md`](PROMPTS.md): agent prompts by milestone.
+12. [`docs/BUILDING.md`](docs/BUILDING.md): building from source on Linux, macOS and Windows.
 
 Do not implement future SaaS infrastructure merely because the architecture anticipates it.
 
