@@ -3,7 +3,7 @@
 //! imported entry. Nothing in the base is deleted unless the user picks
 //! `Replace` for that entry.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use cv_core::{Cv, Entry, EntrySection, Id, LanguagesSection, Section, SkillsSection};
 
@@ -45,27 +45,32 @@ pub struct MergePlan {
     pub entries: HashMap<Id, EntryDecision>,
 }
 
+/// A blank or whitespace-only value counts as empty.
+fn filled(s: Option<&str>) -> Option<&str> {
+    s.filter(|v| !v.trim().is_empty())
+}
+
 fn base_value(cv: &Cv, f: Field) -> Option<&str> {
     let b = &cv.basics;
-    match f {
-        Field::FullName => Some(b.full_name.as_str()).filter(|s| !s.trim().is_empty()),
+    filled(match f {
+        Field::FullName => Some(b.full_name.as_str()),
         Field::Headline => b.headline.as_deref(),
         Field::Email => b.email.as_deref(),
         Field::Phone => b.phone.as_deref(),
         Field::Location => b.location.as_deref(),
         Field::Summary => cv.summary.as_deref(),
-    }
+    })
 }
 
 fn imported_value(p: &CvPartial, f: Field) -> Option<&str> {
-    match f {
+    filled(match f {
         Field::FullName => p.full_name.as_deref(),
         Field::Headline => p.headline.as_deref(),
         Field::Email => p.email.as_deref(),
         Field::Phone => p.phone.as_deref(),
         Field::Location => p.location.as_deref(),
         Field::Summary => p.summary.as_deref(),
-    }
+    })
 }
 
 fn set_value(cv: &mut Cv, f: Field, v: String) {
@@ -230,8 +235,14 @@ fn entry_mut<'a>(cv: &'a mut Cv, id: &Id) -> Option<&'a mut Entry> {
 }
 
 /// Adds skills the base doesn't have yet (by case-insensitive name), into the
-/// group with the same label, or as a new group.
-fn merge_skills(base: &mut Cv, incoming: SkillsSection) {
+/// group with the same label, or as a new group. Incoming duplicates are
+/// dropped first.
+fn merge_skills(base: &mut Cv, mut incoming: SkillsSection) {
+    let mut seen = HashSet::new();
+    for group in &mut incoming.groups {
+        group.skills.retain(|k| seen.insert(norm(&k.name)));
+    }
+    incoming.groups.retain(|g| !g.skills.is_empty());
     let Some(target) = base.sections.iter_mut().find_map(|s| match s {
         Section::Skills(x) => Some(x),
         _ => None,
@@ -487,5 +498,54 @@ mod tests {
         base.basics.headline = None;
         merge(&mut base, incoming(), &MergePlan::default());
         assert_eq!(base.basics.headline.as_deref(), Some("Staff Engineer"));
+    }
+
+    #[test]
+    fn blank_values_count_as_empty_on_both_sides() {
+        let mut base = typical();
+        base.basics.headline = Some("  ".into());
+        let mut inc = incoming();
+        inc.email = Some(" ".into());
+        let email = base.basics.email.clone();
+        assert!(
+            !field_conflicts(&base, &inc)
+                .iter()
+                .any(|c| c.field == Field::Headline)
+        );
+        merge(&mut base, inc, &MergePlan::default());
+        assert_eq!(base.basics.headline.as_deref(), Some("Staff Engineer"));
+        assert_eq!(base.basics.email, email);
+    }
+
+    #[test]
+    fn duplicate_incoming_skills_are_added_once() {
+        let skill = |n: u8, name: &str| Skill {
+            id: id(n),
+            name: name.into(),
+        };
+        let mut base = typical();
+        base.sections.retain(|s| !matches!(s, Section::Skills(_)));
+        let section = SkillsSection {
+            id: id(40),
+            title_override: None,
+            groups: vec![
+                SkillGroup {
+                    id: id(41),
+                    label: None,
+                    skills: vec![skill(42, "Zig"), skill(43, " zig ")],
+                },
+                SkillGroup {
+                    id: id(44),
+                    label: Some("Other".into()),
+                    skills: vec![skill(45, "ZIG")],
+                },
+            ],
+        };
+        merge_skills(&mut base, section);
+        let Some(Section::Skills(x)) = base.sections.last() else {
+            panic!("skills")
+        };
+        assert_eq!(x.groups.len(), 1);
+        assert_eq!(x.groups[0].skills.len(), 1);
     }
 }
