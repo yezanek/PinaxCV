@@ -2,7 +2,7 @@
 
 use cv_core::Id;
 
-use crate::europass::{AttachmentError, MAX_ATTACHMENT, embedded_xml};
+use crate::europass::{AttachmentError, embedded_xml};
 use crate::europass_map::to_partial;
 use crate::europass_xml::{XmlError, parse_candidate};
 use crate::partial::ImportResult;
@@ -44,8 +44,6 @@ pub fn import_europass(
                 ));
             }
         }
-    } else if bytes.len() > MAX_ATTACHMENT {
-        return Err(ImportError::TooLarge);
     } else {
         bytes.to_vec()
     };
@@ -76,6 +74,15 @@ mod tests {
     #[test]
     fn bare_xml_imports() {
         let r = import_europass(XML.as_bytes(), &mut ids()).expect("import");
+        assert_eq!(r.cv_partial.full_name.as_deref(), Some("Jane Doe"));
+    }
+
+    #[test]
+    fn bare_xml_up_to_the_input_cap_imports() {
+        // Larger than the 10 MB attachment cap, within the 20 MB input cap.
+        let mut big = XML.as_bytes().to_vec();
+        big.resize(15 * 1024 * 1024, b' ');
+        let r = import_europass(&big, &mut ids()).expect("import");
         assert_eq!(r.cv_partial.full_name.as_deref(), Some("Jane Doe"));
     }
 
