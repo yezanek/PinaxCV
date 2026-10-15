@@ -75,6 +75,12 @@ bash scripts/check-boundaries.sh
 
 On Windows, run `scripts/check-boundaries.sh` from Git Bash.
 
+To measure preview and export speed on your own machine (spec section 16; numbers in ADR-035):
+
+```sh
+cargo run --release -p cv-render --example preview_latency
+```
+
 ## 4. Try the spike app (until M3)
 
 The M0.5 spike is a small Tauri + Leptos window that shows a pre-rendered CV page through the `preview` URI scheme:
