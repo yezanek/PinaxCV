@@ -5,12 +5,14 @@
 
 pub mod ats;
 pub mod data;
+mod html;
 mod render;
 #[cfg(test)]
 mod testdata;
 
 use cv_core::{Diagnostic, ResolvedCv, ValidationIssue};
 
+pub use html::{HtmlExporter, to_html};
 pub use render::{
     CLASSIC_MANIFEST, Compiled, MAX_PIXELS_PER_PT, MISSING_GLYPHS, PdfExporter, Renderer,
 };
@@ -29,6 +31,18 @@ impl Default for ExportOptions {
         Self {
             include_email: true,
             include_phone: true,
+        }
+    }
+}
+
+impl ExportOptions {
+    /// The HTML export dialog's starting choices (spec section 6.0): email
+    /// on, phone off. A page meant for a public website does not publish a
+    /// phone number unless the user ticks it.
+    pub const fn html_default() -> Self {
+        Self {
+            include_email: true,
+            include_phone: false,
         }
     }
 }

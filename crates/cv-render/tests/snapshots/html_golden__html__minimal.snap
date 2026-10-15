@@ -1,0 +1,15 @@
+---
+source: crates/cv-render/tests/html_golden.rs
+expression: body
+---
+<body>
+<header>
+<h1>Jane Doe</h1>
+<ul class="contact">
+<li><a href="mailto:jane@example.com">jane@example.com</a></li>
+</ul>
+</header>
+<main>
+</main>
+</body>
+</html>

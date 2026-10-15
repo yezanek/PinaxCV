@@ -1,0 +1,33 @@
+---
+source: crates/cv-render/tests/html_golden.rs
+expression: body
+---
+<body>
+<header>
+<h1>Jane &quot;JD&quot; O&#39;Doe &amp; Co</h1>
+<p class="headline">C# / F# dev @ #1 shop, 100% $ value</p>
+<ul class="contact">
+<li><a href="mailto:jane@example.com">jane@example.com</a></li>
+</ul>
+</header>
+<main>
+<section class="summary">
+<h2>Summary</h2>
+<p>Uses *bold*, _emph_, `raw`, #set, $math$, \backslash, &lt;label&gt;, @ref, [brackets], {braces}, // comment, /* block */ and ~ tilde.</p>
+</section>
+<section>
+<h2>Work Experience</h2>
+<article class="entry">
+<h3>*Not bold*<span class="org">, _Not emph_ &amp; Sons</span></h3>
+<p class="meta">Jan 2020 – Dec 2022</p>
+<p>&lt;script&gt;alert(1)&lt;/script&gt; &amp; &quot;quotes&quot;</p>
+<ul>
+<li>#import &quot;evil.typ&quot;: * should print literally.</li>
+<li>Escapes \# and \$ and $x^2$ stay text.</li>
+<li>Raw `#eval(&quot;1+1&quot;)` is not evaluated.</li>
+</ul>
+</article>
+</section>
+</main>
+</body>
+</html>
