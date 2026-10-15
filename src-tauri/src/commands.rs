@@ -259,8 +259,19 @@ mod tests {
         .expect("preview");
         assert_eq!(preview["revision"], 3);
         assert!(invoke(&w, "lint", json!({ "target": target })).is_ok());
+        // Give the CV a name and email so it passes export validation and
+        // reaches the dialog, which the test double always cancels.
+        let mut cv = created["cv"].clone();
+        cv["basics"]["full_name"] = json!("Jane Doe");
+        cv["basics"]["email"] = json!("jane@example.com");
+        invoke(
+            &w,
+            "save_cv",
+            json!({ "req": { "cv": cv, "expected_revision": created["revision"] } }),
+        )
+        .expect("save");
         let cancelled = invoke(&w, "export_pdf", json!({ "req": { "target": target } }))
-            .expect_err("cancelled or invalid");
-        assert!(cancelled["code"].is_string());
+            .expect_err("cancelled");
+        assert_eq!(cancelled["code"], json!(cv_api::ErrorCode::Cancelled));
     }
 }
