@@ -307,9 +307,9 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
   - positions become one Experience section, and description list items become bullets;
   - education becomes one Education section, with the degree as the title;
   - languages become one Languages section, whose level is the most common CEFR score (the highest on a tie);
-  - the location is "City, CC";
+  - the person's and each position's location is "City, CC", or whichever of the two is known (education has no country);
   - the first email and phone are used, with a warning when there are more.
-- Dates accept `YYYY`, `YYYY-MM` and `YYYY-MM-DD`; the day is dropped. A date that can't be read is left empty and reported as a warning.
+- Dates accept exactly `YYYY`, `YYYY-MM` and `YYYY-MM-DD`; the day is checked, then dropped. A date that can't be read is left empty and reported as a warning.
 - Language codes map to English names for common ISO 639 codes. Other codes are kept as written.
 - Checked locally against the real export: it maps into 3 sections with no warnings.
 
