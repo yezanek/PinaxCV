@@ -12,6 +12,8 @@ pub fn CvList(open: RwSignal<Option<Id>>) -> impl IntoView {
     let cvs: RwSignal<Vec<CvSummary>> = RwSignal::new(Vec::new());
     let error: RwSignal<Option<String>> = RwSignal::new(None);
     let title = RwSignal::new(String::new());
+    // Guards against a double click creating two CVs.
+    let creating = RwSignal::new(false);
 
     let reload = move || {
         spawn_local(async move {
@@ -24,11 +26,19 @@ pub fn CvList(open: RwSignal<Option<Id>>) -> impl IntoView {
     reload();
 
     let create = move |_| {
+        if creating.get_untracked() {
+            return;
+        }
+        creating.set(true);
         let req = NewCv {
             title: title.get_untracked(),
         };
         spawn_local(async move {
-            match call::<_, StoredCv>("create_cv", &ReqArg { req: &req }).await {
+            let result = call::<_, StoredCv>("create_cv", &ReqArg { req: &req }).await;
+            if creating.try_set(false).is_some() {
+                return; // The list was closed.
+            }
+            match result {
                 Ok(stored) => open.set(Some(stored.cv.id)),
                 Err(e) => error.set(Some(e.message)),
             }
@@ -70,7 +80,7 @@ pub fn CvList(open: RwSignal<Option<Id>>) -> impl IntoView {
                 <input placeholder="Title, for example Main CV" prop:value=move || title.get()
                     on:input=move |ev| title.set(event_target_value(&ev)) />
                 " "
-                <button on:click=create>"New CV"</button>
+                <button on:click=create prop:disabled=move || creating.get()>"New CV"</button>
             </p>
         </main>
     }
