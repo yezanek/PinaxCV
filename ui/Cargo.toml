@@ -22,3 +22,6 @@ web-sys.workspace = true
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
