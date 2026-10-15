@@ -1,0 +1,21 @@
+---
+source: crates/cv-render/tests/ats_golden.rs
+expression: report.extracted_text
+---
+Jane "JD" O'Doe & Co  
+C# / F# dev @ #1 shop, 100% $ value  
+jane@example.com  
+Summary 
+Uses *bold*, _emph_, `raw`, #set, $math$, \backslash, <label>, @ref, [brackets], {braces}, // comment, / 
+* block */ and ~ tilde. 
+Work Experience 
+*Not bold* 
+, _Not emph_ & Sons 
+Jan 2020 – Dec 2022 
+<script>alert(1)</script> & "quotes" 
+•
+#import "evil.typ": * should print literally. 
+•
+Escapes \# and \$ and $x^2$ stay text. 
+•
+Raw `#eval("1+1")` is not evaluated.

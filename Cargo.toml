@@ -29,6 +29,9 @@ unwrap_used = "warn"
 cv-core = { path = "crates/cv-core" }
 cv-api = { path = "crates/cv-api" }
 async-trait = "0.1.92"
+insta = "1.49.0"
+lopdf = "0.45.0"
+pdf-extract = "0.12.1"
 proptest = "1.12.0"
 regex = "1.13.1"
 tempfile = "3.27.0"

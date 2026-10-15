@@ -24,3 +24,5 @@ Users should still verify the final document through the employer's application 
 ## ATS report checks
 
 Name within the first 3 non-empty lines; email and phone within the first 8 and unbroken; headings present and in order; each entry's title, org and period within a 4-line window; no private-use, replacement or ligature codepoints; every bullet recoverable; heading and entry order matches the CV. The score is labelled "as read by PinaxCV" if the custom extractor fallback is used.
+
+The score is the share of these checks that pass, from 0 to 100. Text that cannot be read from the PDF scores 0. CJK text is a known limitation in v1: the bundled Inter font has no CJK glyphs, so the export warns about missing glyphs and the check fails (ADR-033).
