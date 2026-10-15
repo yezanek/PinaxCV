@@ -25,3 +25,4 @@ rustc-ice-*.txt
 
 # Tauri build output
 src-tauri/gen/
+ui/dist/
