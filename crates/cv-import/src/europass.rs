@@ -7,6 +7,9 @@ use lopdf::{Document, Object};
 /// Namespace of the current Europass `Candidate` XML.
 pub const EUROPASS_NS: &str = "http://www.europass.eu/1.0";
 
+/// Largest PDF read (spec section 9: importer input is capped at 20 MB).
+pub const MAX_INPUT: usize = 20 * 1024 * 1024;
+
 /// Largest attachment read (spec section 9: 10 MB per embedded entry).
 pub const MAX_ATTACHMENT: usize = 10 * 1024 * 1024;
 
@@ -17,7 +20,8 @@ pub enum AttachmentError {
     NotPdf,
     /// The PDF has no embedded Europass XML (for example a printed CV).
     NoEuropassXml,
-    /// The embedded XML is larger than [`MAX_ATTACHMENT`].
+    /// The PDF is larger than [`MAX_INPUT`], or its embedded XML is larger
+    /// than [`MAX_ATTACHMENT`].
     TooLarge,
 }
 
@@ -26,6 +30,9 @@ pub enum AttachmentError {
 /// Every embedded file is checked, and the first one that declares the
 /// Europass namespace is returned, whatever its file name.
 pub fn embedded_xml(pdf: &[u8]) -> Result<Vec<u8>, AttachmentError> {
+    if pdf.len() > MAX_INPUT {
+        return Err(AttachmentError::TooLarge);
+    }
     let doc = Document::load_mem(pdf).map_err(|_| AttachmentError::NotPdf)?;
     let mut too_large = false;
     for object in doc.objects.values() {
@@ -52,20 +59,18 @@ pub fn embedded_xml(pdf: &[u8]) -> Result<Vec<u8>, AttachmentError> {
             too_large = true;
             continue;
         }
-        let Ok(content) = stream.decompressed_content().or_else(|_| {
-            // Uncompressed streams have no filter to undo.
-            if stream.dict.get(b"Filter").is_err() {
-                Ok(stream.content.clone())
-            } else {
-                Err(())
+        // Decoding stops at the limit, so a forged or missing size cannot
+        // inflate a small stream into memory (a decompression bomb).
+        let content = match stream.get_plain_content_with_limit(MAX_ATTACHMENT) {
+            Ok(content) => content,
+            Err(lopdf::Error::Decompress(lopdf::DecompressError::MemoryLimitExceeded {
+                ..
+            })) => {
+                too_large = true;
+                continue;
             }
-        }) else {
-            continue;
+            Err(_) => continue,
         };
-        if content.len() > MAX_ATTACHMENT {
-            too_large = true;
-            continue;
-        }
         if declares_europass(&content) {
             return Ok(content);
         }
@@ -77,12 +82,17 @@ pub fn embedded_xml(pdf: &[u8]) -> Result<Vec<u8>, AttachmentError> {
     })
 }
 
-/// True when the start of `xml` declares the Europass namespace on a
-/// `Candidate` root.
+/// True when `xml` parses and its root element is `Candidate` in the
+/// Europass namespace.
 fn declares_europass(xml: &[u8]) -> bool {
-    let head = &xml[..xml.len().min(4096)];
-    let head = String::from_utf8_lossy(head);
-    head.contains("<Candidate") && head.contains(EUROPASS_NS)
+    let Ok(text) = std::str::from_utf8(xml) else {
+        return false;
+    };
+    let Ok(doc) = roxmltree::Document::parse(text) else {
+        return false;
+    };
+    let root = doc.root_element().tag_name();
+    root.name() == "Candidate" && root.namespace() == Some(EUROPASS_NS)
 }
 
 #[cfg(test)]
@@ -193,5 +203,40 @@ mod tests {
         let mut out = Vec::new();
         doc.save_to(&mut out).expect("save");
         assert_eq!(embedded_xml(&out), Err(AttachmentError::TooLarge));
+    }
+
+    #[test]
+    fn decompression_stops_at_the_attachment_limit() {
+        // Compresses to a few KB but inflates past the limit, with no
+        // declared size to catch it early.
+        let mut bomb = Vec::with_capacity(MAX_ATTACHMENT + 1);
+        bomb.extend_from_slice(XML.as_bytes());
+        bomb.resize(MAX_ATTACHMENT + 1, b' ');
+        let pdf = pdf_with(&[("cv.xml", &bomb, true)]);
+        assert!(pdf.len() < MAX_ATTACHMENT / 100);
+        assert_eq!(embedded_xml(&pdf), Err(AttachmentError::TooLarge));
+    }
+
+    #[test]
+    fn oversize_pdf_is_refused_before_parsing() {
+        let big = vec![b' '; MAX_INPUT + 1];
+        assert_eq!(embedded_xml(&big), Err(AttachmentError::TooLarge));
+    }
+
+    #[test]
+    fn only_a_candidate_root_in_the_europass_namespace_counts() {
+        let other_root =
+            br#"<Other xmlns="http://www.europass.eu/1.0"><!-- <Candidate --></Other>"#;
+        let wrong_ns = br#"<Candidate xmlns="http://example.com/"/>"#;
+        let prefixed = br#"<e:Candidate xmlns:e="http://www.europass.eu/1.0"/>"#;
+        assert!(!declares_europass(other_root));
+        assert!(!declares_europass(wrong_ns));
+        assert!(!declares_europass(
+            b"<Candidate xmlns=\"http://www.europass.eu/1.0\">"
+        ));
+        assert!(declares_europass(prefixed));
+        assert!(declares_europass(XML.as_bytes()));
+        let pdf = pdf_with(&[("a.xml", other_root, true), ("b.xml", XML.as_bytes(), true)]);
+        assert_eq!(embedded_xml(&pdf).expect("xml"), XML.as_bytes());
     }
 }
