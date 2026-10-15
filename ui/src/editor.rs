@@ -11,6 +11,7 @@ use cv_core::{Cv, Id, StoredCv};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 
+use crate::entries::EntrySections;
 use crate::ipc::{IdArg, ReqArg, call};
 
 /// Preview debounce from spec section 16.
@@ -18,10 +19,10 @@ const PREVIEW_DELAY: Duration = Duration::from_millis(150);
 /// Autosave debounce from spec section 12.
 const SAVE_DELAY: Duration = Duration::from_millis(600);
 
-/// Trims; an empty field becomes `None`.
+/// A blank field becomes `None`; other text is kept as typed, so the input
+/// is not rewritten mid-word (trailing spaces survive until the next key).
 fn opt(s: String) -> Option<String> {
-    let t = s.trim();
-    (!t.is_empty()).then(|| t.to_owned())
+    (!s.trim().is_empty()).then_some(s)
 }
 
 /// What to do once the newest edit is saved.
@@ -210,7 +211,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
     });
 
     // Applies `f` to the CV and schedules preview and autosave.
-    let edit = move |f: Box<dyn FnOnce(&mut Cv)>| {
+    let edit = Callback::new(move |f: Box<dyn FnOnce(&mut Cv)>| {
         cv.update(|c| {
             if let Some(c) = c {
                 f(c);
@@ -236,7 +237,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
             },
             SAVE_DELAY,
         );
-    };
+    });
 
     let field = move |label: &'static str, get: fn(&Cv) -> String, set: fn(&mut Cv, String)| {
         view! {
@@ -244,7 +245,15 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                 <input prop:value=move || cv.with(|c| c.as_ref().map(get).unwrap_or_default())
                     on:input=move |ev| {
                         let v = event_target_value(&ev);
-                        edit(Box::new(move |c| set(c, v)));
+                        edit.run(Box::new(move |c| set(c, v)));
+                    }
+                    // Trim when the field loses focus, not while typing.
+                    on:change=move |ev| {
+                        let v = event_target_value(&ev);
+                        if v.trim().len() != v.len() {
+                            let t = v.trim().to_owned();
+                            edit.run(Box::new(move |c| set(c, t)));
+                        }
                     } />
             </label>
         }
@@ -275,9 +284,10 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                     <textarea prop:value=move || cv.with(|c| c.as_ref().and_then(|c| c.summary.clone()).unwrap_or_default())
                         on:input=move |ev| {
                             let v = event_target_value(&ev);
-                            edit(Box::new(move |c| c.summary = opt(v)));
+                            edit.run(Box::new(move |c| c.summary = opt(v)));
                         }></textarea>
                 </label>
+                <EntrySections cv=cv edit=edit />
             </section>
             <section class="preview" class:stale=move || rendering.get() aria-label="Preview"
                 aria-busy=move || rendering.get().to_string()>

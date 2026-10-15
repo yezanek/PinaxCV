@@ -5,6 +5,8 @@ use cv_core::Id;
 use leptos::prelude::*;
 
 mod editor;
+mod entries;
+mod ids;
 mod ipc;
 mod list;
 

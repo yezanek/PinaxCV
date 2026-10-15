@@ -256,6 +256,12 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - This first screen set covers the CV list (create, open, delete) and an editor for the title, contact fields and summary, with the live preview on the right. Each edit bumps a local counter; the preview runs 150 ms after the last edit and autosave 600 ms after (spec section 12), and preview answers for older edits are ignored. While a newer preview renders, the old pages stay dimmed with a small spinner. Only one save runs at a time; an edit made during a save is sent next with the returned revision. Export and "← CVs" first wait until the newest edit is saved, and a failed save cancels them and shows the error. A save conflict is shown, not overwritten. New CV is disabled while a create request runs.
 - Checked by hand under Xvfb on Linux: creating a CV, typing the name and email updates the preview and saves, and the data is there after a restart. Sections, entries, the Style tab and keyboard shortcuts are the next M3 changes; `tauri-driver` smoke tests come with them.
 
+## ADR-039 — Editing sections, entries and bullets (M3)
+
+- The editor adds and removes work experience, education and project sections, their entries and bullets, and edits entry title, organisation, location and bullet text. Dates, descriptions, links, reordering, skills and languages follow in the next M3 changes.
+- New IDs are ULIDs made in the UI from `Date.now()` and `crypto.getRandomValues` (`ui/src/ids.rs`), so adding an item needs no extra round trip. The encoding is unit-tested; the store still refuses duplicate IDs (ADR-027).
+- Section, entry and bullet lists are keyed by ID and each input reads its value by ID, so an edit never rebuilds the field being typed in. Checked under Xvfb: typing a title, organisation and bullet keeps focus and updates the preview.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

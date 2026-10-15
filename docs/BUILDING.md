@@ -117,7 +117,7 @@ To run the app, build the UI, then start the shell:
 cargo run -p pinaxcv
 ```
 
-Rebuild the UI with Trunk after changing anything under `ui/`. The first screen lists your CVs; the editor has the contact fields and summary with a live preview, autosave, and PDF and HTML export. Editing sections and entries comes in the next M3 change.
+Rebuild the UI with Trunk after changing anything under `ui/`. The first screen lists your CVs; the editor has the contact fields, summary, and work experience, education and project entries with bullets, plus a live preview, autosave, and PDF and HTML export.
 
 The database is `pinaxcv.sqlite3` in `~/.local/share/dev.pinaxcv.app/` on Linux, `~/Library/Application Support/dev.pinaxcv.app/` on macOS and `%APPDATA%\dev.pinaxcv.app\` on Windows.
 
