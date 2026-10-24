@@ -4,10 +4,10 @@
 use std::sync::Arc;
 
 use cv_api::{
-    ApiError, DuplicateCv, DuplicateVariant, ErrorCode, ExportHtmlRequest, ExportPdfRequest,
-    ExportResult, FitOutcome, FitVariant, ImportCommit, ImportMatch, ImportMatchRequest,
-    ImportPreview, NewCv, NewVariant, PreviewRequest, PreviewResponse, PruneResult, SaveCv,
-    SaveVariant, Target, TemplateManifest,
+    AiConfig, AiStatus, ApiError, DuplicateCv, DuplicateVariant, ErrorCode, ExportHtmlRequest,
+    ExportPdfRequest, ExportResult, FitOutcome, FitVariant, ImportCommit, ImportMatch,
+    ImportMatchRequest, ImportPreview, NewCv, NewVariant, PreviewRequest, PreviewResponse,
+    PruneResult, SaveCv, SaveVariant, Target, TemplateManifest,
 };
 use cv_app::App;
 use cv_core::{AtsReport, CvSummary, Id, LintIssue, StoredCv, StoredVariant, VariantSummary};
@@ -96,6 +96,34 @@ pub async fn duplicate_variant(app: Shared<'_>, req: DuplicateVariant) -> Reply<
 #[tauri::command]
 pub async fn prune_variant(app: Shared<'_>, id: Id) -> Reply<PruneResult> {
     run(app, move |a| a.prune_variant(&id)).await
+}
+
+#[tauri::command]
+pub async fn ai_status(app: Shared<'_>) -> Reply<AiStatus> {
+    run(app, App::ai_status).await
+}
+
+#[tauri::command]
+pub async fn ai_configure(app: Shared<'_>, config: AiConfig) -> Reply<AiStatus> {
+    run(app, move |a| a.ai_configure(config)).await
+}
+
+#[tauri::command]
+pub async fn ai_forget_key(app: Shared<'_>) -> Reply<AiStatus> {
+    run(app, App::ai_forget_key).await
+}
+
+#[tauri::command]
+pub async fn ai_consent(app: Shared<'_>) -> Reply<AiStatus> {
+    run(app, App::ai_consent).await
+}
+
+/// Not on the blocking pool: the provider call is async, and the settings
+/// reads before it are quick.
+#[tauri::command]
+pub async fn ai_test_connection(app: Shared<'_>) -> Reply<()> {
+    let app = Arc::clone(app.inner());
+    app.ai_test_connection().await
 }
 
 #[tauri::command]

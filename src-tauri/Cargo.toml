@@ -18,6 +18,7 @@ cv-core.workspace = true
 cv-store.workspace = true
 tauri.workspace = true
 tauri-plugin-dialog.workspace = true
+keyring = "4.2.0"
 
 [features]
 # End-to-end test builds only: exports skip the save dialog (see dialog.rs).

@@ -177,6 +177,36 @@
       "description": "Permission identifier",
       "oneOf": [
         {
+          "description": "Enables the ai_configure command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-ai-configure",
+          "markdownDescription": "Enables the ai_configure command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the ai_consent command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-ai-consent",
+          "markdownDescription": "Enables the ai_consent command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the ai_forget_key command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-ai-forget-key",
+          "markdownDescription": "Enables the ai_forget_key command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the ai_status command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-ai-status",
+          "markdownDescription": "Enables the ai_status command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the ai_test_connection command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-ai-test-connection",
+          "markdownDescription": "Enables the ai_test_connection command without any pre-configured scope."
+        },
+        {
           "description": "Enables the ats_check command without any pre-configured scope.",
           "type": "string",
           "const": "allow-ats-check",
@@ -319,6 +349,36 @@
           "type": "string",
           "const": "allow-save-variant",
           "markdownDescription": "Enables the save_variant command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the ai_configure command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-ai-configure",
+          "markdownDescription": "Denies the ai_configure command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the ai_consent command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-ai-consent",
+          "markdownDescription": "Denies the ai_consent command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the ai_forget_key command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-ai-forget-key",
+          "markdownDescription": "Denies the ai_forget_key command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the ai_status command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-ai-status",
+          "markdownDescription": "Denies the ai_status command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the ai_test_connection command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-ai-test-connection",
+          "markdownDescription": "Denies the ai_test_connection command without any pre-configured scope."
         },
         {
           "description": "Denies the ats_check command without any pre-configured scope.",

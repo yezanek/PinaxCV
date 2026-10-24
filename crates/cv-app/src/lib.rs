@@ -8,6 +8,7 @@
 //! Imports (spec section 9.5) are in `import.rs`.
 #![forbid(unsafe_code)]
 
+mod ai;
 mod errors;
 mod files;
 mod ids;
@@ -32,6 +33,7 @@ use cv_core::{
 use cv_render::{ExportOptions, Exporter, HtmlExporter, PdfExporter, Renderer, ats};
 use cv_store::Store;
 
+pub use ai::{AI_CONSENT_VERSION, AiState, NoKeychain, SecretError, SecretStore, llm_error};
 pub use errors::{render_error, store_error};
 pub use files::{ExportKind, FileDialog, write_atomically};
 pub use ids::UlidIds;
@@ -51,6 +53,7 @@ pub struct App {
     dialog: Box<dyn FileDialog>,
     previews: PreviewCache,
     imports: ImportCache,
+    ai: AiState,
     next_preview: AtomicU64,
     preview_base: String,
 }
@@ -71,9 +74,17 @@ impl App {
             dialog,
             previews: PreviewCache::default(),
             imports: ImportCache::default(),
+            ai: AiState::default(),
             next_preview: AtomicU64::new(0),
             preview_base: preview_base.into(),
         }
+    }
+
+    /// Keeps API keys in `secrets`, the OS keychain. Without this call there
+    /// is no keychain and keys are held in memory for the session.
+    pub fn with_secrets(mut self, secrets: Box<dyn SecretStore>) -> Self {
+        self.ai = AiState::new(secrets);
+        self
     }
 
     fn next_id(&self) -> Id {

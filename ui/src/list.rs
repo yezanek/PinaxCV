@@ -12,6 +12,7 @@ use leptos::task::spawn_local;
 use crate::i18n::{error_message, fill, t};
 use crate::import::{ImportWizard, choose_file};
 use crate::ipc::{IdArg, NoArgs, ReqArg, call};
+use crate::settings::Settings;
 
 /// How long the "Deleted" toast offers Undo.
 const UNDO_TIME: Duration = Duration::from_secs(8);
@@ -84,6 +85,7 @@ pub fn CvList(open: RwSignal<Option<Id>>) -> impl IntoView {
     // The open import, while the wizard shows; `choosing` while the file
     // dialog is open.
     let importing: RwSignal<Option<ImportPreview>> = RwSignal::new(None);
+    let settings_open = RwSignal::new(false);
     let choosing = RwSignal::new(false);
 
     let reload = move || {
@@ -196,12 +198,19 @@ pub fn CvList(open: RwSignal<Option<Id>>) -> impl IntoView {
 
     let s = t();
     let home = move || {
+        if settings_open.get() {
+            return view! { <Settings close=Callback::new(move |()| settings_open.set(false)) /> }
+                .into_any();
+        }
         if let Some(preview) = importing.get() {
             return view! { <ImportWizard preview=preview cvs=cvs.get_untracked() importing=importing open=open /> }
                 .into_any();
         }
         view! {
-            <header class="bar"><h1>{s.app_name}</h1></header>
+            <header class="bar">
+                <h1>{s.app_name}</h1>
+                <button class="settings-button" on:click=move |_| settings_open.set(true)>{s.settings}</button>
+            </header>
             <main class="list">
                 <h2>{s.your_cvs}</h2>
                 <p class="error">{move || error.get()}</p>

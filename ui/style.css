@@ -125,3 +125,13 @@ main.import ul.import-summary li, main.import ul.warnings li { border: none; pad
 .ats-checks small { color: var(--muted); }
 .ats-text-head { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.8rem; }
 .ats-text { font-family: ui-monospace, monospace; font-size: 0.85em; white-space: pre-wrap; border: 1px solid var(--border); padding: 0.5rem; max-height: 24rem; overflow: auto; }
+.settings { max-width: 40rem; margin: 0 auto; padding: 1rem; }
+.settings label { display: block; margin-bottom: 0.6rem; }
+.settings label:not(.check) > input, .settings label > select { display: block; width: 100%; margin-top: 0.2rem; }
+.settings label.check { display: flex; gap: 0.4rem; align-items: center; }
+.settings label.check input { width: auto; margin: 0; }
+.settings .hint { color: var(--muted); font-size: 0.9em; }
+.settings .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.bar .settings-button { margin-left: auto; }
+.consent { border: 1px solid var(--border); padding: 0.6rem 0.9rem; margin-top: 1rem; }
+.consent h3 { margin-top: 0; }

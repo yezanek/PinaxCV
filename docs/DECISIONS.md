@@ -449,6 +449,12 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - HTTP uses `ureq` 3 with rustls and the `ring` provider instead of the spec's `reqwest`: `ureq` is already in the workspace, needs no async runtime of its own, and avoids `aws-lc-rs`, which needs CMake and NASM on Windows. Calls run on `tokio::task::spawn_blocking`; cancelling returns at once and drops the answer.
 - Defaults: 15 s to connect, 60 s per request (configurable with `UreqTransport::with_timeout` for slow local models), up to two retries with 1 s and 4 s waits on network errors and statuses 408, 429, 500, 502, 503, 504 and 529, responses capped at 8 MB. Errors carry the status or a short reason, never a request or response body.
 
+## ADR-069 — AI settings, keychain and consent (M7a)
+
+- A Settings screen, opened from the CV list, holds the AI section for now (the rest of spec section 12's Settings comes with M8): provider (off, Anthropic, OpenAI, Gemini, OpenAI-compatible), model, server address for compatible servers, API key, and the "send my name" (default off) and "send my city and country" (default on) switches. "Test connection" sends a request with no CV data; "Forget key" removes the key.
+- The shell keeps keys in the OS keychain through `keyring` 4 (Windows Credential Manager, the Secret Service over zbus on Linux with no libdbus needed, Keychain Services on macOS), filed under `dev.pinaxcv.app` with the provider as the account. `cv-app` only sees a `SecretStore` trait. When no keychain is reachable, the key is held in memory for the session and the screen says so (spec section 13.1). Keys never reach the database, the logs or any reply; `AiStatus` only says where the key is kept.
+- Consent (spec section 11.1) lists where requests go and what is and is not sent, following the two switches. Accepting stores `ai.consent_version` (now 1), `ai.consent_at` (Unix seconds) and `ai.consent_for` (`provider|host`). Another provider or host asks again; another model at the same provider does not. `App::llm` refuses with `ai_not_configured` or `ai_consent_required` until both hold, so later AI stages cannot skip the gate.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
