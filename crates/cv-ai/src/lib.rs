@@ -9,6 +9,7 @@
 
 pub mod advice;
 pub mod cache;
+pub mod extract;
 pub mod fake;
 pub mod http;
 pub mod payload;

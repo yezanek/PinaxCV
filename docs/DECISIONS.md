@@ -506,6 +506,13 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Stage G (`ai_review`) reviews the base CV without a job, with the lint findings sent along so the model does not repeat them. Rewrites get the stage D checks (with no job keywords), the summary the stage E checks; at most 12 rewrites and 8 notes are kept, and notes about unknown items are kept as notes about the whole CV. The latest review per CV is stored as JSON in `review_sessions`; deciding keeps its time.
 - Accepting a review suggestion (`review_decide`) applies its text, or the user's edit of it, to the base CV through `Cv::apply_text`, only while the text is still what was reviewed; otherwise it fails with `Conflict` and changes nothing. The Checks tab waits for unsaved edits before accepting and takes the saved CV and its revision from the answer, so the editor's autosave does not conflict.
 
+## ADR-076 — Text import with AI (M7b)
+
+- "Import text…" on the CV list takes pasted text, or a PDF or `.txt` file, and shows exactly the text "Read with AI" would send, with the provider's host. Nothing is sent until the user clicks; without AI (or without consent) "Read without AI" runs the heading and date heuristics of ADR-047 and says the result needs checking.
+- The issue asked for contact redaction, which is stricter than spec section 9.4 (which allowed sending contact details with consent): email addresses, URLs and phone numbers are taken out of the text before it is shown and sent, and found again in the original text on this computer (first email and phone, every URL as a link). The name, headline and location go as written, since the model needs them to read the CV. Runs of months and years ("01/2019 - 03/2021") are not phone numbers, here and in the AI payload redaction.
+- The model fills a schema without contact fields (`cv_ai::extract::ExtractedCv`); dates outside 1900 to 2100 or months outside 1 to 12 are dropped, and a current entry has no end. Every bullet is checked word for word against the text that was sent, ignoring case, spacing and punctuation at word ends; bullets that fail are listed (highlighted) in the import wizard and counted in its warnings, with the model's `import_notes`.
+- The texts are kept in memory only (the last two), and the result goes through the same preview, merge review and snapshot as a file import. At most about ten pages (40,000 characters) are sent.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

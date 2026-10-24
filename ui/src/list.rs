@@ -13,6 +13,7 @@ use crate::i18n::{error_message, fill, t};
 use crate::import::{ImportWizard, choose_file};
 use crate::ipc::{IdArg, NoArgs, ReqArg, call};
 use crate::settings::Settings;
+use crate::text_import::TextImport;
 
 /// How long the "Deleted" toast offers Undo.
 const UNDO_TIME: Duration = Duration::from_secs(8);
@@ -87,6 +88,8 @@ pub fn CvList(open: RwSignal<Option<Id>>) -> impl IntoView {
     let importing: RwSignal<Option<ImportPreview>> = RwSignal::new(None);
     let settings_open = RwSignal::new(false);
     let choosing = RwSignal::new(false);
+    // True while the text import screen shows.
+    let text_import = RwSignal::new(false);
 
     let reload = move || {
         spawn_local(async move {
@@ -202,6 +205,13 @@ pub fn CvList(open: RwSignal<Option<Id>>) -> impl IntoView {
             return view! { <Settings close=Callback::new(move |()| settings_open.set(false)) /> }
                 .into_any();
         }
+        if text_import.get() {
+            return view! {
+                <TextImport close=Callback::new(move |()| text_import.set(false))
+                    done=Callback::new(move |p: ImportPreview| { text_import.set(false); importing.set(Some(p)); }) />
+            }
+            .into_any();
+        }
         if let Some(preview) = importing.get() {
             return view! { <ImportWizard preview=preview cvs=cvs.get_untracked() importing=importing open=open /> }
                 .into_any();
@@ -219,6 +229,7 @@ pub fn CvList(open: RwSignal<Option<Id>>) -> impl IntoView {
                         on:input=move |ev| title.set(event_target_value(&ev)) />
                     <button on:click=create prop:disabled=move || creating.get()>{s.new_cv}</button>
                     <button title=s.import_cv_hint on:click=start_import prop:disabled=move || choosing.get()>{s.import_cv}</button>
+                    <button title=s.import_text_hint on:click=move |_| { error.set(None); text_import.set(true) }>{s.import_text}</button>
                 </p>
                 <Show when=move || cvs.with(Vec::is_empty)>
                     <p class="status">{s.no_cvs_yet}</p>

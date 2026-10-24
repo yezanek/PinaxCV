@@ -71,6 +71,21 @@ pub fn section_lines(sections: &[Section]) -> Vec<String> {
         .collect()
 }
 
+/// The bullets an AI import marked for review, in preview order.
+pub fn needs_review_texts(preview: &ImportPreview) -> Vec<String> {
+    entry_sections(&preview.sections)
+        .into_iter()
+        .flat_map(|(_, x)| &x.entries)
+        .chain(preview.sections.iter().flat_map(|s| match s {
+            Section::Custom(c) => c.entries.as_slice(),
+            _ => &[],
+        }))
+        .flat_map(|e| &e.bullets)
+        .filter(|b| preview.needs_review.contains(&b.id))
+        .map(|b| b.text.clone())
+        .collect()
+}
+
 /// Replace the suggested match, otherwise add the entry as new.
 pub fn default_choices(matches: &[EntryMatch]) -> HashMap<Id, EntryChoice> {
     matches
@@ -239,6 +254,8 @@ pub fn ImportWizard(
     let lines = section_lines(&preview.sections);
     let has_warnings = !preview.warnings.is_empty();
     let warnings = StoredValue::new(preview.warnings.clone());
+    let review_bullets = StoredValue::new(needs_review_texts(&preview));
+    let has_review = review_bullets.with_value(|b| !b.is_empty());
 
     // The merge review: contact conflicts, then one row per imported entry.
     let review_view = move || {
@@ -333,6 +350,12 @@ pub fn ImportWizard(
                 <h3>{s.import_warnings}</h3>
                 <ul class="warnings">
                     {move || warnings.with_value(|list| list.iter().map(|w| view! { <li>{w.clone()}</li> }).collect_view())}
+                </ul>
+            </Show>
+            <Show when=move || has_review>
+                <h3>{s.import_check_bullets}</h3>
+                <ul class="warnings">
+                    {move || review_bullets.with_value(|list| list.iter().map(|b| view! { <li><mark>{b.clone()}</mark></li> }).collect_view())}
                 </ul>
             </Show>
             <fieldset class="segmented">
@@ -434,6 +457,39 @@ mod tests {
             assert_eq!(parse_choice(&choice_value(&choice)), choice);
         }
         assert_eq!(parse_choice("replace:not-an-id"), EntryChoice::AddNew);
+    }
+
+    #[test]
+    fn bullets_marked_for_review_are_listed() {
+        let mut e = entry(1, "A", "B");
+        e.bullets = vec![
+            cv_core::Bullet {
+                id: id(5),
+                text: "Kept as written".into(),
+            },
+            cv_core::Bullet {
+                id: id(6),
+                text: "Reworded".into(),
+            },
+        ];
+        let preview = ImportPreview {
+            preview_id: 1,
+            full_name: None,
+            headline: None,
+            email: None,
+            phone: None,
+            location: None,
+            links: Vec::new(),
+            summary: None,
+            sections: vec![Section::Experience(EntrySection {
+                id: id(10),
+                title_override: None,
+                entries: vec![e],
+            })],
+            warnings: Vec::new(),
+            needs_review: vec![id(6)],
+        };
+        assert_eq!(needs_review_texts(&preview), ["Reworded"]);
     }
 
     #[test]

@@ -4,11 +4,11 @@
 use std::sync::Arc;
 
 use cv_api::{
-    AiConfig, AiReview, AiStatus, AiTailor, ApiError, DuplicateCv, DuplicateVariant, ErrorCode,
-    ExportHtmlRequest, ExportPdfRequest, ExportResult, FitOutcome, FitVariant, ImportCommit,
-    ImportMatch, ImportMatchRequest, ImportPreview, JobId, NewCv, NewVariant, PreviewRequest,
-    PreviewResponse, PruneResult, ReviewDecide, ReviewDecided, ReviewSession, SaveCv, SaveVariant,
-    Target, TemplateManifest,
+    AiConfig, AiImport, AiReview, AiStatus, AiTailor, ApiError, DuplicateCv, DuplicateVariant,
+    ErrorCode, ExportHtmlRequest, ExportPdfRequest, ExportResult, FitOutcome, FitVariant,
+    ImportCommit, ImportMatch, ImportMatchRequest, ImportPreview, ImportText, ImportTextSource,
+    JobId, NewCv, NewVariant, PreviewRequest, PreviewResponse, PruneResult, ReviewDecide,
+    ReviewDecided, ReviewSession, SaveCv, SaveVariant, Target, TemplateManifest,
 };
 use cv_app::App;
 use cv_core::{AtsReport, CvSummary, Id, LintIssue, StoredCv, StoredVariant, VariantSummary};
@@ -129,6 +129,30 @@ pub async fn ai_tailor<R: Runtime>(
 ) -> Reply<JobId> {
     let app = Arc::clone(app.inner());
     crate::jobs::start(&handle, |events| app.ai_tailor(events, req))
+}
+
+/// Reads text to import (pasted, or from a file the user picks) and returns
+/// it exactly as `ai_import` would send it.
+#[tauri::command]
+pub async fn import_text_prepare(app: Shared<'_>, source: ImportTextSource) -> Reply<ImportText> {
+    run(app, move |a| a.import_text_prepare(source)).await
+}
+
+#[tauri::command]
+pub async fn import_text_basic(app: Shared<'_>, text_id: u64) -> Reply<ImportPreview> {
+    run(app, move |a| a.import_text_basic(text_id)).await
+}
+
+/// Starts extracting a prepared text with AI; the result arrives as an
+/// `ai://done` event holding an `ImportPreview`.
+#[tauri::command]
+pub async fn ai_import<R: Runtime>(
+    handle: AppHandle<R>,
+    app: Shared<'_>,
+    req: AiImport,
+) -> Reply<JobId> {
+    let app = Arc::clone(app.inner());
+    crate::jobs::start(&handle, |events| app.ai_import(events, req))
 }
 
 /// Starts an AI review of a base CV; progress and the result arrive as

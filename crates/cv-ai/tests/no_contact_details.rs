@@ -85,7 +85,7 @@ async fn run_every_stage(llm: &FakeLlm, opts: PayloadOptions) -> Vec<Kind> {
         prompts::summary(&req, &payload),
         prompts::gaps(&req, &req.nice_to_have, &payload),
         prompts::review(&lint, &payload),
-        prompts::import_extract(&text),
+        prompts::import_extract(&cv_ai::extract::prepare_text(&text).expect("text").sent),
     ];
     let mut kinds = Vec::new();
     for p in prompts {
@@ -117,7 +117,7 @@ fn leaks(text: &str, name_allowed: bool) -> Vec<&'static str> {
 }
 
 #[tokio::test]
-async fn only_import_extract_sends_contact_details() {
+async fn no_stage_sends_contact_details() {
     let llm = FakeLlm::new();
     let kinds = run_every_stage(&llm, PayloadOptions::default()).await;
     let seen = llm.seen();
@@ -126,7 +126,14 @@ async fn only_import_extract_sends_contact_details() {
         let sent = format!("{}\n{}", request.system, request.user);
         let found = leaks(&sent, false);
         if *kind == Kind::ImportExtract {
-            assert!(found.contains(&EMAIL) && found.contains(&NAME), "{found:?}");
+            // The import sends the text as written, name and street
+            // included, after the user has seen it; email, phone and links
+            // are found again locally (ADR-076).
+            let found: Vec<_> = found
+                .into_iter()
+                .filter(|f| ![NAME, STREET, POSTCODE].contains(f))
+                .collect();
+            assert!(found.is_empty(), "import sent {found:?}");
         } else {
             assert!(found.is_empty(), "{} sent {found:?}", kind.as_str());
         }
