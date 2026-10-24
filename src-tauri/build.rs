@@ -22,6 +22,7 @@ const COMMANDS: &[&str] = &[
     "export_html",
     "ats_check",
     "lint",
+    "list_templates",
 ];
 
 fn main() {

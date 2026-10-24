@@ -56,6 +56,7 @@ fn main() {
             commands::export_html,
             commands::ats_check,
             commands::lint,
+            commands::list_templates,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|e| panic!("PinaxCV could not start: {e}"));

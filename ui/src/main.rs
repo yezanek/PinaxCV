@@ -13,6 +13,7 @@ mod ipc;
 mod list;
 mod lists;
 mod order;
+mod style;
 mod variants;
 
 #[component]

@@ -18,7 +18,7 @@ use std::sync::{Mutex, PoisonError};
 use cv_api::{
     ApiError, DuplicateCv, DuplicateVariant, ErrorCode, ExportHtmlRequest, ExportPdfRequest,
     ExportResult, NewCv, NewVariant, PreviewRequest, PreviewResponse, PruneResult, SaveCv,
-    SaveVariant, Target,
+    SaveVariant, Target, TemplateManifest,
 };
 use cv_core::validate;
 use cv_core::{
@@ -292,6 +292,13 @@ impl App {
         Ok(cv_core::lint::lint(&resolved, pages))
     }
 
+    // Templates
+
+    /// The embedded templates' manifests (v1: only `classic`).
+    pub fn list_templates(&self) -> Result<Vec<TemplateManifest>> {
+        templates()
+    }
+
     // Helpers
 
     fn load_variant(&self, cv_id: &Id, variant_id: &Id) -> Result<Variant> {
@@ -352,6 +359,17 @@ impl App {
     }
 }
 
+/// Parses the embedded template manifests.
+pub fn templates() -> Result<Vec<TemplateManifest>> {
+    let classic = serde_json::from_str(cv_render::CLASSIC_MANIFEST).map_err(|_| {
+        ApiError::new(
+            ErrorCode::Internal,
+            "The built-in template list is damaged. Please report this.",
+        )
+    })?;
+    Ok(vec![classic])
+}
+
 /// A new CV with every optional field empty.
 pub fn blank_cv(id: Id, title: &str) -> Cv {
     let title = title.trim();
@@ -410,6 +428,35 @@ mod tests {
         assert_eq!(blank_cv(cv.id.clone(), " Main ").title, "Main");
         assert!(!validate::has_errors(&validate::for_save(&mut cv)));
         assert!(validate::has_errors(&validate::for_export(&cv)));
+    }
+
+    #[test]
+    fn classic_manifest_ranges_match_the_clamping_ranges() {
+        let list = templates().expect("manifests parse");
+        assert_eq!(list.len(), 1);
+        let classic = &list[0];
+        assert_eq!(classic.id, TemplateId::default());
+        assert!(classic.ats_safe);
+        let defaults = TemplateOptions::default();
+        for (range, (min, max), default) in [
+            (
+                classic.options.font_size_pt,
+                TemplateOptions::FONT_SIZE_PT,
+                defaults.font_size_pt,
+            ),
+            (
+                classic.options.line_spacing,
+                TemplateOptions::LINE_SPACING,
+                defaults.line_spacing,
+            ),
+            (
+                classic.options.margin_mm,
+                TemplateOptions::MARGIN_MM,
+                defaults.margin_mm,
+            ),
+        ] {
+            assert_eq!((range.min, range.max, range.default), (min, max, default));
+        }
     }
 
     #[test]

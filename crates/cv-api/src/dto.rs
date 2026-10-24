@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
-use cv_core::{AtsReport, Cv, Diagnostic, Id, JobTarget, Variant};
+use cv_core::{AtsReport, Cv, Diagnostic, Id, JobTarget, TemplateId, Variant};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -103,6 +103,36 @@ pub struct ExportResult {
     pub page_count: Option<u32>,
     /// PDF only: the ATS check of the exported file.
     pub ats: Option<AtsReport>,
+}
+
+// Templates
+
+/// An embedded template's `manifest.json`, for the Style tab (spec section 7).
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct TemplateManifest {
+    pub id: TemplateId,
+    /// Shown in the template picker.
+    pub name: String,
+    pub ats_safe: bool,
+    /// Section kinds the template can render, in snake_case.
+    pub sections: Vec<String>,
+    pub options: TemplateOptionRanges,
+}
+
+/// The allowed range of each numeric `TemplateOptions` field. The backend
+/// clamps saved values to these ranges.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct TemplateOptionRanges {
+    pub font_size_pt: OptionRange,
+    pub line_spacing: OptionRange,
+    pub margin_mm: OptionRange,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Copy, Debug, PartialEq)]
+pub struct OptionRange {
+    pub min: f32,
+    pub max: f32,
+    pub default: f32,
 }
 
 // Settings and AI configuration
