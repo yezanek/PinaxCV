@@ -1168,6 +1168,7 @@ version = "0.0.0"
 dependencies = [
  "cv-api",
  "cv-core",
+ "cv-import",
  "cv-render",
  "cv-store",
  "serde_json",

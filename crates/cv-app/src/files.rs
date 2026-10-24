@@ -1,4 +1,4 @@
-//! Backend-owned save dialogs and safe file writes (spec section 10.2).
+//! Backend-owned file dialogs and safe file writes (spec section 10.2).
 
 use std::fs;
 use std::io::{self, Write};
@@ -19,10 +19,13 @@ impl ExportKind {
     }
 }
 
-/// Implemented by the shell with the platform save dialog.
-pub trait SaveDialog: Send + Sync {
+/// Implemented by the shell with the platform file dialogs.
+pub trait FileDialog: Send + Sync {
     /// Asks the user where to save; `None` when they cancel.
     fn choose_save_path(&self, suggested_file_name: &str, kind: ExportKind) -> Option<PathBuf>;
+    /// Asks the user for a file to import, offering files with these
+    /// extensions; `None` when they cancel.
+    fn choose_open_path(&self, extensions: &[&str]) -> Option<PathBuf>;
 }
 
 /// Writes `bytes` to a temporary file next to `path`, then renames it over

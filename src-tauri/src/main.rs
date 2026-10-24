@@ -16,14 +16,14 @@ mod preview;
 /// File name of the database inside the app data directory.
 const DB_FILE: &str = "pinaxcv.sqlite3";
 
-/// The platform save dialog, or in an end-to-end test build the dialog
-/// that saves into `PINAXCV_E2E_EXPORT_DIR`.
-fn save_dialog(handle: &tauri::AppHandle) -> Box<dyn cv_app::SaveDialog> {
+/// The platform file dialogs, or in an end-to-end test build the dialogs
+/// that save into `PINAXCV_E2E_EXPORT_DIR`.
+fn file_dialog(handle: &tauri::AppHandle) -> Box<dyn cv_app::FileDialog> {
     #[cfg(feature = "e2e")]
-    if let Some(d) = dialog::E2eSaveDialog::from_env() {
+    if let Some(d) = dialog::E2eFileDialog::from_env() {
         return Box::new(d);
     }
-    Box::new(dialog::TauriSaveDialog::new(handle.clone()))
+    Box::new(dialog::TauriFileDialog::new(handle.clone()))
 }
 
 fn main() {
@@ -39,7 +39,7 @@ fn main() {
             let store = SqliteStore::open(&dir.join(DB_FILE))?;
             let app = App::new(
                 Box::new(store),
-                save_dialog(tauri_app.handle()),
+                file_dialog(tauri_app.handle()),
                 Box::new(UlidIds),
                 preview::BASE_URL,
             );
@@ -67,6 +67,9 @@ fn main() {
             commands::ats_check,
             commands::lint,
             commands::list_templates,
+            commands::import_parse,
+            commands::import_match,
+            commands::import_commit,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|e| panic!("PinaxCV could not start: {e}"));

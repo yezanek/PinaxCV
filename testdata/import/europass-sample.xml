@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic Europass CV for import tests; not a real person. -->
+<Candidate xmlns="http://www.europass.eu/1.0" xmlns:oa="http://www.openapplications.org/oagis/9" xmlns:hr="http://www.hr-xml.org/3" xmlns:eures="http://www.europass_eures.eu/1.0">
+  <CandidatePerson>
+    <PersonName><oa:GivenName>Alex</oa:GivenName><hr:FamilyName>Sample</hr:FamilyName></PersonName>
+    <Communication><ChannelCode>Email</ChannelCode><oa:URI>alex@example.org</oa:URI></Communication>
+  </CandidatePerson>
+  <CandidateProfile>
+    <EmploymentHistory>
+      <EmployerHistory>
+        <hr:OrganizationName>Example Works</hr:OrganizationName>
+        <PositionHistory>
+          <PositionTitle typeCode="FREETEXT">Platform Engineer</PositionTitle>
+          <EmploymentPeriod>
+            <eures:StartDate><hr:FormattedDateTime>2019-05</hr:FormattedDateTime></eures:StartDate>
+            <eures:EndDate><hr:FormattedDateTime>2022-01</hr:FormattedDateTime></eures:EndDate>
+          </EmploymentPeriod>
+          <oa:Description>&lt;ul&gt;&lt;li&gt;Ran the build farm.&lt;/li&gt;&lt;/ul&gt;</oa:Description>
+        </PositionHistory>
+      </EmployerHistory>
+    </EmploymentHistory>
+  </CandidateProfile>
+</Candidate>

@@ -5,8 +5,8 @@ use std::sync::Arc;
 
 use cv_api::{
     ApiError, DuplicateCv, DuplicateVariant, ErrorCode, ExportHtmlRequest, ExportPdfRequest,
-    ExportResult, NewCv, NewVariant, PreviewRequest, PreviewResponse, PruneResult, SaveCv,
-    SaveVariant, Target, TemplateManifest,
+    ExportResult, ImportCommit, ImportMatch, ImportMatchRequest, ImportPreview, NewCv, NewVariant,
+    PreviewRequest, PreviewResponse, PruneResult, SaveCv, SaveVariant, Target, TemplateManifest,
 };
 use cv_app::App;
 use cv_core::{AtsReport, CvSummary, Id, LintIssue, StoredCv, StoredVariant, VariantSummary};
@@ -127,6 +127,21 @@ pub async fn list_templates(app: Shared<'_>) -> Reply<Vec<TemplateManifest>> {
     run(app, |a| a.list_templates()).await
 }
 
+#[tauri::command]
+pub async fn import_parse(app: Shared<'_>) -> Reply<ImportPreview> {
+    run(app, App::import_parse).await
+}
+
+#[tauri::command]
+pub async fn import_match(app: Shared<'_>, req: ImportMatchRequest) -> Reply<ImportMatch> {
+    run(app, move |a| a.import_match(req)).await
+}
+
+#[tauri::command]
+pub async fn import_commit(app: Shared<'_>, req: ImportCommit) -> Reply<StoredCv> {
+    run(app, move |a| a.import_commit(req)).await
+}
+
 #[cfg(test)]
 mod tests {
     //! Drives the commands through Tauri's IPC with the mock runtime, using
@@ -134,7 +149,7 @@ mod tests {
 
     use std::sync::Arc;
 
-    use cv_app::{App, ExportKind, SaveDialog, UlidIds};
+    use cv_app::{App, ExportKind, FileDialog, UlidIds};
     use cv_store::{SqliteStore, SystemClock};
     use serde_json::{Value, json};
     use tauri::ipc::{CallbackFn, InvokeBody};
@@ -146,8 +161,12 @@ mod tests {
     /// Always cancels, so no test writes a file.
     struct Cancel;
 
-    impl SaveDialog for Cancel {
+    impl FileDialog for Cancel {
         fn choose_save_path(&self, _: &str, _: ExportKind) -> Option<std::path::PathBuf> {
+            None
+        }
+
+        fn choose_open_path(&self, _: &[&str]) -> Option<std::path::PathBuf> {
             None
         }
     }
@@ -173,6 +192,7 @@ mod tests {
                 super::export_pdf,
                 super::lint,
                 super::list_templates,
+                super::import_parse,
             ])
             .build(mock_context(noop_assets()))
             .expect("app");
@@ -287,5 +307,12 @@ mod tests {
         let list = invoke(&w, "list_templates", json!({})).expect("templates");
         assert_eq!(list[0]["id"], "classic");
         assert_eq!(list[0]["options"]["font_size_pt"]["min"], 9.0);
+    }
+
+    #[test]
+    fn cancelled_import_is_an_api_error() {
+        let w = window();
+        let err = invoke(&w, "import_parse", json!({})).expect_err("cancelled");
+        assert_eq!(err["code"], json!(cv_api::ErrorCode::Cancelled));
     }
 }

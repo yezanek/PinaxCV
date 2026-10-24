@@ -5,20 +5,22 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use cv_api::{
-    DuplicateCv, ErrorCode, ExportHtmlRequest, ExportPdfRequest, NewCv, NewVariant, PreviewRequest,
+    DuplicateCv, EntryChoice, EntryDecision, ErrorCode, ExportHtmlRequest, ExportPdfRequest,
+    ImportCommit, ImportField, ImportMatchRequest, ImportTarget, NewCv, NewVariant, PreviewRequest,
     SaveCv, SaveVariant, Target,
 };
-use cv_app::{App, ExportKind, SaveDialog, UlidIds};
-use cv_core::{Cv, JobTarget, StoredCv};
-use cv_store::{SqliteStore, SystemClock};
+use cv_app::{App, ExportKind, FileDialog, UlidIds};
+use cv_core::{Cv, JobTarget, Section, SnapshotReason, StoredCv};
+use cv_store::{SqliteStore, Store, SystemClock};
 
 /// Answers every save dialog with a fixed folder, or cancels.
 struct FakeDialog {
     dir: Option<PathBuf>,
+    open: Option<PathBuf>,
     asked: Mutex<Vec<(String, ExportKind)>>,
 }
 
-impl SaveDialog for FakeDialog {
+impl FileDialog for FakeDialog {
     fn choose_save_path(&self, suggested: &str, kind: ExportKind) -> Option<PathBuf> {
         self.asked
             .lock()
@@ -26,13 +28,23 @@ impl SaveDialog for FakeDialog {
             .push((suggested.to_owned(), kind));
         self.dir.as_ref().map(|d| d.join(suggested))
     }
+
+    fn choose_open_path(&self, _: &[&str]) -> Option<PathBuf> {
+        self.open.clone()
+    }
 }
 
 fn app_with(store: SqliteStore, dir: Option<&Path>) -> App {
+    importing(store, dir, None)
+}
+
+/// An app whose open dialog picks `open`.
+fn importing(store: SqliteStore, dir: Option<&Path>, open: Option<&Path>) -> App {
     App::new(
         Box::new(store),
         Box::new(FakeDialog {
             dir: dir.map(Path::to_path_buf),
+            open: open.map(Path::to_path_buf),
             asked: Mutex::new(Vec::new()),
         }),
         Box::new(UlidIds),
@@ -331,4 +343,134 @@ fn data_survives_a_restart() {
     let cv = app.get_cv(&id).expect("get").cv;
     assert_eq!(cv.basics.full_name, "Jane Doe");
     assert_eq!(cv.sections.len(), fixture("typical").sections.len());
+}
+
+/// The synthetic Europass sample, written to `dir`, with `edits` applied.
+fn europass_file(dir: &Path, edits: &[(&str, &str)]) -> PathBuf {
+    let mut xml = std::fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../testdata/import/europass-sample.xml"),
+    )
+    .expect("read sample");
+    for (from, to) in edits {
+        xml = xml.replace(from, to);
+    }
+    let path = dir.join("cv.xml");
+    std::fs::write(&path, xml).expect("write sample");
+    path
+}
+
+#[test]
+fn import_into_a_new_cv() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let file = europass_file(dir.path(), &[]);
+    let store = SqliteStore::open_in_memory(Box::new(SystemClock)).expect("store");
+    let app = importing(store, None, Some(&file));
+    let preview = app.import_parse().expect("parse");
+    assert_eq!(preview.full_name.as_deref(), Some("Alex Sample"));
+    let stored = app
+        .import_commit(ImportCommit {
+            preview_id: preview.preview_id,
+            target: ImportTarget::New { title: " ".into() },
+            use_imported: Vec::new(),
+            entries: Vec::new(),
+        })
+        .expect("commit");
+    assert_eq!(stored.cv.title, "Alex Sample");
+    assert_eq!(stored.cv.basics.email.as_deref(), Some("alex@example.org"));
+    assert_eq!(stored.cv.sections, preview.sections);
+    assert_eq!(app.list_cvs().expect("list").len(), 1);
+    // A committed preview is gone.
+    let again = app.import_match(ImportMatchRequest {
+        preview_id: preview.preview_id,
+        cv_id: stored.cv.id.clone(),
+    });
+    assert_eq!(again.map_err(|e| e.code), Err(ErrorCode::NotFound));
+}
+
+/// Spec section 9.5: the merge review's choices are applied, and the CV is
+/// snapshotted before it changes.
+#[test]
+fn import_merges_into_an_existing_cv_after_a_snapshot() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let db = dir.path().join("pinaxcv.sqlite3");
+    let file = europass_file(
+        dir.path(),
+        &[
+            ("Example Works", "Example AG"),
+            ("Platform Engineer", "Backend Engineer"),
+            ("2019-05", "2017-01"),
+        ],
+    );
+    let app = importing(SqliteStore::open(&db).expect("open"), None, Some(&file));
+    let base = filled(&app, "typical");
+    let preview = app.import_parse().expect("parse");
+    let matched = app
+        .import_match(ImportMatchRequest {
+            preview_id: preview.preview_id,
+            cv_id: base.cv.id.clone(),
+        })
+        .expect("match");
+    let fields: Vec<_> = matched.conflicts.iter().map(|c| c.field).collect();
+    assert_eq!(fields, [ImportField::FullName, ImportField::Email]);
+    assert_eq!(matched.conflicts[0].mine, "Jane Doe");
+    assert_eq!(matched.matches.len(), 1);
+    let m = &matched.matches[0];
+
+    // A stale revision is refused before anything changes.
+    let stale = app.import_commit(ImportCommit {
+        preview_id: preview.preview_id,
+        target: ImportTarget::Merge {
+            cv_id: base.cv.id.clone(),
+            expected_revision: base.revision + 1,
+        },
+        use_imported: Vec::new(),
+        entries: Vec::new(),
+    });
+    assert_eq!(stale.map_err(|e| e.code), Err(ErrorCode::Conflict));
+
+    let merged = app
+        .import_commit(ImportCommit {
+            preview_id: preview.preview_id,
+            target: ImportTarget::Merge {
+                cv_id: base.cv.id.clone(),
+                expected_revision: base.revision,
+            },
+            use_imported: vec![ImportField::Email],
+            entries: vec![EntryDecision {
+                imported: m.imported.clone(),
+                choice: EntryChoice::Replace {
+                    base: m.base.clone(),
+                },
+            }],
+        })
+        .expect("merge");
+    assert_eq!(merged.cv.basics.full_name, "Jane Doe");
+    assert_eq!(merged.cv.basics.email.as_deref(), Some("alex@example.org"));
+    let Some(Section::Experience(x)) = merged.cv.sections.first() else {
+        panic!("experience first");
+    };
+    assert_eq!(x.entries.len(), 2, "replaced, not added");
+    let replaced = x.entries.iter().find(|e| e.id == m.base).expect("kept id");
+    assert_eq!(replaced.bullets[0].text, "Ran the build farm.");
+
+    let check = SqliteStore::open(&db).expect("second connection");
+    let snapshots = check.list_snapshots(&base.cv.id).expect("snapshots");
+    assert_eq!(snapshots.len(), 1);
+    assert_eq!(snapshots[0].reason, SnapshotReason::Import);
+}
+
+#[test]
+fn cancelled_or_unsupported_imports_save_nothing() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let store = SqliteStore::open_in_memory(Box::new(SystemClock)).expect("store");
+    let cancelled = importing(store, None, None).import_parse();
+    assert_eq!(cancelled.map_err(|e| e.code), Err(ErrorCode::Cancelled));
+
+    let file = dir.path().join("notes.xml");
+    std::fs::write(&file, "<notes>not a CV</notes>").expect("write");
+    let store = SqliteStore::open_in_memory(Box::new(SystemClock)).expect("store");
+    let app = importing(store, None, Some(&file));
+    let err = app.import_parse().expect_err("unsupported");
+    assert_eq!(err.code, ErrorCode::UnsupportedFormat);
+    assert!(app.list_cvs().expect("list").is_empty());
 }

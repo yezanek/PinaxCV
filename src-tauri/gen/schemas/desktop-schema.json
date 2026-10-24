@@ -243,6 +243,24 @@
           "markdownDescription": "Enables the get_variant command without any pre-configured scope."
         },
         {
+          "description": "Enables the import_commit command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-import-commit",
+          "markdownDescription": "Enables the import_commit command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the import_match command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-import-match",
+          "markdownDescription": "Enables the import_match command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the import_parse command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-import-parse",
+          "markdownDescription": "Enables the import_parse command without any pre-configured scope."
+        },
+        {
           "description": "Enables the lint command without any pre-configured scope.",
           "type": "string",
           "const": "allow-lint",
@@ -361,6 +379,24 @@
           "type": "string",
           "const": "deny-get-variant",
           "markdownDescription": "Denies the get_variant command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the import_commit command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-import-commit",
+          "markdownDescription": "Denies the import_commit command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the import_match command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-import-match",
+          "markdownDescription": "Denies the import_match command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the import_parse command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-import-parse",
+          "markdownDescription": "Denies the import_parse command without any pre-configured scope."
         },
         {
           "description": "Denies the lint command without any pre-configured scope.",

@@ -1,11 +1,11 @@
 //! Request and response types for the operations in spec section 10.2.
 //!
-//! Import DTOs arrive with the importers (M4), and AI job DTOs with M7a.
+//! AI job DTOs arrive with M7a.
 
 use std::collections::BTreeMap;
 use std::fmt;
 
-use cv_core::{AtsReport, Cv, Diagnostic, Id, JobTarget, TemplateId, Variant};
+use cv_core::{AtsReport, Cv, Diagnostic, Id, JobTarget, Link, Section, TemplateId, Variant};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -133,6 +133,105 @@ pub struct OptionRange {
     pub min: f32,
     pub max: f32,
     pub default: f32,
+}
+
+// Import (spec section 9)
+
+/// A basics field (or the summary) that an import can fill or replace.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[serde(rename_all = "snake_case")]
+pub enum ImportField {
+    FullName,
+    Headline,
+    Email,
+    Phone,
+    Location,
+    Summary,
+}
+
+/// What an importer read from a file. Nothing is saved until
+/// `import_commit`; every item already has a fresh ID.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct ImportPreview {
+    /// Names this preview in `import_match` and `import_commit`.
+    pub preview_id: u64,
+    pub full_name: Option<String>,
+    pub headline: Option<String>,
+    pub email: Option<String>,
+    pub phone: Option<String>,
+    pub location: Option<String>,
+    pub links: Vec<Link>,
+    pub summary: Option<String>,
+    pub sections: Vec<Section>,
+    /// What the importer skipped or had to guess, in words for the user.
+    pub warnings: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct ImportMatchRequest {
+    pub preview_id: u64,
+    pub cv_id: Id,
+}
+
+/// How an import lines up with an existing CV, for the merge review.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct ImportMatch {
+    /// Fields both sides fill with different values; the user picks one.
+    pub conflicts: Vec<ImportConflict>,
+    /// Imported entries that look like an existing entry (same kind of
+    /// section, organisation, title and start year).
+    pub matches: Vec<EntryMatch>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct ImportConflict {
+    pub field: ImportField,
+    pub mine: String,
+    pub imported: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct EntryMatch {
+    pub imported: Id,
+    pub base: Id,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ImportTarget {
+    /// A new CV with this title (blank: the imported name, then "Imported CV").
+    New { title: String },
+    /// Merge into an existing CV, which is snapshotted first (spec section 9.5).
+    Merge { cv_id: Id, expected_revision: u64 },
+}
+
+/// What happens to one imported entry in a merge.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum EntryChoice {
+    Skip,
+    AddNew,
+    /// Overwrites the base entry's content and keeps its ID.
+    Replace {
+        base: Id,
+    },
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct EntryDecision {
+    pub imported: Id,
+    pub choice: EntryChoice,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct ImportCommit {
+    pub preview_id: u64,
+    pub target: ImportTarget,
+    /// Conflicting fields to take from the import; the others keep the
+    /// CV's value. Empty fields on the CV are always filled.
+    pub use_imported: Vec<ImportField>,
+    /// Entries not listed are added as new.
+    pub entries: Vec<EntryDecision>,
 }
 
 // Settings and AI configuration
