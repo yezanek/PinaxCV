@@ -53,6 +53,14 @@ fieldset.section > .order { display: flex; justify-content: flex-end; gap: 0.3re
 .text-override button { padding: 0 0.4rem; }
 .text-override .edited { color: var(--muted); font-style: italic; }
 textarea.override { flex-basis: 100%; width: 100%; order: 1; }
+.variant-overlay { border: 0; padding: 0; margin: 0; min-width: 0; }
+.fit { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: end; margin-bottom: 0.5rem; }
+.fit [role="status"] { color: var(--muted); font-size: 0.9em; }
+.cuts { border: 1px solid var(--border); padding: 0.4rem 0.6rem; margin-bottom: 0.5rem; }
+.cuts > strong { margin-right: 0.5rem; }
+.cuts ul { list-style: none; padding: 0; margin: 0.3rem 0 0; }
+.cuts li { display: flex; gap: 0.4rem; align-items: center; margin-bottom: 0.2rem; }
+.cuts li span { flex: 1; min-width: 0; }
 .variant-summary { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
 .variant-actions { display: flex; gap: 0.5rem; align-items: end; margin-bottom: 0.5rem; flex-wrap: wrap; }
 

@@ -10,6 +10,7 @@ use leptos::task::spawn_local;
 use serde::Serialize;
 
 use crate::drag::DragHandle;
+use crate::fit::{EditFn, FitPanel};
 use crate::i18n::{error_message, fill, t};
 use crate::ipc::{IdArg, ReqArg, call};
 
@@ -515,6 +516,8 @@ pub fn VariantBar(
             };
         }))
     };
+    let fitting = RwSignal::new(false);
+    let edit_cb = Callback::new(move |f: EditFn| edit(f));
     let override_of = move |id: Id| {
         Signal::derive(move || {
             variant.with(|v| {
@@ -582,6 +585,9 @@ pub fn VariantBar(
                     )>{t().delete_variant}</button>
                 </Show>
             </div>
+            <FitPanel cv=cv variant=variant error=error changed=changed busy=busy settled=settled
+                fitting=fitting edit=edit_cb />
+            <fieldset class="variant-overlay" prop:disabled=move || fitting.get()>
             <div class="variant-summary">
                 <strong>{t().summary}</strong>
                 {move || {
@@ -680,6 +686,7 @@ pub fn VariantBar(
                     }
                 }).collect_view()))
                 }}
+            </fieldset>
             </fieldset>
         </Show>
     }

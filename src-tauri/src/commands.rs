@@ -5,8 +5,9 @@ use std::sync::Arc;
 
 use cv_api::{
     ApiError, DuplicateCv, DuplicateVariant, ErrorCode, ExportHtmlRequest, ExportPdfRequest,
-    ExportResult, ImportCommit, ImportMatch, ImportMatchRequest, ImportPreview, NewCv, NewVariant,
-    PreviewRequest, PreviewResponse, PruneResult, SaveCv, SaveVariant, Target, TemplateManifest,
+    ExportResult, FitOutcome, FitVariant, ImportCommit, ImportMatch, ImportMatchRequest,
+    ImportPreview, NewCv, NewVariant, PreviewRequest, PreviewResponse, PruneResult, SaveCv,
+    SaveVariant, Target, TemplateManifest,
 };
 use cv_app::App;
 use cv_core::{AtsReport, CvSummary, Id, LintIssue, StoredCv, StoredVariant, VariantSummary};
@@ -95,6 +96,11 @@ pub async fn duplicate_variant(app: Shared<'_>, req: DuplicateVariant) -> Reply<
 #[tauri::command]
 pub async fn prune_variant(app: Shared<'_>, id: Id) -> Reply<PruneResult> {
     run(app, move |a| a.prune_variant(&id)).await
+}
+
+#[tauri::command]
+pub async fn fit_variant(app: Shared<'_>, req: FitVariant) -> Reply<FitOutcome> {
+    run(app, move |a| a.fit_variant(req)).await
 }
 
 #[tauri::command]

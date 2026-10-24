@@ -8,6 +8,7 @@ mod dates;
 mod drag;
 mod editor;
 mod entries;
+mod fit;
 mod history;
 mod i18n;
 mod ids;

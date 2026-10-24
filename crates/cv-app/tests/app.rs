@@ -6,11 +6,13 @@ use std::sync::Mutex;
 
 use cv_api::{
     DuplicateCv, EntryChoice, EntryDecision, ErrorCode, ExportHtmlRequest, ExportPdfRequest,
-    ImportCommit, ImportField, ImportMatchRequest, ImportTarget, NewCv, NewVariant, PreviewRequest,
-    SaveCv, SaveVariant, Target,
+    FitVariant, ImportCommit, ImportField, ImportMatchRequest, ImportTarget, NewCv, NewVariant,
+    PreviewRequest, SaveCv, SaveVariant, Target,
 };
 use cv_app::{App, ExportKind, FileDialog, UlidIds};
-use cv_core::{Cv, JobTarget, Section, SnapshotReason, StoredCv};
+use cv_core::{
+    Cv, JobTarget, Section, SnapshotReason, StoredCv, SuggestionSource, SuggestionStatus,
+};
 use cv_store::{SqliteStore, Store, SystemClock};
 
 /// Answers every save dialog with a fixed folder, or cancels.
@@ -473,4 +475,96 @@ fn cancelled_or_unsupported_imports_save_nothing() {
     let err = app.import_parse().expect_err("unsupported");
     assert_eq!(err.code, ErrorCode::UnsupportedFormat);
     assert!(app.list_cvs().expect("list").is_empty());
+}
+
+#[test]
+fn fit_variant_saves_pending_cuts_that_fit_once_accepted() {
+    let app = app(None);
+    let stored = filled(&app, "long");
+    let variant = app
+        .create_variant(NewVariant {
+            cv_id: stored.cv.id.clone(),
+            name: "Short".into(),
+            job: JobTarget::default(),
+        })
+        .expect("variant");
+    let target = Target {
+        cv_id: stored.cv.id.clone(),
+        variant_id: Some(variant.variant.id.clone()),
+    };
+    let before = app
+        .preview(PreviewRequest {
+            target: target.clone(),
+            revision: 1,
+            unsaved_cv: None,
+            unsaved_variant: None,
+        })
+        .expect("preview")
+        .page_count;
+    assert!(before > 1, "the long fixture should need more than a page");
+
+    let outcome = app
+        .fit_variant(FitVariant {
+            variant: variant.variant.clone(),
+            expected_revision: variant.revision,
+            page_target: 1,
+        })
+        .expect("fit");
+    let mut fitted = outcome.variant;
+    assert_eq!(fitted.variant.page_target, Some(1));
+    assert!(fitted.revision > variant.revision);
+    assert!(fitted.variant.hidden.is_empty() && fitted.variant.collapsed.is_empty());
+    assert!(!fitted.variant.suggestions.is_empty());
+    assert!(
+        fitted.variant.suggestions.iter().all(|s| {
+            s.status == SuggestionStatus::Pending && s.source == SuggestionSource::Fit
+        })
+    );
+
+    // Fitting again replaces the pending cuts instead of adding to them.
+    let again = app
+        .fit_variant(FitVariant {
+            variant: fitted.variant.clone(),
+            expected_revision: fitted.revision,
+            page_target: 1,
+        })
+        .expect("fit again");
+    assert_eq!(
+        again.variant.variant.suggestions.len(),
+        fitted.variant.suggestions.len()
+    );
+    fitted = again.variant;
+
+    assert!(outcome.fits, "long fits on one page once cut");
+    {
+        let ids: Vec<_> = fitted
+            .variant
+            .suggestions
+            .iter()
+            .map(|s| s.id.clone())
+            .collect();
+        for id in &ids {
+            assert!(fitted.variant.accept_suggestion(id));
+        }
+        let pages = app
+            .preview(PreviewRequest {
+                target,
+                revision: 2,
+                unsaved_cv: None,
+                unsaved_variant: Some(fitted.variant.clone()),
+            })
+            .expect("preview")
+            .page_count;
+        assert_eq!(pages, outcome.pages);
+        assert!(pages <= 1);
+    }
+
+    let err = app
+        .fit_variant(FitVariant {
+            variant: fitted.variant,
+            expected_revision: fitted.revision,
+            page_target: 3,
+        })
+        .expect_err("3 pages");
+    assert_eq!(err.code, ErrorCode::Validation);
 }

@@ -19,9 +19,10 @@ use std::sync::{Mutex, PoisonError};
 
 use cv_api::{
     ApiError, DuplicateCv, DuplicateVariant, ErrorCode, ExportHtmlRequest, ExportPdfRequest,
-    ExportResult, NewCv, NewVariant, PreviewRequest, PreviewResponse, PruneResult, SaveCv,
-    SaveVariant, Target, TemplateManifest,
+    ExportResult, FitOutcome, FitVariant, NewCv, NewVariant, PreviewRequest, PreviewResponse,
+    PruneResult, SaveCv, SaveVariant, Target, TemplateManifest,
 };
+use cv_core::fit::{FitResult, fit};
 use cv_core::validate;
 use cv_core::{
     AtsReport, Basics, CV_SCHEMA_VERSION, Cv, CvSummary, Id, IdSource, LintIssue, Locale, Paper,
@@ -182,6 +183,54 @@ impl App {
                 .map_err(store_error)?;
         }
         Ok(PruneResult { removed })
+    }
+
+    /// Proposes the cuts that fit the variant in `page_target` pages and
+    /// saves them as pending suggestions with the page target. Earlier
+    /// pending cuts are replaced; nothing is hidden until the user accepts a
+    /// cut (ADR-065).
+    pub fn fit_variant(&self, req: FitVariant) -> Result<FitOutcome> {
+        if !(1..=2).contains(&req.page_target) {
+            return Err(ApiError::new(
+                ErrorCode::Validation,
+                "Choose 1 or 2 pages to fit to.",
+            ));
+        }
+        let mut cv = self
+            .store
+            .get_cv(&req.variant.cv_id)
+            .map_err(store_error)?
+            .cv;
+        // Count pages as a save would render them.
+        let _ = validate::for_save(&mut cv);
+        let mut variant = req.variant;
+        variant.page_target = Some(req.page_target);
+        variant.replace_fit_cuts(Vec::new());
+        let result = self
+            .with_ids(|ids| fit(&cv, &variant, None, req.page_target, &self.renderer, ids))
+            .map_err(|e| {
+                ApiError::new(
+                    ErrorCode::Render,
+                    "The CV could not be rendered to count its pages.",
+                )
+                .with_details(serde_json::json!({ "error": e.0 }))
+            })?;
+        let (pages, fits) = match result {
+            FitResult::Fits { pages, cuts } => {
+                variant.replace_fit_cuts(cuts);
+                (pages, true)
+            }
+            FitResult::CannotFit { pages } => (pages, false),
+        };
+        let variant = self
+            .store
+            .save_variant(&variant, req.expected_revision)
+            .map_err(store_error)?;
+        Ok(FitOutcome {
+            variant,
+            pages,
+            fits,
+        })
     }
 
     // Rendering and export

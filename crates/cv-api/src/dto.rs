@@ -5,7 +5,9 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
-use cv_core::{AtsReport, Cv, Diagnostic, Id, JobTarget, Link, Section, TemplateId, Variant};
+use cv_core::{
+    AtsReport, Cv, Diagnostic, Id, JobTarget, Link, Section, StoredVariant, TemplateId, Variant,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -45,6 +47,24 @@ pub struct SaveVariant {
 pub struct DuplicateVariant {
     pub id: Id,
     pub new_name: String,
+}
+
+/// Runs fit-to-length on `variant` (the editor's overlay, saved by the
+/// call) for `page_target` pages, 1 or 2.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct FitVariant {
+    pub variant: Variant,
+    pub expected_revision: u64,
+    pub page_target: u8,
+}
+
+/// The saved variant, with its new pending cuts, and the page count with
+/// every cut accepted: `fits` is false when even that is over the target.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct FitOutcome {
+    pub variant: StoredVariant,
+    pub pages: u32,
+    pub fits: bool,
 }
 
 /// IDs removed from a variant because the base content they referred to is gone.

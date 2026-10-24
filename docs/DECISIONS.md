@@ -422,6 +422,13 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Pruning is not run after every base save while a variant is open. Resolving already ignores missing IDs, and pruning on save would lose a variant's settings for an item that undo brings back with the same ID.
 - A failed prune is shown but does not stop the variant opening.
 
+## ADR-065 — Fit to N pages (M5)
+
+- The variant panel has a "Length" choice: Auto, 1 page or 2 pages, stored as the variant's `page_target`. With a target set, "Fit to 1 page" or "Fit to 2 pages" calls `fit_variant`.
+- `fit_variant(variant, expected_revision, page_target)` runs `cv_core::fit` (spec section 4.6) on the overlay the editor holds, with the real renderer counting pages. It replaces the variant's earlier pending fit cuts with the new ones, stores the page target and saves. It answers with the saved variant, the page count once every cut is accepted, and whether that meets the target.
+- Cuts are only proposals (answers: fit-to-page cuts always need review). Each is listed in words ("Hide bullet …", "Show … on one line") with Accept and Reject, plus "Accept all". Accepting applies the hide or collapse to the overlay (`Variant::accept_suggestion`); rejecting marks it rejected. Nothing is hidden until then.
+- While a fit runs, the rest of the overlay is locked and it counts as a variant save, so exports wait for it. Relevance scores (spec section 11.5) are not passed yet; that comes with AI scoring in M7.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
