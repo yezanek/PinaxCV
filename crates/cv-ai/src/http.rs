@@ -259,11 +259,35 @@ mod tests {
         let url = format!("http://{}/v1", listener.local_addr().expect("addr"));
         std::thread::spawn(move || {
             let (mut stream, _) = listener.accept().expect("accept");
+            // Read the whole request first: closing a socket with unread
+            // bytes resets the connection on Windows before the reply lands.
+            let mut req = Vec::new();
             let mut buf = [0u8; 4096];
-            let _ = stream.read(&mut buf);
+            while let Ok(n) = stream.read(&mut buf) {
+                if n == 0 {
+                    break;
+                }
+                req.extend_from_slice(&buf[..n]);
+                let text = String::from_utf8_lossy(&req);
+                if let Some(end) = text.find("\r\n\r\n") {
+                    let len = text[..end]
+                        .lines()
+                        .find_map(|l| {
+                            let (k, v) = l.split_once(':')?;
+                            k.eq_ignore_ascii_case("content-length")
+                                .then(|| v.trim().parse::<usize>().ok())?
+                        })
+                        .unwrap_or(0);
+                    if req.len() >= end + 4 + len {
+                        break;
+                    }
+                }
+            }
             match reply {
                 Some(r) => {
                     let _ = stream.write_all(r.as_bytes());
+                    let _ = stream.flush();
+                    let _ = stream.shutdown(std::net::Shutdown::Write);
                 }
                 None => std::thread::sleep(Duration::from_secs(2)),
             }
