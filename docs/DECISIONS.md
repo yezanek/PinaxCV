@@ -346,6 +346,13 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Debian and Ubuntu users install the Snap, the Flatpak or the AppImage instead.
 - Changes spec section 14 and the M8 acceptance criteria. Tracked in #33 (Flatpak), #34 (Snap) and #68 (AppImage).
 
+## ADR-059 — JSON Resume importer (M4)
+
+- `import_json_resume` maps the JSON Resume schema as spec section 9.1 says. The file is read as untyped JSON, so unknown fields are ignored and values of the wrong type are skipped instead of failing the import. A JSON object without any schema key is `UnsupportedFormat`; broken JSON is `Malformed`.
+- Older keys are accepted where the schema renamed them (`company` for `work.name`). `volunteer` becomes a custom "Volunteering" section, education `courses` become bullets and `score` the description. Awards, publications, interests and references are not imported, with a warning each. References are never imported, because they hold other people's details.
+- Every text value is NFC-normalized, stripped of control characters (line breaks kept in summaries and descriptions) and capped at 10,000 characters; each list keeps its first 200 items, with a warning. The 20 MB input cap and serde_json's nesting limit bound the rest, and nothing in the importer can panic on input.
+- `import_any` sends anything that starts with `{` to this importer, so the import wizard (ADR-058) picks JSON Resume up by adding the `json` extension to its dialog.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

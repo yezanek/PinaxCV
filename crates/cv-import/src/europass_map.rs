@@ -149,7 +149,7 @@ fn place(city: &Option<String>, country: &Option<String>) -> Option<String> {
 }
 
 /// Exactly `YYYY`, `YYYY-MM` or `YYYY-MM-DD`; the day is checked, then dropped.
-fn parse_date(value: &str) -> Option<PartialDate> {
+pub(crate) fn parse_date(value: &str) -> Option<PartialDate> {
     let parts: Vec<&str> = value.trim().split('-').collect();
     let number = |part: &str, len: usize| -> Option<u16> {
         (part.len() == len && part.bytes().all(|b| b.is_ascii_digit()))
