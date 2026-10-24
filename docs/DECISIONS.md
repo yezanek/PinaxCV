@@ -354,6 +354,15 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - HTTP uses `ureq` 3 with rustls and the `ring` provider instead of the spec's `reqwest`: `ureq` is already in the workspace, needs no async runtime of its own, and avoids `aws-lc-rs`, which needs CMake and NASM on Windows. Calls run on `tokio::task::spawn_blocking`; cancelling returns at once and drops the answer.
 - Defaults: 15 s to connect, 60 s per request (configurable with `UreqTransport::with_timeout` for slow local models), up to two retries with 1 s and 4 s waits on network errors and statuses 408, 429, 500, 502, 503, 504 and 529, responses capped at 8 MB. Errors carry the status or a short reason, never a request or response body.
 
+## ADR-070 — Payload redaction, prompts and the response cache (M7a)
+
+- `build_cv_payload` (spec section 11.3) sends the resolved CV without email, phone, links or entry URLs. Free text (summary, headline, titles, descriptions, bullets, skills) also goes through a `Redactor` that replaces the CV's own email, phone, link URLs, full address and (unless `ai.send_name`) full name, and anything shaped like an email address, a URL or a phone number with at least 9 digits, by `[redacted]`. Dates and year ranges have fewer digits and stay.
+- Locations, of the CV and of each entry, are cut to their last two comma-separated parts without words holding digits ("Hauptstraße 5, 10115 Berlin, Germany" becomes "Berlin, Germany"), and are left out when `ai.send_location` is off. The payload also lists languages, which the spec's example leaves out, for the review stage.
+- Prompts live in `cv-ai/src/prompts/*.rs`, one `PROMPT_VERSION` each. The renderer only substitutes `{{name}}`, fails on a missing or unused value, and turns every `</` in inserted data into `<\/` (also valid inside JSON strings). The rewrite stage's entry attributes are additionally entity-encoded. The spec gives no user template for `GAPS`; ours wraps the requirements, the unmatched list and the CV in tags like the other stages.
+- Lint findings go to the review stage by code, severity and target only, since messages can quote contact details.
+- `generate_cached` keys responses by `sha256(kind, prompt version, model, user prompt)` with NUL separators and stores only successful answers. The store is behind a `ResponseCache` trait, so `cv-ai` still never reads the database; `cv-app` adapts it to the `ai_cache` table when the pipeline lands.
+- `tests/no_contact_details.rs` builds every stage's prompt from a CV hiding contact details in its free text and checks, through a recording `Llm`, that only `IMPORT_EXTRACT` sends them.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
