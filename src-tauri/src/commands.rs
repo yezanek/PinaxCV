@@ -4,14 +4,14 @@
 use std::sync::Arc;
 
 use cv_api::{
-    AiConfig, AiStatus, ApiError, DuplicateCv, DuplicateVariant, ErrorCode, ExportHtmlRequest,
-    ExportPdfRequest, ExportResult, FitOutcome, FitVariant, ImportCommit, ImportMatch,
-    ImportMatchRequest, ImportPreview, NewCv, NewVariant, PreviewRequest, PreviewResponse,
-    PruneResult, SaveCv, SaveVariant, Target, TemplateManifest,
+    AiConfig, AiStatus, AiTailor, ApiError, DuplicateCv, DuplicateVariant, ErrorCode,
+    ExportHtmlRequest, ExportPdfRequest, ExportResult, FitOutcome, FitVariant, ImportCommit,
+    ImportMatch, ImportMatchRequest, ImportPreview, JobId, NewCv, NewVariant, PreviewRequest,
+    PreviewResponse, PruneResult, SaveCv, SaveVariant, Target, TemplateManifest,
 };
 use cv_app::App;
 use cv_core::{AtsReport, CvSummary, Id, LintIssue, StoredCv, StoredVariant, VariantSummary};
-use tauri::State;
+use tauri::{AppHandle, Runtime, State};
 
 type Shared<'a> = State<'a, Arc<App>>;
 type Reply<T> = Result<T, ApiError>;
@@ -116,6 +116,18 @@ pub async fn ai_forget_key(app: Shared<'_>) -> Reply<AiStatus> {
 #[tauri::command]
 pub async fn ai_consent(app: Shared<'_>) -> Reply<AiStatus> {
     run(app, App::ai_consent).await
+}
+
+/// Starts tailoring a variant to its job description; progress and the
+/// result arrive as `ai://` events for the returned job ID.
+#[tauri::command]
+pub async fn ai_tailor<R: Runtime>(
+    handle: AppHandle<R>,
+    app: Shared<'_>,
+    req: AiTailor,
+) -> Reply<JobId> {
+    let app = Arc::clone(app.inner());
+    crate::jobs::start(&handle, |events| app.ai_tailor(events, req))
 }
 
 /// Cancels a running AI job; its `ai://error` event says `ai_cancelled`.
@@ -234,6 +246,7 @@ mod tests {
                 super::list_templates,
                 super::import_parse,
                 super::ai_cancel,
+                super::ai_tailor,
             ])
             .build(mock_context(noop_assets()))
             .expect("app");
@@ -357,6 +370,17 @@ mod tests {
         assert_eq!(err["code"], json!(cv_api::ErrorCode::Cancelled));
     }
 
+    /// Starts `work` as a job the way the AI commands do.
+    fn start_job<W, F>(w: &WebviewWindow<MockRuntime>, work: W) -> String
+    where
+        W: FnOnce(Arc<App>, cv_app::JobContext) -> F + Send + 'static,
+        F: Future<Output = cv_app::Result<Value>> + Send + 'static,
+    {
+        use tauri::Manager;
+        let app = Arc::clone(w.state::<Arc<App>>().inner());
+        crate::jobs::start(w.app_handle(), |events| Ok(app.start_job(events, work))).expect("start")
+    }
+
     #[test]
     fn jobs_send_events_and_cancel_through_ipc() {
         use std::sync::mpsc;
@@ -372,10 +396,9 @@ mod tests {
                 let _ = tx.send((name, payload));
             });
         }
-        let app = Arc::clone(w.state::<Arc<App>>().inner());
         let next = || rx.recv_timeout(Duration::from_secs(10)).expect("event");
 
-        let id = crate::jobs::spawn(w.app_handle(), &app, |_, _| async { Ok(json!(42)) });
+        let id = start_job(&w, |_, _| async { Ok(json!(42)) });
         let (name, start) = next();
         assert_eq!(
             (name, &start["job_id"], &start["stage"]),
@@ -384,7 +407,7 @@ mod tests {
         let (name, done) = next();
         assert_eq!((name, &done["result"]), (crate::jobs::DONE, &json!(42)));
 
-        let id = crate::jobs::spawn(w.app_handle(), &app, |_, ctx| async move {
+        let id = start_job(&w, |_, ctx| async move {
             ctx.cancel.cancelled().await;
             Ok(json!(null))
         });

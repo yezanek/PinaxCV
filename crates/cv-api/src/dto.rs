@@ -415,3 +415,24 @@ pub struct AiFailed {
     pub job_id: JobId,
     pub error: ApiError,
 }
+
+/// `ai_tailor`: tailor the saved variant to its saved job description.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct AiTailor {
+    pub variant_id: Id,
+    #[serde(default)]
+    pub options: cv_core::selection::TailorOptions,
+}
+
+/// The `result` of a finished `ai_tailor` job.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct TailorResult {
+    /// The saved variant with its new pending suggestions.
+    pub variant: StoredVariant,
+    /// How many suggestions the run proposed, fit-to-length cuts included.
+    pub suggestions: usize,
+    /// Pages with every suggestion accepted, when a page target was set.
+    pub pages: Option<u32>,
+    /// False when even every cut leaves the CV over the page target.
+    pub fits: Option<bool>,
+}

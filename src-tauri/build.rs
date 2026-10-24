@@ -24,6 +24,7 @@ const COMMANDS: &[&str] = &[
     "ai_consent",
     "ai_test_connection",
     "ai_cancel",
+    "ai_tailor",
     "preview",
     "export_pdf",
     "export_html",

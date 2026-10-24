@@ -19,6 +19,14 @@ pub trait ResponseCache: Send + Sync {
     fn put(&self, key: &str, kind: &str, response: &str);
 }
 
+/// SHA-256 of `text`, as lowercase hex.
+pub fn sha256_hex(text: &str) -> String {
+    Sha256::digest(text.as_bytes())
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
+}
+
 /// The cache key for `input` (the system prompt is fixed by the version).
 /// Parts are separated by NUL so no two inputs share a key by concatenation.
 pub fn cache_key(kind: Kind, model: &str, input: &str) -> String {

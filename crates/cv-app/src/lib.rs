@@ -15,6 +15,7 @@ mod ids;
 mod import;
 mod jobs;
 mod preview;
+mod tailor;
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, PoisonError};
@@ -87,7 +88,7 @@ impl App {
     /// Keeps API keys in `secrets`, the OS keychain. Without this call there
     /// is no keychain and keys are held in memory for the session.
     pub fn with_secrets(mut self, secrets: Box<dyn SecretStore>) -> Self {
-        self.ai = AiState::new(secrets);
+        self.ai.set_secrets(secrets);
         self
     }
 

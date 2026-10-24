@@ -4,8 +4,7 @@
 use std::sync::Arc;
 
 use cv_api::JobId;
-use cv_app::{App, JobContext, JobEvent, JobEvents};
-use serde_json::Value;
+use cv_app::{JobEvent, JobEvents};
 use tauri::{AppHandle, Emitter, Runtime};
 
 pub const PROGRESS: &str = "ai://progress";
@@ -26,18 +25,16 @@ impl<R: Runtime> JobEvents for TauriEvents<R> {
     }
 }
 
-/// Starts `work` as a job on the async runtime and returns its ID at once;
+/// Starts a job: `begin` gets the event sink and returns the job's ID and
+/// its future, which runs on the async runtime. The ID is returned at once;
 /// the result arrives as an `ai://done` or `ai://error` event.
-// The AI commands that start jobs (ai_tailor, ai_review) arrive with their
-// stages; until then only the tests start one.
-#[cfg_attr(not(test), allow(dead_code))]
-pub fn spawn<R, W, F>(handle: &AppHandle<R>, app: &Arc<App>, work: W) -> JobId
+pub fn start<R, F, Fut>(handle: &AppHandle<R>, begin: F) -> cv_app::Result<JobId>
 where
     R: Runtime,
-    W: FnOnce(Arc<App>, JobContext) -> F + Send + 'static,
-    F: Future<Output = cv_app::Result<Value>> + Send + 'static,
+    F: FnOnce(Arc<dyn JobEvents>) -> cv_app::Result<(JobId, Fut)>,
+    Fut: Future<Output = ()> + Send + 'static,
 {
-    let (id, run) = app.start_job(Arc::new(TauriEvents(handle.clone())), work);
+    let (id, run) = begin(Arc::new(TauriEvents(handle.clone())))?;
     tauri::async_runtime::spawn(run);
-    id
+    Ok(id)
 }

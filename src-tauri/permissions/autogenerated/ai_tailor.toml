@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-ai-tailor"
+description = "Enables the ai_tailor command without any pre-configured scope."
+commands.allow = ["ai_tailor"]
+
+[[permission]]
+identifier = "deny-ai-tailor"
+description = "Denies the ai_tailor command without any pre-configured scope."
+commands.deny = ["ai_tailor"]

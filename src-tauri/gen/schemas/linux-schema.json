@@ -207,6 +207,12 @@
           "markdownDescription": "Enables the ai_status command without any pre-configured scope."
         },
         {
+          "description": "Enables the ai_tailor command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-ai-tailor",
+          "markdownDescription": "Enables the ai_tailor command without any pre-configured scope."
+        },
+        {
           "description": "Enables the ai_test_connection command without any pre-configured scope.",
           "type": "string",
           "const": "allow-ai-test-connection",
@@ -385,6 +391,12 @@
           "type": "string",
           "const": "deny-ai-status",
           "markdownDescription": "Denies the ai_status command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the ai_tailor command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-ai-tailor",
+          "markdownDescription": "Denies the ai_tailor command without any pre-configured scope."
         },
         {
           "description": "Denies the ai_test_connection command without any pre-configured scope.",
