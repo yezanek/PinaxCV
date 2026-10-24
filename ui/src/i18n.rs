@@ -200,6 +200,8 @@ pub struct Strings {
     pub new_variant: &'static str,
     /// `{n}`: the default name of a new variant.
     pub variant_default_name: &'static str,
+    pub duplicate_variant: &'static str,
+    pub variant_copy_name: &'static str,
     /// `{name}`.
     pub showing_variant: &'static str,
     pub variant_name: &'static str,
@@ -396,6 +398,8 @@ pub static EN: Strings = Strings {
     base_cv: "Base CV",
     new_variant: "New variant",
     variant_default_name: "Variant {n}",
+    duplicate_variant: "Duplicate variant",
+    variant_copy_name: "{name} (copy)",
     showing_variant: "Showing variant \u{201c}{name}\u{201d}. Text edits below change the base CV; choose here what this variant shows.",
     variant_name: "Variant name",
     delete_variant: "Delete variant",

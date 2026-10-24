@@ -3,7 +3,7 @@
 //! the selected variant's overlay: what is hidden, what is collapsed, and the
 //! order of sections, entries, bullets, skill groups, skills and languages.
 
-use cv_api::{NewVariant, SaveVariant};
+use cv_api::{DuplicateVariant, NewVariant, PruneResult, SaveVariant};
 use cv_core::{Cv, Entry, Id, JobTarget, Section, StoredVariant, Variant, VariantSummary};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
@@ -307,6 +307,15 @@ pub fn VariantBar(
         }
         let Ok(id) = Id::parse(&id) else { return };
         spawn_local(async move {
+            // Drop references to base content deleted since the variant was
+            // last open (ADR-064). Resolving ignores them anyway, so a failure
+            // here is shown but does not stop the variant opening.
+            if let Err(e) = call::<_, PruneResult>("prune_variant", &IdArg { id: &id }).await {
+                error.set(Some(error_message(&e)));
+            }
+            if selection.try_get_untracked() != Some(n) {
+                return;
+            }
             let result = call::<_, StoredVariant>("get_variant", &IdArg { id: &id }).await;
             if selection.try_get_untracked() != Some(n) {
                 return;
@@ -353,6 +362,43 @@ pub fn VariantBar(
             });
         }
     };
+
+    // Copies the selected variant, which is saved (the button is disabled
+    // while saves run), and selects the copy.
+    let duplicate = Callback::new({
+        let reload = reload.clone();
+        move |()| {
+            let Some((id, name)) = variant.with_untracked(|v| {
+                v.as_ref()
+                    .map(|v| (v.variant.id.clone(), v.variant.name.clone()))
+            }) else {
+                return;
+            };
+            let req = DuplicateVariant {
+                id,
+                new_name: fill(t().variant_copy_name, &[("name", &name)]),
+            };
+            let reload = reload.clone();
+            let n = selection.get_untracked() + 1;
+            selection.set(n);
+            confirming.set(None);
+            spawn_local(async move {
+                let result =
+                    call::<_, StoredVariant>("duplicate_variant", &ReqArg { req: &req }).await;
+                match result {
+                    Ok(v) => {
+                        reload();
+                        if selection.try_get_untracked() != Some(n) {
+                            return;
+                        }
+                        variant.set(Some(v));
+                        changed.run(());
+                    }
+                    Err(e) => error.set(Some(error_message(&e))),
+                }
+            });
+        }
+    });
 
     // The newest overlay not yet sent. Saves run one at a time: an edit made
     // while a save is in flight is sent next, with the revision that save
@@ -523,6 +569,7 @@ pub fn VariantBar(
                     <input prop:value=move || variant.with(|v| v.as_ref().map(|v| v.variant.name.clone()).unwrap_or_default())
                         on:change=move |ev| rename.run(event_target_value(&ev)) />
                 </label>
+                <button prop:disabled=move || busy.get() on:click=move |_| duplicate.run(())>{t().duplicate_variant}</button>
                 <Show when=move || confirming.with(Option::is_none)
                     fallback=move || view! {
                         <span>{t().delete_variant_confirm}</span>
