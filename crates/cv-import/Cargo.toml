@@ -10,9 +10,11 @@ publish.workspace = true
 
 [dependencies]
 cv-core.workspace = true
+csv.workspace = true
 lopdf.workspace = true
 roxmltree.workspace = true
 unicode-normalization.workspace = true
+zip.workspace = true
 
 [lints]
 workspace = true

@@ -346,6 +346,14 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Debian and Ubuntu users install the Snap, the Flatpak or the AppImage instead.
 - Changes spec section 14 and the M8 acceptance criteria. Tracked in #33 (Flatpak), #34 (Snap) and #68 (AppImage).
 
+## ADR-060 — LinkedIn data export (ZIP) importer (M4)
+
+- `import_linkedin_zip` reads the profile CSVs from spec section 9.3 straight from memory with the `zip` crate (deflate only, no other codecs), and never extracts to disk. Files are matched by name without their folder, case-insensitively, through an alias table (`Email Addresses.csv`, `Email_Addresses.csv`, ...). Other files are not read; their names are listed in one warning.
+- Columns are found by header name (case-insensitive, BOM trimmed, with aliases), and the header row is the first row holding a known column, which skips the notes preamble some LinkedIn files have.
+- The archive is refused when any entry has an unsafe path (`..`, absolute, drive letter, NUL), when it has more than 2,000 entries, or when a CSV unpacks past 5 MB or all read CSVs past 20 MB. Sizes are counted while reading, not trusted from the ZIP headers. Each CSV keeps 500 rows and each value 10,000 characters, NFC-normalized without control characters.
+- Positions are sorted newest first; an empty "Finished On" marks the job as current. Descriptions split into bullets on lines and on `-`, `•`, `*`; one paragraph over 300 characters stays a description, with a warning to review it. Skills become one unlabelled group, because the section heading already says Skills. The email is the primary confirmed address, then any confirmed one.
+- `import_any` sends anything with a ZIP signature to this importer, so the import wizard (ADR-058) only needs the `zip` extension added to its dialog.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

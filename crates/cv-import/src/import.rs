@@ -5,6 +5,7 @@ use cv_core::Id;
 use crate::europass::{AttachmentError, embedded_xml};
 use crate::europass_map::to_partial;
 use crate::europass_xml::{XmlError, parse_candidate};
+use crate::linkedin_zip::{import_linkedin_zip, looks_like_zip};
 use crate::partial::ImportResult;
 use crate::pdf_map::text_to_partial;
 use crate::pdf_text::page_text;
@@ -59,12 +60,19 @@ pub fn import_europass(
     Ok(to_partial(&cv, fresh))
 }
 
-/// Imports any CV file: Europass first, and for a PDF without Europass data,
-/// the generic text importer (ADR-047).
+/// Imports any CV file: a ZIP as a LinkedIn data export, otherwise Europass
+/// first, and for a PDF without Europass data, the generic text importer
+/// (ADR-047).
 pub fn import_any(
     bytes: &[u8],
     fresh: &mut dyn FnMut() -> Id,
 ) -> Result<ImportResult, ImportError> {
+    if bytes.len() > MAX_INPUT {
+        return Err(ImportError::TooLarge);
+    }
+    if looks_like_zip(bytes) {
+        return import_linkedin_zip(bytes, fresh);
+    }
     match import_europass(bytes, fresh) {
         Err(ImportError::UnsupportedFormat(_)) if bytes.starts_with(b"%PDF") => {
             let text = page_text(bytes)

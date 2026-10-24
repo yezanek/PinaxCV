@@ -18,6 +18,8 @@ pub mod merge;
 pub use merge::{
     EntryDecision, Field, FieldConflict, MergePlan, field_conflicts, merge, suggest_matches,
 };
+pub mod linkedin_zip;
+pub use linkedin_zip::import_linkedin_zip;
 pub mod import;
 pub use import::{ImportError, import_any, import_europass};
 pub mod pdf_text;

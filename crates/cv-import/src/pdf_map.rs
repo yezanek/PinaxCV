@@ -20,7 +20,7 @@ const MONTHS: [&str; 12] = [
 ];
 
 /// A date such as "2021", "03/2021", "2021-03", "Mar 2021" or "March 2021".
-fn parse_date(s: &str) -> Option<PartialDate> {
+pub(crate) fn parse_date(s: &str) -> Option<PartialDate> {
     let s = s.trim();
     let year_ok =
         |y: &str| y.len() == 4 && y.parse::<u16>().is_ok_and(|y| (1900..=2100).contains(&y));
