@@ -47,6 +47,8 @@
     "allow-set-cv-defaults",
     "allow-open-data-dir",
     "allow-backup-db",
-    "allow-restore-db"
+    "allow-restore-db",
+    "allow-clear-ai-cache",
+    "allow-delete-all-data"
   ]
 }

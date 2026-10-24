@@ -536,6 +536,12 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - `backup_db` runs `VACUUM INTO` on a fresh temporary file next to the chosen path, makes it private (`0600` on Unix), syncs it and renames it over the target (`files::create_atomically`), so an existing backup is replaced whole or not at all and no half-written file is left.
 - `restore_db` is confirmed in the UI first, then uses the store's restore (spec section 5.3 and ADR-031's checks: integrity, schema not newer, the current database copied aside as `<db>.before-restore-<time>` and put back if anything fails). A file that is not a backup, or one from a newer PinaxCV, is refused with a message that nothing changed. `restore_from` joins the `Store` trait so the app, which holds a `dyn Store`, can call it; this revises ADR-031, which kept it on `SqliteStore` only. After a restore the AI provider is rebuilt from the restored settings, and Settings reloads its values.
 
+## ADR-081 — Delete all data and Clear AI cache (M8)
+
+- "Clear AI cache" in Settings → "Your data" removes every cached AI answer (`ai_cache_clear`); the next run asks the provider again. CVs and settings stay.
+- "Delete all data…" is confirmed first, then `Store::delete_all_data` deletes every row of every table in one transaction, runs `VACUUM` and `PRAGMA wal_checkpoint(TRUNCATE)` so no deleted text stays in the database file or its WAL (a test searches both files for a deleted title), and removes the `<db>.before-restore-*` copies and restore staging files next to the database. The schema stays, so the app keeps working without a restart. The app then deletes every provider's key from the keychain and from memory and forgets the built provider.
+- Files the user saved elsewhere (exports, backups) are not touched, and the local log file (issue #41) stays: it never holds CV content. Closing Settings reloads the CV list, since a restore or a deletion replaces the CVs.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

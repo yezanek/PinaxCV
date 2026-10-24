@@ -494,6 +494,17 @@ pub async fn restore_db(app: Shared<'_>) -> Reply<RestoreResult> {
     run(app, App::restore_db).await
 }
 
+#[tauri::command]
+pub async fn clear_ai_cache(app: Shared<'_>) -> Reply<()> {
+    run(app, App::clear_ai_cache).await
+}
+
+/// Deletes all data and saved keys; the UI confirms first.
+#[tauri::command]
+pub async fn delete_all_data(app: Shared<'_>) -> Reply<()> {
+    run(app, App::delete_all_data).await
+}
+
 /// Opens the data folder in the system's file manager.
 #[tauri::command]
 pub async fn open_data_dir(app: Shared<'_>) -> Reply<()> {

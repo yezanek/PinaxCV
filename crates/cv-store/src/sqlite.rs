@@ -907,6 +907,60 @@ impl Store for SqliteStore {
     fn restore_from(&self, source: &Path) -> Result<PathBuf> {
         SqliteStore::restore_from(self, source)
     }
+
+    fn delete_all_data(&self) -> Result<()> {
+        let mut conn = self.lock();
+        let tx = conn.transaction().map_err(backend)?;
+        // Children first; the foreign keys would cascade anyway.
+        for table in [
+            "ai_cache",
+            "settings",
+            "review_sessions",
+            "snapshots",
+            "variants",
+            "cvs",
+        ] {
+            tx.execute(&format!("DELETE FROM {table}"), [])
+                .map_err(backend)?;
+        }
+        tx.commit().map_err(backend)?;
+        // VACUUM rewrites the file without the freed pages; the checkpoint
+        // empties the WAL, which still held the deleted rows.
+        conn.execute_batch("VACUUM; PRAGMA wal_checkpoint(TRUNCATE);")
+            .map_err(backend)?;
+        drop(conn);
+        if let Some(path) = &self.path {
+            remove_restore_copies(path)?;
+        }
+        Ok(())
+    }
+}
+
+/// Removes `<db>.before-restore-*` copies and leftover restore staging
+/// files next to the database at `path`.
+fn remove_restore_copies(path: &Path) -> Result<()> {
+    let (Some(dir), Some(name)) = (path.parent(), path.file_name()) else {
+        return Ok(());
+    };
+    let dir = if dir.as_os_str().is_empty() {
+        Path::new(".")
+    } else {
+        dir
+    };
+    let name = name.to_string_lossy();
+    let prefixes = [
+        format!("{name}.before-restore-"),
+        format!("{name}.restore-staging-"),
+    ];
+    for entry in std::fs::read_dir(dir).map_err(backend)? {
+        let entry = entry.map_err(backend)?;
+        let file = entry.file_name();
+        let file = file.to_string_lossy();
+        if prefixes.iter().any(|p| file.starts_with(p.as_str())) {
+            std::fs::remove_file(entry.path()).map_err(backend)?;
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]

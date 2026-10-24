@@ -1,7 +1,7 @@
-//! Backup and restore (spec sections 5.3 and 13): a backup is a copy of the
-//! whole database made with `VACUUM INTO`. It holds every CV, variant,
-//! setting and cached AI answer, and never an API key, which lives in the
-//! OS keychain.
+//! Backup, restore and deletion (spec sections 5.3 and 13): a backup is a
+//! copy of the whole database made with `VACUUM INTO`. It holds every CV,
+//! variant, setting and cached AI answer, and never an API key, which lives
+//! in the OS keychain. "Delete all data" removes all of it, keys included.
 
 use cv_api::{ApiError, BackupResult, ErrorCode, RestoreResult};
 use cv_store::StoreError;
@@ -90,6 +90,22 @@ impl App {
         Ok(RestoreResult {
             previous_data: previous.display().to_string(),
         })
+    }
+}
+
+impl App {
+    /// Removes every cached AI answer; they hold CV text and go into
+    /// backups. The next AI run asks the provider again.
+    pub fn clear_ai_cache(&self) -> Result<()> {
+        self.store.ai_cache_clear().map_err(crate::store_error)
+    }
+
+    /// Deletes every CV, variant, snapshot, setting and cached AI answer,
+    /// the copies restores kept, and every saved API key. The UI confirms
+    /// first; this cannot be undone.
+    pub fn delete_all_data(&self) -> Result<()> {
+        self.store.delete_all_data().map_err(crate::store_error)?;
+        self.forget_all_keys()
     }
 }
 

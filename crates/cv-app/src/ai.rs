@@ -350,6 +350,28 @@ impl App {
         *self.ai.llm.write().unwrap_or_else(PoisonError::into_inner) = None;
     }
 
+    /// Removes every provider's key from the keychain and from memory.
+    pub(crate) fn forget_all_keys(&self) -> Result<()> {
+        self.ai
+            .memory
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clear();
+        for provider in [
+            AiProvider::Anthropic,
+            AiProvider::Openai,
+            AiProvider::Gemini,
+            AiProvider::OpenaiCompatible,
+        ] {
+            match self.ai.secrets.delete(provider_name(provider)) {
+                Ok(()) | Err(SecretError::Unavailable) => {}
+                Err(e) => return Err(keychain_error(&e)),
+            }
+        }
+        self.reset_llm();
+        Ok(())
+    }
+
     /// The model name in the settings, part of every cache key.
     pub(crate) fn ai_model(&self) -> Result<String> {
         Ok(self.ai_status()?.model)

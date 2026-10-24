@@ -243,6 +243,12 @@
           "markdownDescription": "Enables the backup_db command without any pre-configured scope."
         },
         {
+          "description": "Enables the clear_ai_cache command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-clear-ai-cache",
+          "markdownDescription": "Enables the clear_ai_cache command without any pre-configured scope."
+        },
+        {
           "description": "Enables the create_cv command without any pre-configured scope.",
           "type": "string",
           "const": "allow-create-cv",
@@ -253,6 +259,12 @@
           "type": "string",
           "const": "allow-create-variant",
           "markdownDescription": "Enables the create_variant command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the delete_all_data command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-delete-all-data",
+          "markdownDescription": "Enables the delete_all_data command without any pre-configured scope."
         },
         {
           "description": "Enables the delete_cv command without any pre-configured scope.",
@@ -495,6 +507,12 @@
           "markdownDescription": "Denies the backup_db command without any pre-configured scope."
         },
         {
+          "description": "Denies the clear_ai_cache command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-clear-ai-cache",
+          "markdownDescription": "Denies the clear_ai_cache command without any pre-configured scope."
+        },
+        {
           "description": "Denies the create_cv command without any pre-configured scope.",
           "type": "string",
           "const": "deny-create-cv",
@@ -505,6 +523,12 @@
           "type": "string",
           "const": "deny-create-variant",
           "markdownDescription": "Denies the create_variant command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the delete_all_data command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-delete-all-data",
+          "markdownDescription": "Denies the delete_all_data command without any pre-configured scope."
         },
         {
           "description": "Denies the delete_cv command without any pre-configured scope.",

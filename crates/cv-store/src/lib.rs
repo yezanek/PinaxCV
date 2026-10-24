@@ -108,4 +108,9 @@ pub trait Store: Send + Sync {
     /// Replaces the database with a backup (spec section 5.3) after copying
     /// the current one aside; returns that copy's path.
     fn restore_from(&self, source: &Path) -> Result<std::path::PathBuf>;
+    /// Deletes every CV, variant, snapshot, review, setting and cached AI
+    /// answer, compacts the database so no deleted content stays in it or
+    /// its WAL, and removes the copies earlier restores kept. The schema
+    /// stays, so the store keeps working.
+    fn delete_all_data(&self) -> Result<()>;
 }
