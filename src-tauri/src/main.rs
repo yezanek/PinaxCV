@@ -16,6 +16,16 @@ mod preview;
 /// File name of the database inside the app data directory.
 const DB_FILE: &str = "pinaxcv.sqlite3";
 
+/// The platform save dialog, or in an end-to-end test build the dialog
+/// that saves into `PINAXCV_E2E_EXPORT_DIR`.
+fn save_dialog(handle: &tauri::AppHandle) -> Box<dyn cv_app::SaveDialog> {
+    #[cfg(feature = "e2e")]
+    if let Some(d) = dialog::E2eSaveDialog::from_env() {
+        return Box::new(d);
+    }
+    Box::new(dialog::TauriSaveDialog::new(handle.clone()))
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -29,7 +39,7 @@ fn main() {
             let store = SqliteStore::open(&dir.join(DB_FILE))?;
             let app = App::new(
                 Box::new(store),
-                Box::new(dialog::TauriSaveDialog::new(tauri_app.handle().clone())),
+                save_dialog(tauri_app.handle()),
                 Box::new(UlidIds),
                 preview::BASE_URL,
             );

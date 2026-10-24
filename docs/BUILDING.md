@@ -127,6 +127,25 @@ This section will then cover `cargo tauri dev` for a live-reloading development 
 - Windows: NSIS installer.
 - macOS: an unsigned `.app` for your own machine. A locally built app is not quarantined, so it opens without Gatekeeper prompts.
 
+## 6. End-to-end smoke test
+
+CI drives the real app through [`tauri-driver`](https://v2.tauri.app/develop/tests/webdriver/) on Linux and Windows: it creates a CV, edits it, waits for the preview and exports a PDF (`crates/e2e/tests/smoke.rs`). `cargo test` skips it unless `PINAXCV_E2E_APP` is set.
+
+The app is built with the `e2e` feature, which saves exports into `PINAXCV_E2E_EXPORT_DIR` instead of opening the save dialog, because WebDriver cannot drive native dialogs. Release builds never enable it. `tauri-driver` starts the app, so it is the process that needs `PINAXCV_E2E_EXPORT_DIR`.
+
+To run it on Debian or Ubuntu:
+
+```sh
+sudo apt install webkit2gtk-driver xvfb
+cargo install tauri-driver --version 2.1.0 --locked
+(cd ui && trunk build --locked)
+cargo build -p pinaxcv --features e2e
+export PINAXCV_E2E_EXPORT_DIR=$(mktemp -d) PINAXCV_E2E_APP=$PWD/target/debug/pinaxcv
+xvfb-run -a sh -c 'tauri-driver & sleep 2; cargo test -p pinaxcv-e2e'
+```
+
+The test uses the app's normal data folder, so it adds an "E2E smoke" CV there. On Windows, `tauri-driver` also needs `msedgedriver.exe` matching the installed WebView2 version (`--native-driver`); the CI job shows how to fetch it.
+
 ## Troubleshooting
 
 - **`webkit2gtk-4.1` not found (Linux):** your distribution is too old or the `-dev`/`-devel` package is missing. Ubuntu 20.04 and Debian 11 only ship WebKitGTK 4.0, which Tauri 2 does not support.

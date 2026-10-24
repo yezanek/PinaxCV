@@ -19,6 +19,10 @@ cv-store.workspace = true
 tauri.workspace = true
 tauri-plugin-dialog.workspace = true
 
+[features]
+# End-to-end test builds only: exports skip the save dialog (see dialog.rs).
+e2e = []
+
 [lints]
 workspace = true
 
