@@ -403,16 +403,16 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
         <div class="editor">
             <section class="form">
                 <div class="tabs" role="tablist">
-                    <button role="tab" aria-selected=move || (!style_tab.get()).to_string()
+                    <button id="tab-content" role="tab" aria-controls="panel-content" aria-selected=move || (!style_tab.get()).to_string()
                         on:click=move |_| style_tab.set(false)>{t().content}</button>
-                    <button role="tab" aria-selected=move || style_tab.get().to_string()
+                    <button id="tab-style" role="tab" aria-controls="panel-style" aria-selected=move || style_tab.get().to_string()
                         on:click=move |_| style_tab.set(true)>{t().style}</button>
                 </div>
                 <p class="error">{move || error.get()}</p>
-                <div role="tabpanel" aria-label=t().style hidden=move || !style_tab.get()>
+                <div id="panel-style" role="tabpanel" aria-labelledby="tab-style" hidden=move || !style_tab.get()>
                     <StyleTab cv=cv edit=edit error=error />
                 </div>
-                <div role="tabpanel" aria-label=t().content hidden=move || style_tab.get()>
+                <div id="panel-content" role="tabpanel" aria-labelledby="tab-content" hidden=move || style_tab.get()>
                 <VariantBar cv_id=id.clone() cv=cv variant=variant error=error changed=variant_changed
                     busy=variant_busy settled=variant_settled />
                 {field(t().cv_title, |c| c.title.clone(), |c, v| c.title = v)}
