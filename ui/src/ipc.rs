@@ -17,7 +17,11 @@ extern "C" {
 /// Invokes `cmd` with `args` (a struct whose fields are the command's
 /// parameters) and decodes the reply.
 pub async fn call<A: Serialize, R: DeserializeOwned>(cmd: &str, args: &A) -> Result<R, ApiError> {
-    let args = serde_wasm_bindgen::to_value(args).map_err(internal)?;
+    // Maps (a variant's order and text overrides) must arrive as plain
+    // objects: the IPC sends JSON, and a JavaScript Map turns into `{}`.
+    let args = args
+        .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+        .map_err(internal)?;
     match tauri_invoke(cmd, args).await {
         Ok(value) => serde_wasm_bindgen::from_value(value).map_err(internal),
         Err(err) => Err(serde_wasm_bindgen::from_value(err)

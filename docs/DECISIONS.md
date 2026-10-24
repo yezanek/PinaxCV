@@ -401,6 +401,13 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - The wizard replaces the CV list while it is open: summary, warnings, then "A new CV" (title, defaulting to the imported name) or "Merge into an existing CV" with the review. Matched entries default to Replace, others to Add as new, and conflicting fields to Keep mine. The end-to-end build's dialog reads `PINAXCV_E2E_IMPORT_FILE`.
 - The `SaveDialog` trait became `FileDialog` with an open method, so the shell keeps owning every path.
 
+## ADR-062 — Reordering inside a variant (M5)
+
+- The variant panel lists sections, entries, bullets, skill groups, skills and language items in the selected variant's order, each with ↑/↓ buttons and a drag handle (ADR-053). Moving changes only the variant's `order` map; the base CV keeps its order.
+- A move stores the parent's full child order (the variant's list first, then the base items it does not name, in base order), so later base additions appear at the end and items deleted from the base are dropped.
+- The panel re-renders when the order changes, not when an item is hidden or collapsed.
+- IPC arguments are serialised in JSON-compatible form: maps become plain objects. Before, a variant's `order` and `text_overrides` were sent as JavaScript `Map`s, which reach the backend as `{}`.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

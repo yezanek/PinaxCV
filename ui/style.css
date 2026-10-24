@@ -43,6 +43,10 @@ fieldset.section > .order { display: flex; justify-content: flex-end; gap: 0.3re
 .variant-visibility input[type="checkbox"] { width: auto; margin: 0; }
 .variant-visibility li { display: flex; gap: 1rem; }
 .variant-visibility li.nested { padding-left: 1.2rem; font-size: 0.95em; }
+.variant-visibility li, .variant-section-head { align-items: center; }
+.variant-section-head { display: flex; gap: 0.5rem; }
+.variant-visibility .order { margin-left: auto; display: flex; gap: 0.2rem; }
+.variant-visibility .order button { padding: 0 0.4rem; }
 .variant-actions { display: flex; gap: 0.5rem; align-items: end; margin-bottom: 0.5rem; flex-wrap: wrap; }
 
 .tabs { display: flex; gap: 0.25rem; margin: -0.25rem 0 0.75rem; border-bottom: 1px solid var(--border); }
