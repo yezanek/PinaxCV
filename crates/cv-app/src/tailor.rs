@@ -1,16 +1,23 @@
-//! `ai_tailor` (spec section 11.13, M7a): stages A (job parse), B
-//! (relevance) and C (selection), then fit-to-length when the variant has a
-//! page target. Runs as a job; the suggestions are saved on the variant as
-//! `Pending` and nothing else in the variant changes.
+//! `ai_tailor` (spec section 11.13): stages A (job parse), B (relevance),
+//! C (selection) and D (verified rewrites), then fit-to-length when the
+//! variant has a page target. Runs as a job; the suggestions are saved on
+//! the variant as `Pending` and nothing else in the variant changes.
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use cv_ai::cache::{ResponseCache, sha256_hex};
-use cv_ai::{PayloadOptions, StageContext, build_cv_payload, parse_job, score_relevance};
-use cv_api::{AiStage, AiTailor, ApiError, ErrorCode, JobId, TailorResult};
+use cv_ai::{
+    LlmError, PayloadOptions, Rewrites, StageContext, build_cv_payload, parse_job, rewrite_bullets,
+    score_relevance,
+};
+use cv_api::{AiStage, AiTailor, ApiError, DiscardedRewrite, ErrorCode, JobId, TailorResult};
 use cv_core::fit::{FitResult, fit};
 use cv_core::selection::plan_selection;
-use cv_core::{SuggestionAction, SuggestionSource, SuggestionTarget, Variant, validate};
+use cv_core::{
+    Id, IdSource, ResolvedCv, ResolvedSection, Suggestion, SuggestionAction, SuggestionKind,
+    SuggestionSource, SuggestionStatus, SuggestionTarget, Variant, validate,
+};
 use cv_store::Store;
 
 use crate::{App, JobContext, JobEvents, Result, llm_error, store_error};
@@ -100,13 +107,14 @@ impl App {
             send_name: status.send_name,
             send_location: status.send_location,
         };
-        let relevance = score_relevance(&stage, &requirements, &build_cv_payload(&base, opts))
+        let payload = build_cv_payload(&base, opts);
+        let relevance = score_relevance(&stage, &requirements, &payload)
             .await
             .map_err(llm_error)?;
 
         // C: hide, collapse and order suggestions.
         ctx.progress(AiStage::Selection, 40);
-        let selection = self.with_ids(|ids| {
+        let mut selection = self.with_ids(|ids| {
             plan_selection(
                 &base,
                 &relevance.scores,
@@ -117,10 +125,34 @@ impl App {
         });
         ctx.check()?;
 
+        // D: rewrites of the kept, relevant bullets the user has not edited
+        // in this variant. Optional: a failure keeps the other suggestions.
+        ctx.progress(AiStage::Rewrite, 50);
+        let mut skip: BTreeSet<Id> = stored.variant.text_overrides.keys().cloned().collect();
+        skip.extend(stored.variant.hidden.iter().cloned());
+        skip.extend(stored.variant.collapsed.iter().cloned());
+        skip.extend(hidden_by(&selection));
+        let mut failed_stages = Vec::new();
+        let mut discarded = Vec::new();
+        match rewrite_bullets(&stage, &requirements, &payload, &relevance.scores, &skip).await {
+            Ok(rewrites) => {
+                let (kept, dropped) = rewrite_suggestions(&base, rewrites);
+                selection.extend(self.with_ids(|ids| {
+                    kept.into_iter()
+                        .map(|r| r.into_suggestion(ids))
+                        .collect::<Vec<_>>()
+                }));
+                discarded = dropped;
+            }
+            Err(LlmError::Cancelled) => return Err(llm_error(LlmError::Cancelled)),
+            Err(_) => failed_stages.push(AiStage::Rewrite),
+        }
+        ctx.check()?;
+
         // Fit to length on top of the selection, as if it were accepted.
         let fitted = match req.options.page_target {
             Some(target) => {
-                ctx.progress(AiStage::Fit, 50);
+                ctx.progress(AiStage::Fit, 80);
                 let mut trial = stored.variant.clone();
                 apply(&mut trial, &selection);
                 let app = Arc::clone(self);
@@ -178,8 +210,87 @@ impl App {
             suggestions: count,
             pages,
             fits,
+            discarded,
+            failed_stages,
         })
     }
+}
+
+/// The entries and bullets `selection` hides or collapses.
+fn hidden_by(selection: &[Suggestion]) -> impl Iterator<Item = Id> + '_ {
+    selection
+        .iter()
+        .filter_map(|s| match (&s.target, &s.action) {
+            (
+                SuggestionTarget::Entry { id } | SuggestionTarget::Bullet { id },
+                Some(SuggestionAction::Hide | SuggestionAction::Collapse),
+            ) => Some(id.clone()),
+            _ => None,
+        })
+}
+
+/// A kept rewrite whose original is still the bullet's text.
+struct KeptRewrite(cv_ai::CheckedRewrite);
+
+impl KeptRewrite {
+    fn into_suggestion(self, ids: &mut dyn IdSource) -> Suggestion {
+        let r = self.0;
+        Suggestion {
+            id: ids.next_id(),
+            kind: SuggestionKind::Rewrite,
+            target: SuggestionTarget::Bullet { id: r.bullet_id },
+            before: Some(r.before),
+            after: Some(r.after),
+            action: None,
+            reason: r.reason,
+            confidence: 0.6,
+            warnings: r.warnings,
+            status: SuggestionStatus::Pending,
+            source: SuggestionSource::Tailor,
+        }
+    }
+}
+
+/// Stage D's rewrites as suggestions and discarded details. A rewrite whose
+/// original is not the bullet's current text (it was redacted or changed)
+/// is dropped without a trace: it could not be applied as reviewed.
+fn rewrite_suggestions(
+    base: &ResolvedCv,
+    rewrites: Rewrites,
+) -> (Vec<KeptRewrite>, Vec<DiscardedRewrite>) {
+    let mut texts: BTreeMap<&Id, &str> = BTreeMap::new();
+    for section in &base.sections {
+        let entries = match section {
+            ResolvedSection::Experience(s)
+            | ResolvedSection::Education(s)
+            | ResolvedSection::Projects(s)
+            | ResolvedSection::Certifications(s)
+            | ResolvedSection::Custom(s) => &s.entries,
+            ResolvedSection::Skills(_) | ResolvedSection::Languages(_) => continue,
+        };
+        for b in entries.iter().flat_map(|e| &e.bullets) {
+            texts.insert(&b.id, b.text.as_str());
+        }
+    }
+    let current = |r: &cv_ai::CheckedRewrite| texts.get(&r.bullet_id) == Some(&r.before.as_str());
+    let kept = rewrites
+        .kept
+        .into_iter()
+        .filter(|r| current(r))
+        .map(KeptRewrite)
+        .collect();
+    let discarded = rewrites
+        .discarded
+        .into_iter()
+        .filter(|r| current(r))
+        .map(|r| DiscardedRewrite {
+            bullet_id: r.bullet_id,
+            before: r.before,
+            after: r.after,
+            warnings: r.warnings,
+        })
+        .collect();
+    (kept, discarded)
 }
 
 /// Applies the hide and collapse suggestions to a trial copy.

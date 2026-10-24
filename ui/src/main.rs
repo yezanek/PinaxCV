@@ -6,6 +6,7 @@ use leptos::prelude::*;
 
 mod checks;
 mod dates;
+mod diff;
 mod drag;
 mod editor;
 mod entries;

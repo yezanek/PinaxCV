@@ -4,7 +4,8 @@
 //! all pending; nothing changes until the user accepts one.
 
 use cv_api::{
-    AiDone, AiFailed, AiProgress, AiStage, AiStatus, AiTailor, ErrorCode, JobId, TailorResult,
+    AiDone, AiFailed, AiProgress, AiStage, AiStatus, AiTailor, DiscardedRewrite, ErrorCode, JobId,
+    TailorResult,
 };
 use cv_core::StoredVariant;
 use cv_core::selection::TailorOptions;
@@ -31,9 +32,8 @@ pub fn stage_label(stage: AiStage) -> &'static str {
         AiStage::Relevance => s.stage_relevance,
         AiStage::Selection => s.stage_selection,
         AiStage::Fit => s.stage_fit,
-        AiStage::Rewrite | AiStage::Summary | AiStage::Gaps | AiStage::Review | AiStage::Import => {
-            s.stage_working
-        }
+        AiStage::Rewrite => s.stage_rewrite,
+        AiStage::Summary | AiStage::Gaps | AiStage::Review | AiStage::Import => s.stage_working,
     }
 }
 
@@ -43,6 +43,10 @@ pub fn result_message(r: &TailorResult) -> String {
         0 => t().tailor_nothing.to_owned(),
         n => fill(t().tailor_done, &[("n", &n.to_string())]),
     };
+    if r.failed_stages.contains(&AiStage::Rewrite) {
+        text.push(' ');
+        text.push_str(t().rewrite_failed);
+    }
     if r.fits == Some(false) {
         text.push(' ');
         text.push_str(&fill(
@@ -81,6 +85,8 @@ pub fn TailorPanel(
     let status: RwSignal<Option<AiStatus>> = RwSignal::new(None);
     let progress: RwSignal<Option<(AiStage, u8)>> = RwSignal::new(None);
     let message: RwSignal<Option<String>> = RwSignal::new(None);
+    // Rewrites the last run's safety checks dropped; not saved.
+    let discarded: RwSignal<Vec<DiscardedRewrite>> = RwSignal::new(Vec::new());
     let job: RwSignal<Option<JobId>> = RwSignal::new(None);
     let reorder = RwSignal::new(false);
     // A job can end before `ai_tailor` answers with its ID: the end is kept
@@ -106,6 +112,7 @@ pub fn TailorPanel(
         match ended {
             Ended::Done(result) => {
                 message.set(Some(result_message(&result)));
+                discarded.set(result.discarded.clone());
                 let same = variant.with_untracked(|v| {
                     v.as_ref()
                         .is_some_and(|v| v.variant.id == result.variant.variant.id)
@@ -190,6 +197,7 @@ pub fn TailorPanel(
         };
         tailoring.set(true);
         message.set(None);
+        discarded.set(Vec::new());
         error.set(None);
         progress.set(Some((AiStage::Starting, 0)));
         early.set_value(None);
@@ -271,6 +279,20 @@ pub fn TailorPanel(
                 </div>
             })}
             <p role="status">{move || message.get()}</p>
+            <Show when=move || discarded.with(|d| !d.is_empty())>
+                <details class="discarded">
+                    <summary>{move || fill(t().discarded_count, &[("n", &discarded.with(Vec::len).to_string())])}</summary>
+                    <ul>{move || discarded.get().into_iter().map(|d| view! {
+                        <li>
+                            <span>{t().discarded_before}": "{d.before}</span>
+                            <span>{t().discarded_after}": "{d.after}</span>
+                            {d.warnings.iter().map(|w| view! {
+                                <span class="badge">{fill(crate::review::badge(w.kind), &[("detail", &w.detail)])}</span>
+                            }).collect_view()}
+                        </li>
+                    }).collect_view()}</ul>
+                </details>
+            </Show>
         </div>
     }
 }
@@ -292,6 +314,8 @@ mod tests {
             suggestions,
             pages: fits.map(|_| 2),
             fits,
+            discarded: Vec::new(),
+            failed_stages: Vec::new(),
         }
     }
 
@@ -301,6 +325,9 @@ mod tests {
         assert!(result_message(&result(3, None)).contains('3'));
         let over = result_message(&result(3, Some(false)));
         assert!(over.contains('3') && over.contains('2'), "{over}");
+        let mut partial = result(3, None);
+        partial.failed_stages.push(AiStage::Rewrite);
+        assert!(result_message(&partial).contains(t().rewrite_failed));
     }
 
     #[test]
@@ -310,6 +337,7 @@ mod tests {
             AiStage::JobParse,
             AiStage::Relevance,
             AiStage::Selection,
+            AiStage::Rewrite,
             AiStage::Fit,
         ] {
             assert!(!stage_label(stage).is_empty());

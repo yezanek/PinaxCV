@@ -490,6 +490,14 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Bulk actions: Accept all without warnings, Reject all, and Accept all, which asks first when any pending suggestion has a warning (spec section 12.6). They use `Variant::accept_all` and `Variant::reject_all` on the tailoring and review sources only.
 - Decisions stick: `Variant::replace_pending` drops a new suggestion with the same kind, target, action and text as one already accepted or rejected, so a rerun does not ask again.
 
+## ADR-074 — Rewrite stage and verification (M7b)
+
+- Stage D runs inside `ai_tailor` after selection: bullets scoring at least 40 (a bullet without a score takes its entry's), per entry, at most 8 per request. Bullets of entries the selection hides or collapses, bullets the variant already hides, collapses or overrides, and bullets whose text was redacted are not sent. The stage is optional: a provider failure keeps the selection and fit suggestions and is reported in `TailorResult.failed_stages`; cancelling still ends the job.
+- `cv_ai::verify::verify_rewrite` runs on every rewrite (spec section 11.8). Numbers are compared by value, so "2.1m" matches "2,100,000" and "four" matches "4"; thousand separators follow the usual heuristics ("1,200" and "1.200" are 1200, "2,5" is 2.5), and spelled numbers are matched in English and German, including "doubled" and "halved". A new number, a length outside 40% to 110% or over 200 characters, and a language change are errors that drop the rewrite. The language check runs only when `whatlang` is reliable on both texts and they are at least 40 characters long. A text equal after normalizing case, spacing and a trailing period is dropped silently.
+- Terms are tokens capitalized mid-sentence, tokens with digits or `. / + #` inside, and entries of the embedded dictionary (`crates/cv-ai/data/tech_terms.txt`, about 580 terms, matched with the case listed so "Go" counts and "go" does not). A term absent from the original, the entry's title, organization and other bullets, and the CV's skills is a `NewTerm` warning; when it is a job keyword and the model declared a terminology change, it is a `TerminologyChanged` note instead.
+- Dropped rewrites are returned in `TailorResult.discarded` (not saved) and shown under "N suggestions discarded by safety checks". A rewrite whose original is no longer the bullet's text is dropped without a trace, since it could not be applied as reviewed.
+- Rewrite cards show the entry, a word diff, the reason and the badges (amber for warnings, blue for notes); a card with a warning is marked "Needs attention". "Edit then accept" opens the proposed text for editing and accepts the edited version through `Variant::accept_edited`.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

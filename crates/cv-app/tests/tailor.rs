@@ -12,7 +12,7 @@ use cv_app::{App, ExportKind, FileDialog, JobEvent, JobEvents, UlidIds};
 use cv_core::selection::TailorOptions;
 use cv_core::{
     Cv, Id, JobTarget, SuggestionAction, SuggestionKind, SuggestionSource, SuggestionStatus,
-    SuggestionTarget,
+    SuggestionTarget, VerificationKind,
 };
 use cv_store::{SqliteStore, SystemClock};
 use serde_json::{Value, json};
@@ -66,6 +66,23 @@ fn relevance() -> Value {
         ],
         "bullets": [],
         "skills": [{ "skill_id": SQL, "score": 95 }, { "skill_id": GO, "score": 5 }]
+    })
+}
+
+fn rewrites() -> Value {
+    json!({
+        "rewrites": [
+            { "bullet_id": "01J02000000000000000000004",
+              "new_text": "Migrated the billing platform to Rust, cutting p99 latency 43%.",
+              "change_type": "Tighten", "reason": "Fewer words." },
+            { "bullet_id": "01J02000000000000000000005",
+              "new_text": "Designed an event-sourced ledger processing 3 million transactions daily.",
+              "change_type": "Impact", "reason": "Rounder number." },
+            { "bullet_id": "01J02000000000000000000006",
+              "new_text": "Mentored four engineers and brought property-based testing to three Terraform services.",
+              "change_type": "Clarity", "reason": "Clearer." }
+        ],
+        "no_change": []
     })
 }
 
@@ -158,7 +175,8 @@ async fn run(
 async fn tailoring_saves_pending_suggestions_and_caches_the_parse() {
     let llm = FakeLlm::new()
         .reply("JobRequirements", requirements())
-        .reply("RelevanceResult", relevance());
+        .reply("RelevanceResult", relevance())
+        .reply("RewriteResult", rewrites());
     let s = setup(llm, "We need SQL. Kubernetes is a plus.", true);
     let (events, outcome) = run(&s, TailorOptions::default()).await;
     let result = outcome.expect("tailored");
@@ -197,9 +215,35 @@ async fn tailoring_saves_pending_suggestions_and_caches_the_parse() {
                     id: id("01J02000000000000000000014")
                 }
             ),
+            (
+                SuggestionKind::Rewrite,
+                SuggestionTarget::Bullet {
+                    id: id("01J02000000000000000000004")
+                }
+            ),
+            (
+                SuggestionKind::Rewrite,
+                SuggestionTarget::Bullet {
+                    id: id("01J02000000000000000000006")
+                }
+            ),
         ]
     );
-    assert_eq!(result.suggestions, 3);
+    assert_eq!(result.suggestions, 5);
+    assert!(result.failed_stages.is_empty());
+    // The new number dropped one rewrite; the new term marks another.
+    assert_eq!(result.discarded.len(), 1);
+    assert_eq!(
+        result.discarded[0].warnings[0].kind,
+        VerificationKind::NewNumber
+    );
+    assert!(v.suggestions[3].warnings.is_empty());
+    assert_eq!(v.suggestions[4].warnings[0].kind, VerificationKind::NewTerm);
+    assert_eq!(v.suggestions[4].warnings[0].detail, "Terraform");
+    assert_eq!(
+        v.suggestions[3].before.as_deref(),
+        Some("Led the migration of the billing platform to Rust, cutting p99 latency by 43%.")
+    );
     assert!(
         v.suggestions
             .iter()
@@ -236,9 +280,29 @@ async fn tailoring_saves_pending_suggestions_and_caches_the_parse() {
     // sent, and replaces the pending suggestions instead of adding to them.
     let (_, again) = run(&s, TailorOptions::default()).await;
     let again = again.expect("rerun");
-    assert_eq!(again.variant.variant.suggestions.len(), 3);
+    assert_eq!(again.variant.variant.suggestions.len(), 5);
     let names: Vec<_> = s.llm.seen().iter().map(|r| r.schema_name).collect();
-    assert_eq!(names, ["JobRequirements", "RelevanceResult"]);
+    assert_eq!(
+        names,
+        ["JobRequirements", "RelevanceResult", "RewriteResult"]
+    );
+    // Only the recent entry's bullets were sent for rewriting: the older
+    // one is about to be hidden.
+    let sent = &s.llm.seen()[2].user;
+    assert!(sent.contains("billing") && !sent.contains("search API"));
+}
+
+#[tokio::test]
+async fn a_failed_rewrite_stage_keeps_the_other_suggestions() {
+    let llm = FakeLlm::new()
+        .reply("JobRequirements", requirements())
+        .reply("RelevanceResult", relevance())
+        .fail("RewriteResult", cv_ai::LlmError::Http { status: 500 });
+    let s = setup(llm, "We need SQL.", true);
+    let (_, outcome) = run(&s, TailorOptions::default()).await;
+    let result = outcome.expect("partial");
+    assert_eq!(result.failed_stages, [AiStage::Rewrite]);
+    assert_eq!(result.suggestions, 3);
 }
 
 #[tokio::test]
