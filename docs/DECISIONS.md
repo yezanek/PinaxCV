@@ -436,6 +436,12 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - A finding with a target ID, or about the name, email or summary, has a "Show" button. It switches to the Content tab, opens the item's section if it is collapsed, scrolls to the item and focuses its first field. Findings such as the page count have nothing to jump to.
 - The contact and summary fields carry fixed element IDs for this; items are found by the `data-drag-id` they already carry, skipping the variant panel's rows.
 
+## ADR-067 — Checks tab: ATS check panel (M6)
+
+- Below the lint list, "Run check" calls `ats_check` for the shown CV or variant. The backend renders the PDF in memory, extracts its text and runs the report checks (docs/ATS_RULES.md). Nothing is written to disk.
+- The panel shows the score as "Score as read by PinaxCV", each check passed or failed with its detail, and the extracted text in a monospace box with a "Copy text" button using the clipboard API.
+- It runs only on request, since it renders a full PDF. The limits text from ATS_RULES.md stands above the button: these are best-practice checks, not vendor rules, and the employer's own flow is the real test.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
