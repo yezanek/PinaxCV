@@ -1,0 +1,320 @@
+{
+  "job.txt": {
+    "JobRequirements": [
+      {
+        "title": "Senior Site Reliability Engineer",
+        "seniority": "senior",
+        "language": "en",
+        "must_have": [
+          {
+            "id": "r1",
+            "text": "Operating Kubernetes in production",
+            "kind": "skill",
+            "keywords": [
+              "Kubernetes"
+            ]
+          },
+          {
+            "id": "r2",
+            "text": "AWS",
+            "kind": "skill",
+            "keywords": [
+              "AWS"
+            ]
+          },
+          {
+            "id": "r3",
+            "text": "Infrastructure as code with Terraform",
+            "kind": "skill",
+            "keywords": [
+              "Terraform"
+            ]
+          },
+          {
+            "id": "r4",
+            "text": "Monitoring and alerting",
+            "kind": "experience",
+            "keywords": [
+              "Prometheus",
+              "observability"
+            ]
+          }
+        ],
+        "nice_to_have": [
+          {
+            "id": "r5",
+            "text": "Leading incident reviews",
+            "kind": "other",
+            "keywords": [
+              "incident management"
+            ]
+          }
+        ],
+        "responsibilities": [],
+        "keywords": [
+          "Kubernetes",
+          "AWS",
+          "Terraform",
+          "Prometheus",
+          "observability",
+          "incident management"
+        ],
+        "domain": null
+      }
+    ],
+    "RelevanceResult": [
+      {
+        "entries": [
+          {
+            "entry_id": "01J05000000000000000000001",
+            "score": 94,
+            "matched_requirements": [
+              "r1",
+              "r2",
+              "r3",
+              "r4"
+            ],
+            "reason": "Kubernetes, AWS and Terraform operations"
+          },
+          {
+            "entry_id": "01J05000000000000000000004",
+            "score": 4,
+            "matched_requirements": [],
+            "reason": "Pastry work, unrelated"
+          }
+        ],
+        "bullets": [
+          {
+            "bullet_id": "01J05000000000000000000002",
+            "score": 95,
+            "matched_requirements": [
+              "r1",
+              "r2",
+              "r3"
+            ]
+          },
+          {
+            "bullet_id": "01J05000000000000000000003",
+            "score": 86,
+            "matched_requirements": [
+              "r4"
+            ]
+          },
+          {
+            "bullet_id": "01J05000000000000000000005",
+            "score": 2,
+            "matched_requirements": []
+          }
+        ],
+        "skills": [
+          {
+            "skill_id": "01J05000000000000000000006",
+            "score": 95
+          },
+          {
+            "skill_id": "01J05000000000000000000007",
+            "score": 92
+          },
+          {
+            "skill_id": "01J05000000000000000000008",
+            "score": 90
+          },
+          {
+            "skill_id": "01J05000000000000000000009",
+            "score": 87
+          },
+          {
+            "skill_id": "01J05000000000000000000010",
+            "score": 2
+          }
+        ]
+      }
+    ],
+    "RewriteResult": [
+      {
+        "rewrites": [
+          {
+            "bullet_id": "01J05000000000000000000002",
+            "new_text": "Ran 40 Kubernetes clusters on AWS with Terraform, serving 200 internal teams.",
+            "change_type": "Clarity",
+            "reason": "Clearer"
+          }
+        ],
+        "no_change": [
+          "01J05000000000000000000003"
+        ]
+      }
+    ],
+    "GapResult": [
+      {
+        "gaps": [
+          {
+            "requirement_id": "r5",
+            "severity": "missing",
+            "question": "Have you led incident reviews or postmortems, and how often?",
+            "where_to_add_hint": "the Site Reliability Engineer entry"
+          }
+        ]
+      }
+    ]
+  },
+  "job_clean.txt": {
+    "JobRequirements": [
+      {
+        "title": "Senior Site Reliability Engineer",
+        "seniority": "senior",
+        "language": "en",
+        "must_have": [
+          {
+            "id": "r1",
+            "text": "Operating Kubernetes in production",
+            "kind": "skill",
+            "keywords": [
+              "Kubernetes"
+            ]
+          },
+          {
+            "id": "r2",
+            "text": "AWS",
+            "kind": "skill",
+            "keywords": [
+              "AWS"
+            ]
+          },
+          {
+            "id": "r3",
+            "text": "Infrastructure as code with Terraform",
+            "kind": "skill",
+            "keywords": [
+              "Terraform"
+            ]
+          },
+          {
+            "id": "r4",
+            "text": "Monitoring and alerting",
+            "kind": "experience",
+            "keywords": [
+              "Prometheus",
+              "observability"
+            ]
+          }
+        ],
+        "nice_to_have": [
+          {
+            "id": "r5",
+            "text": "Leading incident reviews",
+            "kind": "other",
+            "keywords": [
+              "incident management"
+            ]
+          }
+        ],
+        "responsibilities": [],
+        "keywords": [
+          "Kubernetes",
+          "AWS",
+          "Terraform",
+          "Prometheus",
+          "observability",
+          "incident management"
+        ],
+        "domain": null
+      }
+    ],
+    "RelevanceResult": [
+      {
+        "entries": [
+          {
+            "entry_id": "01J05000000000000000000001",
+            "score": 92,
+            "matched_requirements": [
+              "r1",
+              "r2",
+              "r3",
+              "r4"
+            ],
+            "reason": "Kubernetes, AWS and Terraform operations"
+          },
+          {
+            "entry_id": "01J05000000000000000000004",
+            "score": 2,
+            "matched_requirements": [],
+            "reason": "Pastry work, unrelated"
+          }
+        ],
+        "bullets": [
+          {
+            "bullet_id": "01J05000000000000000000002",
+            "score": 95,
+            "matched_requirements": [
+              "r1",
+              "r2",
+              "r3"
+            ]
+          },
+          {
+            "bullet_id": "01J05000000000000000000003",
+            "score": 88,
+            "matched_requirements": [
+              "r4"
+            ]
+          },
+          {
+            "bullet_id": "01J05000000000000000000005",
+            "score": 2,
+            "matched_requirements": []
+          }
+        ],
+        "skills": [
+          {
+            "skill_id": "01J05000000000000000000006",
+            "score": 95
+          },
+          {
+            "skill_id": "01J05000000000000000000007",
+            "score": 92
+          },
+          {
+            "skill_id": "01J05000000000000000000008",
+            "score": 90
+          },
+          {
+            "skill_id": "01J05000000000000000000009",
+            "score": 85
+          },
+          {
+            "skill_id": "01J05000000000000000000010",
+            "score": 2
+          }
+        ]
+      }
+    ],
+    "RewriteResult": [
+      {
+        "rewrites": [
+          {
+            "bullet_id": "01J05000000000000000000002",
+            "new_text": "Ran 40 Kubernetes clusters on AWS with Terraform, serving 200 internal teams.",
+            "change_type": "Clarity",
+            "reason": "Clearer"
+          }
+        ],
+        "no_change": [
+          "01J05000000000000000000003"
+        ]
+      }
+    ],
+    "GapResult": [
+      {
+        "gaps": [
+          {
+            "requirement_id": "r5",
+            "severity": "missing",
+            "question": "Have you led incident reviews or postmortems, and how often?",
+            "where_to_add_hint": "the Site Reliability Engineer entry"
+          }
+        ]
+      }
+    ]
+  }
+}

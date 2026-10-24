@@ -1,0 +1,12 @@
+Senior Site Reliability Engineer
+
+Keep our platform fast and reliable for millions of users.
+
+Requirements
+- Operating Kubernetes in production
+- AWS
+- Infrastructure as code with Terraform
+- Monitoring and alerting
+
+Nice to have
+- Leading incident reviews

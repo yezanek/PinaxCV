@@ -1,0 +1,163 @@
+{
+  "job.txt": {
+    "JobRequirements": [
+      {
+        "title": "Frontend Developer",
+        "seniority": "mid",
+        "language": "en",
+        "must_have": [
+          {
+            "id": "r1",
+            "text": "React",
+            "kind": "skill",
+            "keywords": [
+              "React"
+            ]
+          },
+          {
+            "id": "r2",
+            "text": "TypeScript",
+            "kind": "skill",
+            "keywords": [
+              "TypeScript"
+            ]
+          },
+          {
+            "id": "r3",
+            "text": "Accessible interfaces (WCAG)",
+            "kind": "experience",
+            "keywords": [
+              "accessibility",
+              "WCAG"
+            ]
+          },
+          {
+            "id": "r4",
+            "text": "Unit tests with Jest",
+            "kind": "skill",
+            "keywords": [
+              "Jest"
+            ]
+          }
+        ],
+        "nice_to_have": [
+          {
+            "id": "r5",
+            "text": "Next.js",
+            "kind": "skill",
+            "keywords": [
+              "Next.js"
+            ]
+          }
+        ],
+        "responsibilities": [],
+        "keywords": [
+          "React",
+          "TypeScript",
+          "WCAG",
+          "accessibility",
+          "Jest",
+          "Next.js"
+        ],
+        "domain": null
+      }
+    ],
+    "RelevanceResult": [
+      {
+        "entries": [
+          {
+            "entry_id": "01J06000000000000000000001",
+            "score": 80,
+            "matched_requirements": [
+              "r1"
+            ],
+            "reason": "React frontend work"
+          },
+          {
+            "entry_id": "01J06000000000000000000004",
+            "score": 40,
+            "matched_requirements": [],
+            "reason": "A relevant degree"
+          }
+        ],
+        "bullets": [
+          {
+            "bullet_id": "01J06000000000000000000002",
+            "score": 85,
+            "matched_requirements": [
+              "r1"
+            ]
+          },
+          {
+            "bullet_id": "01J06000000000000000000003",
+            "score": 55,
+            "matched_requirements": []
+          }
+        ],
+        "skills": [
+          {
+            "skill_id": "01J06000000000000000000005",
+            "score": 90
+          },
+          {
+            "skill_id": "01J06000000000000000000006",
+            "score": 60
+          },
+          {
+            "skill_id": "01J06000000000000000000007",
+            "score": 65
+          }
+        ]
+      }
+    ],
+    "RewriteResult": [
+      {
+        "rewrites": [
+          {
+            "bullet_id": "01J06000000000000000000002",
+            "new_text": "Built responsive React and TypeScript landing pages for 5 retail clients.",
+            "change_type": "Impact",
+            "reason": "Names the stack"
+          },
+          {
+            "bullet_id": "01J06000000000000000000003",
+            "new_text": "Fixed CSS layout bugs that the support team reported.",
+            "change_type": "Clarity",
+            "reason": "Active voice"
+          }
+        ],
+        "no_change": []
+      }
+    ],
+    "GapResult": [
+      {
+        "gaps": [
+          {
+            "requirement_id": "r2",
+            "severity": "missing",
+            "question": "Have you written TypeScript, at work or in your own projects?",
+            "where_to_add_hint": "the skills section"
+          },
+          {
+            "requirement_id": "r3",
+            "severity": "missing",
+            "question": "Have you built pages that meet WCAG accessibility guidelines?",
+            "where_to_add_hint": "the Junior Web Developer entry"
+          },
+          {
+            "requirement_id": "r4",
+            "severity": "missing",
+            "question": "Have you written unit tests with Jest or a similar tool?",
+            "where_to_add_hint": "the skills section"
+          },
+          {
+            "requirement_id": "r5",
+            "severity": "missing",
+            "question": "Have you used Next.js?",
+            "where_to_add_hint": "the skills section"
+          }
+        ]
+      }
+    ]
+  }
+}

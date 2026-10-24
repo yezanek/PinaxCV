@@ -1,0 +1,12 @@
+Junior Data Analyst
+
+Join our retail analytics team and help store managers understand their numbers.
+
+You bring
+- Strong SQL
+- Python for data analysis (pandas)
+- Building dashboards in Tableau or Power BI
+- Explaining findings to non-technical colleagues
+
+Bonus
+- Experience with A/B testing

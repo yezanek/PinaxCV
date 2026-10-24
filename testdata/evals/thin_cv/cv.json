@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "id": "01J06000000000000000000012",
+  "title": "Thin",
+  "locale": "en",
+  "paper": "a4",
+  "template": "classic",
+  "options": {
+    "font_size_pt": 10.0,
+    "line_spacing": 1.1,
+    "margin_mm": 18.0,
+    "accent": null,
+    "date_style": "month_name_year"
+  },
+  "basics": {
+    "full_name": "Sample Person",
+    "headline": "Web Developer",
+    "email": "sample@example.org",
+    "phone": null,
+    "location": "Exampletown, Germany",
+    "links": []
+  },
+  "summary": null,
+  "sections": [
+    {
+      "type": "experience",
+      "id": "01J06000000000000000000008",
+      "title_override": null,
+      "entries": [
+        {
+          "id": "01J06000000000000000000001",
+          "title": "Junior Web Developer",
+          "org": "Pixel Forge",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2023,
+              "month": null
+            },
+            "end": null,
+            "current": true
+          },
+          "bullets": [
+            {
+              "id": "01J06000000000000000000002",
+              "text": "Built responsive landing pages in React for 5 client websites in retail."
+            },
+            {
+              "id": "01J06000000000000000000003",
+              "text": "Fixed CSS layout bugs reported by the support team."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        }
+      ]
+    },
+    {
+      "type": "education",
+      "id": "01J06000000000000000000009",
+      "title_override": null,
+      "entries": [
+        {
+          "id": "01J06000000000000000000004",
+          "title": "B.Sc. Computer Science",
+          "org": "University of Leeds",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2019,
+              "month": null
+            },
+            "end": {
+              "year": 2022,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [],
+          "description": null,
+          "url": null,
+          "locked": false
+        }
+      ]
+    },
+    {
+      "type": "skills",
+      "id": "01J06000000000000000000010",
+      "title_override": null,
+      "groups": [
+        {
+          "id": "01J06000000000000000000011",
+          "label": null,
+          "skills": [
+            {
+              "id": "01J06000000000000000000005",
+              "name": "React"
+            },
+            {
+              "id": "01J06000000000000000000006",
+              "name": "CSS"
+            },
+            {
+              "id": "01J06000000000000000000007",
+              "name": "JavaScript"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

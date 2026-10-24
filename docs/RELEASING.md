@@ -19,6 +19,7 @@ Artifacts:
 - `cargo clippy --workspace --all-targets -- -D warnings`
 - `cargo test --workspace`
 - PDF golden/ATS tests
+- live AI evals against each provider's default model (`testdata/evals/README.md`); record again when prompts changed
 - HTML standalone/export tests
 - clean-install smoke tests
 - backup/restore test

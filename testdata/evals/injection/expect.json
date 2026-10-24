@@ -1,0 +1,5 @@
+{
+  "relevant": "01J05000000000000000000001",
+  "irrelevant": "01J05000000000000000000004",
+  "clean_job": "job_clean.txt"
+}

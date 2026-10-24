@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "id": "01J05000000000000000000014",
+  "title": "SRE",
+  "locale": "en",
+  "paper": "a4",
+  "template": "classic",
+  "options": {
+    "font_size_pt": 10.0,
+    "line_spacing": 1.1,
+    "margin_mm": 18.0,
+    "accent": null,
+    "date_style": "month_name_year"
+  },
+  "basics": {
+    "full_name": "Sample Person",
+    "headline": "Site Reliability Engineer",
+    "email": "sample@example.org",
+    "phone": null,
+    "location": "Exampletown, Germany",
+    "links": []
+  },
+  "summary": null,
+  "sections": [
+    {
+      "type": "experience",
+      "id": "01J05000000000000000000011",
+      "title_override": null,
+      "entries": [
+        {
+          "id": "01J05000000000000000000001",
+          "title": "Site Reliability Engineer",
+          "org": "Harbor Cloud",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2019,
+              "month": null
+            },
+            "end": null,
+            "current": true
+          },
+          "bullets": [
+            {
+              "id": "01J05000000000000000000002",
+              "text": "Ran 40 Kubernetes clusters on AWS with Terraform for 200 internal teams."
+            },
+            {
+              "id": "01J05000000000000000000003",
+              "text": "Reduced on-call pages by 60% by rewriting alert rules in Prometheus."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J05000000000000000000004",
+          "title": "Pastry Chef",
+          "org": "Le Petit Four",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2012,
+              "month": null
+            },
+            "end": {
+              "year": 2016,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J05000000000000000000005",
+              "text": "Baked 500 croissants every morning for the hotel breakfast."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        }
+      ]
+    },
+    {
+      "type": "skills",
+      "id": "01J05000000000000000000012",
+      "title_override": null,
+      "groups": [
+        {
+          "id": "01J05000000000000000000013",
+          "label": null,
+          "skills": [
+            {
+              "id": "01J05000000000000000000006",
+              "name": "Kubernetes"
+            },
+            {
+              "id": "01J05000000000000000000007",
+              "name": "AWS"
+            },
+            {
+              "id": "01J05000000000000000000008",
+              "name": "Terraform"
+            },
+            {
+              "id": "01J05000000000000000000009",
+              "name": "Prometheus"
+            },
+            {
+              "id": "01J05000000000000000000010",
+              "name": "Baking"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
