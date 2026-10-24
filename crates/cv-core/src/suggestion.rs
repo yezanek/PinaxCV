@@ -40,9 +40,19 @@ pub enum SuggestionKind {
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum SuggestionTarget {
-    Bullet { id: Id },
-    Entry { id: Id },
-    Section { id: Id },
+    Bullet {
+        id: Id,
+    },
+    Entry {
+        id: Id,
+    },
+    Section {
+        id: Id,
+    },
+    /// A skill group, whose skills an order suggestion reorders.
+    SkillGroup {
+        id: Id,
+    },
     Summary,
     Skills,
 }
@@ -53,7 +63,8 @@ pub enum SuggestionAction {
     Hide,
     Collapse,
     Show,
-    /// New child order for the target's parent.
+    /// New order for the target's children: an entry's bullets, a
+    /// section's entries or a skill group's skills.
     Reorder {
         order: Vec<Id>,
     },

@@ -113,32 +113,97 @@ impl Variant {
         self.summary_override.take().is_some()
     }
 
-    /// Accepts pending suggestion `id` and applies its hide, collapse or
-    /// show action. Returns false, changing nothing, when there is no such
-    /// pending suggestion or it is not one of those actions on a bullet,
-    /// entry or section.
+    /// Accepts pending suggestion `id` and applies it: hide, collapse or
+    /// show a bullet, entry or section; reorder the children of an entry,
+    /// section or skill group; or take a rewrite of a bullet, an entry's
+    /// description or the summary as this variant's text (`before` holds the
+    /// base text). Returns false, changing nothing, when there is no such
+    /// pending suggestion or it cannot be applied.
     pub fn accept_suggestion(&mut self, id: &Id) -> bool {
         let Some(s) = self
             .suggestions
-            .iter_mut()
+            .iter()
             .find(|s| s.id == *id && s.status == SuggestionStatus::Pending)
+            .cloned()
         else {
             return false;
         };
-        let target = match &s.target {
-            SuggestionTarget::Bullet { id }
-            | SuggestionTarget::Entry { id }
-            | SuggestionTarget::Section { id } => id.clone(),
-            SuggestionTarget::Summary | SuggestionTarget::Skills => return false,
+        let applied = match (&s.target, &s.action, &s.after) {
+            (SuggestionTarget::Summary, _, Some(text)) => {
+                self.set_summary(text.clone(), s.before.as_deref());
+                true
+            }
+            (
+                SuggestionTarget::Bullet { id } | SuggestionTarget::Entry { id },
+                None,
+                Some(text),
+            ) => {
+                self.set_text(id, text.clone(), s.before.as_deref().unwrap_or_default());
+                true
+            }
+            (
+                SuggestionTarget::Entry { id }
+                | SuggestionTarget::Section { id }
+                | SuggestionTarget::SkillGroup { id },
+                Some(SuggestionAction::Reorder { order }),
+                _,
+            ) => {
+                self.order.insert(id.clone(), order.clone());
+                true
+            }
+            (
+                SuggestionTarget::Bullet { id }
+                | SuggestionTarget::Entry { id }
+                | SuggestionTarget::Section { id },
+                Some(action),
+                _,
+            ) => match action {
+                SuggestionAction::Hide => {
+                    self.hidden.insert(id.clone());
+                    true
+                }
+                SuggestionAction::Collapse => {
+                    self.collapsed.insert(id.clone());
+                    true
+                }
+                SuggestionAction::Show => {
+                    self.hidden.remove(id);
+                    true
+                }
+                SuggestionAction::Reorder { .. } => false,
+            },
+            _ => false,
         };
-        match s.action {
-            Some(SuggestionAction::Hide) => self.hidden.insert(target),
-            Some(SuggestionAction::Collapse) => self.collapsed.insert(target),
-            Some(SuggestionAction::Show) => self.hidden.remove(&target),
-            Some(SuggestionAction::Reorder { .. }) | None => return false,
-        };
-        s.status = SuggestionStatus::Accepted;
-        true
+        if applied && let Some(s) = self.suggestions.iter_mut().find(|s| s.id == *id) {
+            s.status = SuggestionStatus::Accepted;
+        }
+        applied
+    }
+
+    /// Accepts every pending suggestion from `sources`; with `safe_only`,
+    /// only those without verification warnings. Returns how many were
+    /// accepted.
+    pub fn accept_all(&mut self, sources: &[SuggestionSource], safe_only: bool) -> usize {
+        let ids: Vec<Id> = self
+            .suggestions
+            .iter()
+            .filter(|s| s.status == SuggestionStatus::Pending && sources.contains(&s.source))
+            .filter(|s| !safe_only || s.warnings.is_empty())
+            .map(|s| s.id.clone())
+            .collect();
+        ids.iter().filter(|id| self.accept_suggestion(id)).count()
+    }
+
+    /// Rejects every pending suggestion from `sources`. Returns how many.
+    pub fn reject_all(&mut self, sources: &[SuggestionSource]) -> usize {
+        let mut n = 0;
+        for s in &mut self.suggestions {
+            if s.status == SuggestionStatus::Pending && sources.contains(&s.source) {
+                s.status = SuggestionStatus::Rejected;
+                n += 1;
+            }
+        }
+        n
     }
 
     /// Rejects pending suggestion `id`. Returns whether it was pending.
@@ -154,6 +219,28 @@ impl Variant {
             }
             None => false,
         }
+    }
+
+    /// Replaces the pending suggestions from `source` with `new`, leaving out
+    /// any the user already decided: a new suggestion with the same kind,
+    /// target and action as an accepted or rejected one is dropped, so a
+    /// rerun never asks again. Returns how many were added.
+    pub fn replace_pending(&mut self, source: SuggestionSource, new: Vec<Suggestion>) -> usize {
+        self.suggestions
+            .retain(|s| !(s.source == source && s.status == SuggestionStatus::Pending));
+        let decided = |n: &Suggestion| {
+            self.suggestions.iter().any(|s| {
+                s.status != SuggestionStatus::Pending
+                    && s.kind == n.kind
+                    && s.target == n.target
+                    && s.action == n.action
+                    && s.after == n.after
+            })
+        };
+        let fresh: Vec<Suggestion> = new.into_iter().filter(|n| !decided(n)).collect();
+        let added = fresh.len();
+        self.suggestions.extend(fresh);
+        added
     }
 
     /// Replaces the pending fit-to-length cuts with `cuts`; accepted and
@@ -405,5 +492,125 @@ mod tests {
         let json = serde_json::to_string(&v).expect("serialize");
         let back: Variant = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(back, v);
+    }
+
+    fn tailor(n: u32, target: SuggestionTarget, action: Option<SuggestionAction>) -> Suggestion {
+        Suggestion {
+            kind: crate::SuggestionKind::Reorder,
+            action,
+            source: SuggestionSource::Tailor,
+            ..cut(n, target, SuggestionAction::Hide)
+        }
+    }
+
+    #[test]
+    fn accepting_orders_and_rewrites() {
+        let mut v = Variant::empty(id(1), id(2), "v");
+        let order = vec![id(31), id(30)];
+        let mut rewrite = tailor(42, SuggestionTarget::Bullet { id: id(30) }, None);
+        rewrite.before = Some("Base text".into());
+        rewrite.after = Some("Better text".into());
+        let mut summary = tailor(43, SuggestionTarget::Summary, None);
+        summary.before = Some("Base summary".into());
+        summary.after = Some("New summary".into());
+        v.suggestions = vec![
+            tailor(
+                40,
+                SuggestionTarget::Entry { id: id(3) },
+                Some(SuggestionAction::Reorder {
+                    order: order.clone(),
+                }),
+            ),
+            tailor(
+                41,
+                SuggestionTarget::SkillGroup { id: id(5) },
+                Some(SuggestionAction::Reorder {
+                    order: vec![id(51)],
+                }),
+            ),
+            rewrite,
+            summary,
+            tailor(44, SuggestionTarget::Skills, None),
+        ];
+        for n in 40..=43 {
+            assert!(v.accept_suggestion(&id(n)), "{n}");
+        }
+        assert_eq!(v.order[&id(3)], order);
+        assert_eq!(v.order[&id(5)], [id(51)]);
+        assert_eq!(v.text_overrides[&id(30)], "Better text");
+        assert_eq!(v.summary_override.as_deref(), Some("New summary"));
+        // Nothing to apply: stays pending.
+        assert!(!v.accept_suggestion(&id(44)));
+        assert_eq!(v.suggestions[4].status, SuggestionStatus::Pending);
+    }
+
+    #[test]
+    fn bulk_actions_respect_sources_and_warnings() {
+        let mut v = Variant::empty(id(1), id(2), "v");
+        let mut warned = tailor(
+            50,
+            SuggestionTarget::Entry { id: id(10) },
+            Some(SuggestionAction::Hide),
+        );
+        warned.warnings.push(crate::VerificationWarning {
+            kind: crate::VerificationKind::NewTerm,
+            severity: crate::Severity::Warning,
+            detail: "Kubernetes".into(),
+        });
+        v.suggestions = vec![
+            warned,
+            tailor(
+                51,
+                SuggestionTarget::Entry { id: id(11) },
+                Some(SuggestionAction::Collapse),
+            ),
+            cut(
+                52,
+                SuggestionTarget::Bullet { id: id(12) },
+                SuggestionAction::Hide,
+            ),
+        ];
+        let tailored = [SuggestionSource::Tailor];
+        assert_eq!(v.accept_all(&tailored, true), 1);
+        assert!(v.collapsed.contains(&id(11)) && !v.hidden.contains(&id(10)));
+        assert_eq!(v.reject_all(&tailored), 1);
+        assert_eq!(v.suggestions[0].status, SuggestionStatus::Rejected);
+        // The fit cut is another source and stays pending.
+        assert_eq!(v.suggestions[2].status, SuggestionStatus::Pending);
+        assert_eq!(v.accept_all(&[SuggestionSource::Fit], false), 1);
+        assert!(v.hidden.contains(&id(12)));
+    }
+
+    #[test]
+    fn a_rerun_does_not_repeat_decided_suggestions() {
+        let mut v = Variant::empty(id(1), id(2), "v");
+        let hide = tailor(
+            60,
+            SuggestionTarget::Entry { id: id(10) },
+            Some(SuggestionAction::Hide),
+        );
+        let collapse = tailor(
+            61,
+            SuggestionTarget::Entry { id: id(11) },
+            Some(SuggestionAction::Collapse),
+        );
+        assert_eq!(
+            v.replace_pending(
+                SuggestionSource::Tailor,
+                vec![hide.clone(), collapse.clone()]
+            ),
+            2
+        );
+        v.reject_suggestion(&id(60));
+        let rerun = vec![
+            Suggestion { id: id(62), ..hide },
+            Suggestion {
+                id: id(63),
+                ..collapse
+            },
+        ];
+        assert_eq!(v.replace_pending(SuggestionSource::Tailor, rerun), 1);
+        let ids: Vec<_> = v.suggestions.iter().map(|s| s.id.clone()).collect();
+        assert_eq!(ids, [id(60), id(63)]);
     }
 }

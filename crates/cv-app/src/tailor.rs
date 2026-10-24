@@ -10,9 +10,7 @@ use cv_ai::{PayloadOptions, StageContext, build_cv_payload, parse_job, score_rel
 use cv_api::{AiStage, AiTailor, ApiError, ErrorCode, JobId, TailorResult};
 use cv_core::fit::{FitResult, fit};
 use cv_core::selection::plan_selection;
-use cv_core::{
-    SuggestionAction, SuggestionSource, SuggestionStatus, SuggestionTarget, Variant, validate,
-};
+use cv_core::{SuggestionAction, SuggestionSource, SuggestionTarget, Variant, validate};
 use cv_store::Store;
 
 use crate::{App, JobContext, JobEvents, Result, llm_error, store_error};
@@ -147,17 +145,13 @@ impl App {
         ctx.progress(AiStage::Selection, 95);
 
         // Save on the latest revision: the user may have edited meanwhile.
-        let mut count = selection.len();
         let (pages, fits) = match &fitted {
-            Some(FitResult::Fits { pages, cuts }) => {
-                count += cuts.len();
-                (Some(*pages), Some(true))
-            }
+            Some(FitResult::Fits { pages, .. }) => (Some(*pages), Some(true)),
             Some(FitResult::CannotFit { pages }) => (Some(*pages), Some(false)),
             None => (None, None),
         };
         let mut attempts = 0;
-        let saved = loop {
+        let (saved, count) = loop {
             attempts += 1;
             let latest = self.get_variant(&req.variant_id)?;
             let mut variant = latest.variant;
@@ -165,13 +159,14 @@ impl App {
                 variant.job.requirements = Some(requirements.clone());
                 variant.job.description_hash = Some(hash.clone());
             }
-            replace_pending(&mut variant, SuggestionSource::Tailor, selection.clone());
+            let mut count = variant.replace_pending(SuggestionSource::Tailor, selection.clone());
             if let Some(FitResult::Fits { cuts, .. }) = &fitted {
                 variant.page_target = req.options.page_target;
+                count += cuts.len();
                 variant.replace_fit_cuts(cuts.clone());
             }
             match self.store.save_variant(&variant, latest.revision) {
-                Ok(saved) => break saved,
+                Ok(saved) => break (saved, count),
                 // Someone saved in between: merge onto their version.
                 Err(cv_store::StoreError::Conflict { .. }) if attempts < 3 => ctx.check()?,
                 Err(e) => return Err(store_error(e)),
@@ -187,15 +182,6 @@ impl App {
     }
 }
 
-/// Replaces the pending suggestions from `source` with `new`; accepted and
-/// rejected ones stay, so a decision is never undone by a rerun.
-fn replace_pending(variant: &mut Variant, source: SuggestionSource, new: Vec<cv_core::Suggestion>) {
-    variant
-        .suggestions
-        .retain(|s| !(s.source == source && s.status == SuggestionStatus::Pending));
-    variant.suggestions.extend(new);
-}
-
 /// Applies the hide and collapse suggestions to a trial copy.
 fn apply(trial: &mut Variant, suggestions: &[cv_core::Suggestion]) {
     for s in suggestions {
@@ -203,7 +189,9 @@ fn apply(trial: &mut Variant, suggestions: &[cv_core::Suggestion]) {
             SuggestionTarget::Bullet { id }
             | SuggestionTarget::Entry { id }
             | SuggestionTarget::Section { id } => id.clone(),
-            SuggestionTarget::Summary | SuggestionTarget::Skills => continue,
+            SuggestionTarget::SkillGroup { .. }
+            | SuggestionTarget::Summary
+            | SuggestionTarget::Skills => continue,
         };
         match s.action {
             Some(SuggestionAction::Hide) => {

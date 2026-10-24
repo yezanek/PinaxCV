@@ -74,7 +74,9 @@ pub fn plan_selection(
                         out.push(suggestion(
                             ids,
                             SuggestionKind::SkillOrder,
-                            SuggestionTarget::Skills,
+                            SuggestionTarget::SkillGroup {
+                                id: group.id.clone(),
+                            },
                             Some(SuggestionAction::Reorder { order }),
                             "Most relevant skills first".into(),
                         ));
@@ -411,7 +413,10 @@ mod tests {
         let s = plan(&sc, &TailorOptions::default());
         assert_eq!(
             kinds(&s),
-            [(SuggestionKind::SkillOrder, SuggestionTarget::Skills)]
+            [(
+                SuggestionKind::SkillOrder,
+                SuggestionTarget::SkillGroup { id: id(103) }
+            )]
         );
         assert_eq!(
             s[0].action,
