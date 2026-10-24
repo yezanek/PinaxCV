@@ -472,6 +472,17 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Every job ends with exactly one `ai://done { job_id, result }` or `ai://error { job_id, error }`. `ai_cancel(job_id)` cancels at once, whatever the work is waiting on, and the job ends with `ai://error` and code `ai_cancelled`; a job cancelled while finishing reports the cancellation too. Cancelling an unknown or finished job is not an error, since the job may have just ended.
 - `cv-app` stays free of Tauri: events go through a `JobEvents` trait that the shell implements with `AppHandle::emit`, and tests record them. Events go to every window; there is only one.
 
+## ADR-072 — Tailoring stages A to C and the tailor panel (M7a)
+
+- `ai_tailor` reads the job description saved on the variant, so the panel saves the job fields through the variant's save queue first. It fails at once, without a job, when AI is not configured or consented to, or the description is empty.
+- Stage A's `JobRequirements` is stored on the variant with the SHA-256 of the description and reused while the text is unchanged. Duplicate requirement IDs are dropped.
+- Stage B scores the base CV resolved without the variant, so hidden items get scores too. Payloads over about 12,000 tokens (JSON characters / 4) are split into batches of whole entries; skills, languages and the summary go with the first batch. IDs the CV does not have are dropped, and scores are rounded and clamped to 0 to 100 instead of refused.
+- Every stage answer is checked against its Rust type; a mismatch gets one retry that quotes the problem to the model, then fails as `ai_invalid_output` with no model text in the message. Only valid answers are cached, keyed as in ADR-070, so a rerun with the same description, CV and model sends nothing.
+- Schemas come from `schemars` and are made strict-mode safe: every object closed with all properties required (optional ones are nullable), and `format` and `default` removed.
+- Stage C is `cv_core::selection::plan_selection` (spec section 11.6): locked entries and the most recent Experience entries are never hidden or collapsed; Education is collapsed rather than hidden; bullets of entries that stay are ordered by score and trimmed to `max_bullets_per_entry`; skills are ordered by score within each group (one `SkillOrder` per group, with the group's full order); Experience is reordered by relevance only when `reorder_entries_by_relevance` is on. Unscored items get no suggestion and sort after scored ones.
+- With a page target, fit-to-length runs on a trial copy with the selection applied, and its cuts are saved as `Pending` like the rest.
+- The job saves on the variant's latest revision, merging onto edits made meanwhile (three tries), and replaces only pending tailoring suggestions: accepted and rejected ones stay. The tailor panel locks the overlay while the job runs, keeps a job's end that arrives before `ai_tailor` answers with the ID, and shows the stage, a progress bar and Cancel.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

@@ -13,6 +13,7 @@ use crate::drag::DragHandle;
 use crate::fit::{EditFn, FitPanel};
 use crate::i18n::{error_message, fill, t};
 use crate::ipc::{IdArg, ReqArg, call};
+use crate::tailor::TailorPanel;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -517,6 +518,7 @@ pub fn VariantBar(
         }))
     };
     let fitting = RwSignal::new(false);
+    let tailoring = RwSignal::new(false);
     let edit_cb = Callback::new(move |f: EditFn| edit(f));
     let override_of = move |id: Id| {
         Signal::derive(move || {
@@ -545,7 +547,7 @@ pub fn VariantBar(
     view! {
         <div class="variants">
             <label>{t().version}" "
-                <select prop:disabled=move || busy.get()
+                <select prop:disabled=move || busy.get() || tailoring.get()
                     on:change=move |ev| select(event_target_value(&ev))>
                     <option value="" selected=move || variant.with(Option::is_none)>{t().base_cv}</option>
                     <For each=move || list.get() key=|s| s.id.clone() let:s>
@@ -561,7 +563,7 @@ pub fn VariantBar(
                     </For>
                 </select>
             </label>
-            <button prop:disabled=move || busy.get() on:click=create>{t().new_variant}</button>
+            <button prop:disabled=move || busy.get() || tailoring.get() on:click=create>{t().new_variant}</button>
         </div>
         <Show when=move || variant.with(Option::is_some)>
             <div class="banner" role="status">
@@ -585,9 +587,11 @@ pub fn VariantBar(
                     )>{t().delete_variant}</button>
                 </Show>
             </div>
+            <TailorPanel variant=variant error=error changed=changed busy=busy
+                tailoring=tailoring edit=edit_cb />
             <FitPanel cv=cv variant=variant error=error changed=changed busy=busy settled=settled
                 fitting=fitting edit=edit_cb />
-            <fieldset class="variant-overlay" prop:disabled=move || fitting.get()>
+            <fieldset class="variant-overlay" prop:disabled=move || fitting.get() || tailoring.get()>
             <div class="variant-summary">
                 <strong>{t().summary}</strong>
                 {move || {

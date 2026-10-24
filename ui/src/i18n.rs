@@ -290,6 +290,28 @@ pub struct Strings {
     pub empty_bullet: &'static str,
     pub unlabelled_group: &'static str,
 
+    // Tailoring (M7a)
+    pub tailor_heading: &'static str,
+    pub job_title: &'static str,
+    pub company: &'static str,
+    pub job_description: &'static str,
+    pub reorder_by_relevance: &'static str,
+    pub analyze_and_tailor: &'static str,
+    pub tailor_needs_ai: &'static str,
+    pub tailor_progress: &'static str,
+    pub stage_starting: &'static str,
+    pub stage_job_parse: &'static str,
+    pub stage_relevance: &'static str,
+    pub stage_selection: &'static str,
+    pub stage_fit: &'static str,
+    pub stage_working: &'static str,
+    /// `{n}`.
+    pub tailor_done: &'static str,
+    pub tailor_nothing: &'static str,
+    pub tailor_cancelled: &'static str,
+    /// `{n}`.
+    pub tailor_pending: &'static str,
+
     // Errors raised by the UI itself
     pub no_secure_random: &'static str,
     pub app_not_answering: &'static str,
@@ -563,6 +585,25 @@ pub static EN: Strings = Strings {
     empty_bullet: "(empty bullet)",
     unlabelled_group: "(unlabelled group)",
 
+    tailor_heading: "Tailor to a job",
+    job_title: "Job title",
+    company: "Company",
+    job_description: "Job description (paste the posting)",
+    reorder_by_relevance: "Also suggest ordering experience by relevance (recruiters usually expect newest first)",
+    analyze_and_tailor: "Analyze and tailor",
+    tailor_needs_ai: "Set up an AI provider in Settings to tailor this version automatically. You can still hide, collapse and reorder by hand.",
+    tailor_progress: "Tailoring progress",
+    stage_starting: "Starting…",
+    stage_job_parse: "Reading the job description…",
+    stage_relevance: "Scoring your experience against the job…",
+    stage_selection: "Choosing what to show…",
+    stage_fit: "Fitting to the page target…",
+    stage_working: "Working…",
+    tailor_done: "{n} suggestions are ready for review. Nothing changes until you accept them.",
+    tailor_nothing: "Tailoring found nothing to change.",
+    tailor_cancelled: "Tailoring was cancelled.",
+    tailor_pending: "{n} tailoring suggestions are waiting for review.",
+
     no_secure_random: "Could not add the item: the system's secure random source is unavailable.",
     app_not_answering: "The app did not answer. Restart PinaxCV.",
     unexpected_data: "Unexpected data: {error}",
@@ -746,6 +787,7 @@ mod tests {
         ("order.rs", include_str!("order.rs")),
         ("preview.rs", include_str!("preview.rs")),
         ("style.rs", include_str!("style.rs")),
+        ("tailor.rs", include_str!("tailor.rs")),
         ("variants.rs", include_str!("variants.rs")),
     ];
 
