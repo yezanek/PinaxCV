@@ -21,6 +21,11 @@ pub struct Strings {
     pub back_to_cvs: &'static str,
     pub export_pdf: &'static str,
     pub export_html: &'static str,
+    pub export_pdf_hint: &'static str,
+    pub undo: &'static str,
+    pub undo_hint: &'static str,
+    pub redo: &'static str,
+    pub redo_hint: &'static str,
     pub loading: &'static str,
     pub editing: &'static str,
     pub saving: &'static str,
@@ -170,6 +175,11 @@ pub static EN: Strings = Strings {
     back_to_cvs: "← CVs",
     export_pdf: "Export PDF",
     export_html: "Export HTML",
+    export_pdf_hint: "Export PDF (Ctrl+E)",
+    undo: "Undo",
+    undo_hint: "Undo (Ctrl+Z)",
+    redo: "Redo",
+    redo_hint: "Redo (Ctrl+Shift+Z)",
     loading: "Loading…",
     editing: "Editing…",
     saving: "Saving…",
@@ -447,6 +457,7 @@ mod tests {
         ("dates.rs", include_str!("dates.rs")),
         ("editor.rs", include_str!("editor.rs")),
         ("entries.rs", include_str!("entries.rs")),
+        ("history.rs", include_str!("history.rs")),
         ("ids.rs", include_str!("ids.rs")),
         ("ipc.rs", include_str!("ipc.rs")),
         ("list.rs", include_str!("list.rs")),
@@ -460,7 +471,15 @@ mod tests {
     #[test]
     fn no_ui_strings_outside_this_module() {
         // The `extern "C"` ABI and identifiers passed to serde or wasm-bindgen.
-        const ALLOWED: &[&str] = &["C", "camelCase", "__TAURI__"];
+        const ALLOWED: &[&str] = &[
+            "C",
+            "camelCase",
+            "__TAURI__",
+            // `aria-keyshortcuts` values are key names, not prose.
+            "Control+Z",
+            "Control+Shift+Z",
+            "Control+E",
+        ];
         let mut found = Vec::new();
         for (name, src) in FILES {
             for lit in literals(src) {

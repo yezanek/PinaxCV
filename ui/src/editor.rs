@@ -12,6 +12,7 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 
 use crate::entries::EntrySections;
+use crate::history::{History, Shortcut, shortcut};
 use crate::i18n::{error_message, fill, t};
 use crate::ipc::{IdArg, ReqArg, call};
 use crate::lists::ListSections;
@@ -249,13 +250,21 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
         }
     });
 
-    // Applies `f` to the CV and schedules preview and autosave.
-    let edit = Callback::new(move |f: Box<dyn FnOnce(&mut Cv)>| {
-        cv.update(|c| {
-            if let Some(c) = c {
-                f(c);
-            }
-        });
+    // Undo/redo snapshots, and a counter bumped when one is restored so the
+    // fields that only read the model once (dates, skill lines) start over.
+    let history = StoredValue::new(History::default());
+    let can_undo = RwSignal::new(false);
+    let can_redo = RwSignal::new(false);
+    let restored = RwSignal::new(0u64);
+    let sync_history = move || {
+        history.with_value(|h| {
+            can_undo.set(h.can_undo());
+            can_redo.set(h.can_redo());
+        })
+    };
+
+    // Schedules preview and autosave after the CV changed.
+    let changed = move || {
         let n = edits.get_untracked() + 1;
         edits.set(n);
         status.set(t().editing.into());
@@ -276,7 +285,61 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
             },
             SAVE_DELAY,
         );
+    };
+
+    // Applies `f` to the CV, records the old CV for undo, and schedules
+    // preview and autosave.
+    let edit = Callback::new(move |f: Box<dyn FnOnce(&mut Cv)>| {
+        let now = js_sys::Date::now();
+        cv.update(|c| {
+            if let Some(c) = c {
+                history.update_value(|h| h.record(c, now));
+                f(c);
+            }
+        });
+        sync_history();
+        changed();
     });
+
+    // Puts back the CV from the undo (`true`) or redo stack.
+    let step = move |back: bool| {
+        let Some(current) = cv.get_untracked() else {
+            return;
+        };
+        let target = history
+            .try_update_value(|h| {
+                if back {
+                    h.undo(&current)
+                } else {
+                    h.redo(&current)
+                }
+            })
+            .flatten();
+        let Some(target) = target else {
+            return;
+        };
+        cv.set(Some(target));
+        restored.update(|n| *n += 1);
+        sync_history();
+        changed();
+    };
+
+    // Keyboard shortcuts (spec section 12.1). Undo and redo replace the
+    // browser's per-field undo, which would not match the CV model.
+    let keys = window_event_listener(leptos::ev::keydown, move |ev| {
+        let ctrl = ev.ctrl_key() || ev.meta_key();
+        let Some(action) = shortcut(&ev.key(), ctrl, ev.shift_key(), ev.alt_key()) else {
+            return;
+        };
+        ev.prevent_default();
+        match action {
+            Shortcut::Undo => step(true),
+            Shortcut::Redo => step(false),
+            Shortcut::Save => save_now(),
+            Shortcut::Export => flush_then(AfterSave::Export(true)),
+        }
+    });
+    on_cleanup(move || keys.remove());
 
     let field = move |label: &'static str, get: fn(&Cv) -> String, set: fn(&mut Cv, String)| {
         view! {
@@ -309,7 +372,11 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
             <button on:click=leave>{t().back_to_cvs}</button>
             <h1>{move || cv.with(|c| c.as_ref().map(|c| c.title.clone()).unwrap_or_default())}</h1>
             <span class="status">{move || status.get()}</span>
-            <button on:click=export_pdf>{t().export_pdf}</button>
+            <button aria-keyshortcuts="Control+Z" title=t().undo_hint prop:disabled=move || !can_undo.get()
+                on:click=move |_| step(true)>{t().undo}</button>
+            <button aria-keyshortcuts="Control+Shift+Z" title=t().redo_hint prop:disabled=move || !can_redo.get()
+                on:click=move |_| step(false)>{t().redo}</button>
+            <button aria-keyshortcuts="Control+E" title=t().export_pdf_hint on:click=export_pdf>{t().export_pdf}</button>
             <button on:click=export_html>{t().export_html}</button>
         </header>
         <div class="editor">
@@ -340,8 +407,13 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                             edit.run(Box::new(move |c| c.summary = opt(v)));
                         }></textarea>
                 </label>
-                <EntrySections cv=cv edit=edit />
-                <ListSections cv=cv edit=edit />
+                {move || {
+                    restored.track();
+                    view! {
+                        <EntrySections cv=cv edit=edit />
+                        <ListSections cv=cv edit=edit />
+                    }
+                }}
                 </div>
             </section>
             <section class="preview" class:stale=move || rendering.get() aria-label=t().preview

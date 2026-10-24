@@ -360,6 +360,12 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - `list_templates` returns the embedded `manifest.json` files as `TemplateManifest` (spec section 10.2). The sliders take their ranges from the CV's template manifest. A test keeps the `classic` manifest's ranges equal to `TemplateOptions`' clamping ranges, which the backend still applies on save.
 - Paper size and date style are radio groups. Locale is a select with English only (ADR-011). The accent is a colour input with a "Use black" button that sets it back to `None`, because a colour input cannot show "no colour".
 
+## ADR-052 — Editor undo/redo and shortcuts (M3)
+
+- The editor keeps up to 100 whole-`Cv` snapshots in memory for undo, separate from database snapshots (spec section 12.1). Edits less than a second apart are one step, so a typed word undoes at once. Any new edit clears redo. Closing the editor drops the history.
+- Undo and redo restore the snapshot and then preview and autosave like any edit. Fields that read the model only once (dates, skill lines) are rebuilt after a restore.
+- `Ctrl+Z` undoes, and `Ctrl+Shift+Z` or `Ctrl+Y` redoes. `Ctrl+S` saves now and `Ctrl+E` exports a PDF. Cmd works in place of Ctrl. The editor's undo replaces the browser's per-field undo, which would not match the CV model. Undo and Redo buttons in the header do the same.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
