@@ -441,6 +441,13 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Below the lint list, "Run check" calls `ats_check` for the shown CV or variant. The backend renders the PDF in memory, extracts its text and runs the report checks (docs/ATS_RULES.md). Nothing is written to disk.
 - The panel shows the score as "Score as read by PinaxCV", each check passed or failed with its detail, and the extracted text in a monospace box with a "Copy text" button using the clipboard API.
 - It runs only on request, since it renders a full PDF. The limits text from ATS_RULES.md stands above the button: these are best-practice checks, not vendor rules, and the employer's own flow is the real test.
+## ADR-068 — AI providers over ureq (M7a)
+
+- `cv-ai` implements `Llm` for Anthropic (Messages API, structured output by forcing one tool whose `input_schema` is the request schema, API version `2023-06-01`), OpenAI (Chat Completions with a `json_schema` response format, `strict: true`, `max_completion_tokens`), Gemini (`generateContent` with `responseMimeType: application/json` and `responseJsonSchema`) and any OpenAI-compatible server by base URL, such as Ollama at `http://localhost:11434/v1`. `FakeLlm` answers from queues keyed by schema name and records what it was sent.
+- Models and keys have no defaults; a missing model, a missing key (except for compatible servers) or a base URL that is not `http(s)://` is `NotConfigured`. Gemini model names may not contain `/`, `?` or `#`, since the name goes into the URL path.
+- Compatible servers do not all enforce JSON Schema. Their output is parsed here (a Markdown code fence is tolerated), and invalid output gets one retry that says what was wrong (spec section 11.2).
+- HTTP uses `ureq` 3 with rustls and the `ring` provider instead of the spec's `reqwest`: `ureq` is already in the workspace, needs no async runtime of its own, and avoids `aws-lc-rs`, which needs CMake and NASM on Windows. Calls run on `tokio::task::spawn_blocking`; cancelling returns at once and drops the answer.
+- Defaults: 15 s to connect, 60 s per request (configurable with `UreqTransport::with_timeout` for slow local models), up to two retries with 1 s and 4 s waits on network errors and statuses 408, 429, 500, 502, 503, 504 and 529, responses capped at 8 MB. Errors carry the status or a short reason, never a request or response body.
 
 ## Open decisions
 
