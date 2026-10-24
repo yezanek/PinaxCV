@@ -177,6 +177,12 @@
       "description": "Permission identifier",
       "oneOf": [
         {
+          "description": "Enables the ai_cancel command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-ai-cancel",
+          "markdownDescription": "Enables the ai_cancel command without any pre-configured scope."
+        },
+        {
           "description": "Enables the ai_configure command without any pre-configured scope.",
           "type": "string",
           "const": "allow-ai-configure",
@@ -349,6 +355,12 @@
           "type": "string",
           "const": "allow-save-variant",
           "markdownDescription": "Enables the save_variant command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the ai_cancel command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-ai-cancel",
+          "markdownDescription": "Denies the ai_cancel command without any pre-configured scope."
         },
         {
           "description": "Denies the ai_configure command without any pre-configured scope.",

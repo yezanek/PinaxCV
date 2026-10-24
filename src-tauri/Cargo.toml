@@ -16,6 +16,7 @@ cv-api.workspace = true
 cv-app.workspace = true
 cv-core.workspace = true
 cv-store.workspace = true
+serde_json.workspace = true
 tauri.workspace = true
 tauri-plugin-dialog.workspace = true
 keyring = "4.2.0"
@@ -28,5 +29,4 @@ e2e = []
 workspace = true
 
 [dev-dependencies]
-serde_json.workspace = true
 tauri = { workspace = true, features = ["test"] }

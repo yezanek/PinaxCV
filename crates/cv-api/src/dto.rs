@@ -5,6 +5,7 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
+use crate::ApiError;
 use cv_core::{
     AtsReport, Cv, Diagnostic, Id, JobTarget, Link, Section, StoredVariant, TemplateId, Variant,
 };
@@ -371,4 +372,46 @@ mod tests {
             ["none", "anthropic", "openai", "gemini", "openai_compatible"]
         );
     }
+}
+
+/// Names a running AI job (spec section 10.2), for `ai_cancel` and events.
+pub type JobId = String;
+
+/// The stage an AI job is in, for its progress line.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Copy, Debug, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AiStage {
+    Starting,
+    JobParse,
+    Relevance,
+    Selection,
+    Rewrite,
+    Summary,
+    Gaps,
+    Fit,
+    Review,
+    Import,
+}
+
+/// `ai://progress`: a job reached `stage`, `pct` percent done (0 to 100,
+/// never lower than the last event of the same job).
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct AiProgress {
+    pub job_id: JobId,
+    pub stage: AiStage,
+    pub pct: u8,
+}
+
+/// `ai://done`: a job finished; `result` is the job's own result type.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct AiDone {
+    pub job_id: JobId,
+    pub result: serde_json::Value,
+}
+
+/// `ai://error`: a job failed or was cancelled (`ai_cancelled`).
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct AiFailed {
+    pub job_id: JobId,
+    pub error: ApiError,
 }

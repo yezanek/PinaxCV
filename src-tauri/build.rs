@@ -23,6 +23,7 @@ const COMMANDS: &[&str] = &[
     "ai_forget_key",
     "ai_consent",
     "ai_test_connection",
+    "ai_cancel",
     "preview",
     "export_pdf",
     "export_html",

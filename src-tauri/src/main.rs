@@ -11,6 +11,7 @@ use tauri::Manager;
 
 mod commands;
 mod dialog;
+mod jobs;
 mod keychain;
 mod preview;
 
@@ -88,6 +89,7 @@ fn main() {
             commands::ai_forget_key,
             commands::ai_consent,
             commands::ai_test_connection,
+            commands::ai_cancel,
             commands::preview,
             commands::export_pdf,
             commands::export_html,
