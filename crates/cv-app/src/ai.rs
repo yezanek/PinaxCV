@@ -344,6 +344,12 @@ impl App {
         self
     }
 
+    /// Forgets the built provider, so the next use builds it from the
+    /// settings again (after a restore replaced them).
+    pub(crate) fn reset_llm(&self) {
+        *self.ai.llm.write().unwrap_or_else(PoisonError::into_inner) = None;
+    }
+
     /// The model name in the settings, part of every cache key.
     pub(crate) fn ai_model(&self) -> Result<String> {
         Ok(self.ai_status()?.model)

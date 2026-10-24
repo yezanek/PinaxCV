@@ -530,6 +530,12 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - `get_settings` returns the defaults, the data folder (the app data directory holding the database), the version and the SPDX licence from the build. `set_cv_defaults` saves the defaults; `open_data_dir` opens the folder in the system file manager (`xdg-open`, `open` or `explorer`, started from Rust; the webview gets no shell or opener permission).
 - About names the version, the app licence and the Inter font's licence. The full third-party licence list is issue #72. Backup and restore (#66) and "Delete all data" / "Clear AI cache" (#67) get their own sections in later changes.
 
+## ADR-080 — Backup and restore from Settings (M8)
+
+- "Your data" in Settings has "Back up…" and "Restore from backup…", with the spec's warning that a backup holds personal data and never the API key (keys live in the keychain). Backups are SQLite files named `PinaxCV backup YYYY-MM-DD.pinaxcv`, offered under a "PinaxCV backup" filter in both dialogs.
+- `backup_db` runs `VACUUM INTO` on a fresh temporary file next to the chosen path, makes it private (`0600` on Unix), syncs it and renames it over the target (`files::create_atomically`), so an existing backup is replaced whole or not at all and no half-written file is left.
+- `restore_db` is confirmed in the UI first, then uses the store's restore (spec section 5.3 and ADR-031's checks: integrity, schema not newer, the current database copied aside as `<db>.before-restore-<time>` and put back if anything fails). A file that is not a backup, or one from a newer PinaxCV, is refused with a message that nothing changed. `restore_from` joins the `Store` trait so the app, which holds a `dyn Store`, can call it; this revises ADR-031, which kept it on `SqliteStore` only. After a restore the AI provider is rebuilt from the restored settings, and Settings reloads its values.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

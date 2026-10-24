@@ -8,6 +8,8 @@ use std::path::{Path, PathBuf};
 pub enum ExportKind {
     Pdf,
     Html,
+    /// A copy of the whole database (spec section 13).
+    Backup,
 }
 
 impl ExportKind {
@@ -15,9 +17,13 @@ impl ExportKind {
         match self {
             Self::Pdf => "pdf",
             Self::Html => "html",
+            Self::Backup => BACKUP_EXTENSION,
         }
     }
 }
+
+/// Extension of backup files: a SQLite database.
+pub const BACKUP_EXTENSION: &str = "pinaxcv";
 
 /// Implemented by the shell with the platform file dialogs.
 pub trait FileDialog: Send + Sync {
@@ -54,6 +60,40 @@ pub fn write_atomically(path: &Path, bytes: &[u8]) -> io::Result<()> {
         fs::rename(&tmp, path)
     })();
     drop(file);
+    if result.is_err() {
+        let _ = fs::remove_file(&tmp);
+        return result;
+    }
+    sync_parent(path)
+}
+
+/// Lets `write` create a file at a fresh temporary path next to `path`,
+/// makes it private (`0600` on Unix), then renames it over `path`, like
+/// [`write_atomically`] for writers that must create their own file (such
+/// as SQLite's `VACUUM INTO`). The temporary file is removed on failure.
+pub fn create_atomically(
+    path: &Path,
+    write: impl FnOnce(&Path) -> io::Result<()>,
+) -> io::Result<()> {
+    let name = path
+        .file_name()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "no file name"))?;
+    let mut tmp_name = std::ffi::OsString::from(".");
+    tmp_name.push(name);
+    tmp_name.push(format!(".{}.pinaxcv-tmp", ulid::Ulid::generate()));
+    let tmp = path.with_file_name(tmp_name);
+    let result = (|| {
+        write(&tmp)?;
+        let file = fs::OpenOptions::new().write(true).open(&tmp)?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            file.set_permissions(fs::Permissions::from_mode(0o600))?;
+        }
+        file.sync_all()?;
+        drop(file);
+        fs::rename(&tmp, path)
+    })();
     if result.is_err() {
         let _ = fs::remove_file(&tmp);
         return result;
@@ -123,6 +163,28 @@ mod tests {
             .map(|e| e.expect("entry").file_name())
             .collect();
         assert_eq!(names, ["Jane-Doe-CV.pdf"]);
+    }
+
+    #[test]
+    fn created_files_replace_the_target_and_are_private() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("backup.pinaxcv");
+        fs::write(&path, b"old").expect("old");
+        create_atomically(&path, |tmp| fs::write(tmp, b"new")).expect("create");
+        assert_eq!(fs::read(&path).expect("read"), b"new");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = fs::metadata(&path).expect("meta").permissions().mode();
+            assert_eq!(mode & 0o777, 0o600);
+        }
+        let failed = create_atomically(&path, |tmp| {
+            fs::write(tmp, b"partial")?;
+            Err(io::Error::other("full disk"))
+        });
+        assert!(failed.is_err());
+        assert_eq!(fs::read(&path).expect("read"), b"new");
+        assert_eq!(fs::read_dir(dir.path()).expect("list").count(), 1);
     }
 
     #[test]

@@ -237,6 +237,12 @@
           "markdownDescription": "Enables the ats_check command without any pre-configured scope."
         },
         {
+          "description": "Enables the backup_db command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-backup-db",
+          "markdownDescription": "Enables the backup_db command without any pre-configured scope."
+        },
+        {
           "description": "Enables the create_cv command without any pre-configured scope.",
           "type": "string",
           "const": "allow-create-cv",
@@ -393,6 +399,12 @@
           "markdownDescription": "Enables the restore_cv command without any pre-configured scope."
         },
         {
+          "description": "Enables the restore_db command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-restore-db",
+          "markdownDescription": "Enables the restore_db command without any pre-configured scope."
+        },
+        {
           "description": "Enables the review_decide command without any pre-configured scope.",
           "type": "string",
           "const": "allow-review-decide",
@@ -475,6 +487,12 @@
           "type": "string",
           "const": "deny-ats-check",
           "markdownDescription": "Denies the ats_check command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the backup_db command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-backup-db",
+          "markdownDescription": "Denies the backup_db command without any pre-configured scope."
         },
         {
           "description": "Denies the create_cv command without any pre-configured scope.",
@@ -631,6 +649,12 @@
           "type": "string",
           "const": "deny-restore-cv",
           "markdownDescription": "Denies the restore_cv command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the restore_db command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-restore-db",
+          "markdownDescription": "Denies the restore_db command without any pre-configured scope."
         },
         {
           "description": "Denies the review_decide command without any pre-configured scope.",

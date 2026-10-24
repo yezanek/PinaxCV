@@ -105,4 +105,7 @@ pub trait Store: Send + Sync {
 
     /// Writes a consistent copy of the database (`VACUUM INTO`). Contains no secrets.
     fn backup_to(&self, path: &Path) -> Result<()>;
+    /// Replaces the database with a backup (spec section 5.3) after copying
+    /// the current one aside; returns that copy's path.
+    fn restore_from(&self, source: &Path) -> Result<std::path::PathBuf>;
 }

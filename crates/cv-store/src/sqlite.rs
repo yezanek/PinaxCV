@@ -903,6 +903,10 @@ impl Store for SqliteStore {
     fn backup_to(&self, path: &Path) -> Result<()> {
         vacuum_into(&self.lock(), path)
     }
+
+    fn restore_from(&self, source: &Path) -> Result<PathBuf> {
+        SqliteStore::restore_from(self, source)
+    }
 }
 
 #[cfg(test)]

@@ -23,6 +23,7 @@ impl FileDialog for TauriFileDialog {
         let (label, ext) = match kind {
             ExportKind::Pdf => ("PDF document", kind.extension()),
             ExportKind::Html => ("Web page", kind.extension()),
+            ExportKind::Backup => ("PinaxCV backup", kind.extension()),
         };
         self.handle
             .dialog()
@@ -34,10 +35,15 @@ impl FileDialog for TauriFileDialog {
     }
 
     fn choose_open_path(&self, extensions: &[&str]) -> Option<PathBuf> {
+        let label = if extensions == [cv_app::BACKUP_EXTENSION] {
+            "PinaxCV backup"
+        } else {
+            "CV file"
+        };
         self.handle
             .dialog()
             .file()
-            .add_filter("CV file", extensions)
+            .add_filter(label, extensions)
             .blocking_pick_file()
             .and_then(|p| p.into_path().ok())
     }

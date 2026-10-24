@@ -45,6 +45,8 @@
     "allow-import-commit",
     "allow-get-settings",
     "allow-set-cv-defaults",
-    "allow-open-data-dir"
+    "allow-open-data-dir",
+    "allow-backup-db",
+    "allow-restore-db"
   ]
 }

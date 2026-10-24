@@ -110,6 +110,8 @@ fn main() {
             commands::get_settings,
             commands::set_cv_defaults,
             commands::open_data_dir,
+            commands::backup_db,
+            commands::restore_db,
         ])
         .run(context)
         .unwrap_or_else(|e| panic!("PinaxCV could not start: {e}"));

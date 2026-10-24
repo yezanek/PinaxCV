@@ -43,6 +43,8 @@ const COMMANDS: &[&str] = &[
     "get_settings",
     "set_cv_defaults",
     "open_data_dir",
+    "backup_db",
+    "restore_db",
 ];
 
 fn main() {

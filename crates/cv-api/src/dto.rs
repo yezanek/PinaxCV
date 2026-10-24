@@ -341,6 +341,20 @@ pub struct AppSettings {
     pub license: String,
 }
 
+/// A backup that was written (spec section 13).
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct BackupResult {
+    /// Where the backup was written, for display only.
+    pub path: String,
+}
+
+/// A backup that replaced the data.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct RestoreResult {
+    /// Where the data from before the restore was kept, for display only.
+    pub previous_data: String,
+}
+
 /// The AI settings and whether the feature may be used.
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
 pub struct AiStatus {
