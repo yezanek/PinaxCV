@@ -377,7 +377,7 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - One "Add section" menu below the sections replaces the per-kind add buttons. It offers Experience, Education, Projects, Skills, Languages, Certifications and Custom (spec section 12.3), and each new section starts with one empty item.
 - Custom sections are edited like entry sections, with their title edited in the section heading.
 - Each section has a collapse toggle. Collapsing only hides the section's contents in the form; it does not change the CV or the preview.
-- Each entry has a "Locked" checkbox. Its tooltip, also given to screen readers, says that locking protects the entry's facts from AI suggestions (spec section 7, step 6).
+- Each entry has a "Locked" checkbox. Its tooltip, also given to screen readers, says that locking protects the entry's facts from AI suggestions (spec sections 4.4 and 12.3).
 - The summary shows a character counter against the lint limit (`SUMMARY_MAX_CHARS`, 600). It turns red past the limit, and the lint check still reports it.
 
 ## Open decisions
