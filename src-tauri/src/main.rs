@@ -26,7 +26,26 @@ fn save_dialog(handle: &tauri::AppHandle) -> Box<dyn cv_app::SaveDialog> {
     Box::new(dialog::TauriSaveDialog::new(handle.clone()))
 }
 
+/// WebView2 ignores `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`, which
+/// msedgedriver uses to open its debugging port, when the app passes its own
+/// browser arguments, as wry always does. The end-to-end build adds the
+/// variable's arguments to wry's defaults instead.
+#[cfg(all(feature = "e2e", windows))]
+fn with_driver_args(context: &mut tauri::Context<tauri::Wry>) {
+    const WRY_DEFAULT: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection";
+    let Ok(extra) = std::env::var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS") else {
+        return;
+    };
+    for window in &mut context.config_mut().app.windows {
+        window.additional_browser_args = Some(format!("{WRY_DEFAULT} {extra}"));
+    }
+}
+
 fn main() {
+    #[allow(unused_mut)]
+    let mut context = tauri::generate_context!();
+    #[cfg(all(feature = "e2e", windows))]
+    with_driver_args(&mut context);
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .register_uri_scheme_protocol("preview", |ctx, request| {
@@ -68,6 +87,6 @@ fn main() {
             commands::lint,
             commands::list_templates,
         ])
-        .run(tauri::generate_context!())
+        .run(context)
         .unwrap_or_else(|e| panic!("PinaxCV could not start: {e}"));
 }
