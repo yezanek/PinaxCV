@@ -380,6 +380,11 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Each entry has a "Locked" checkbox. Its tooltip, also given to screen readers, says that locking protects the entry's facts from AI suggestions (spec sections 4.4 and 12.3).
 - The summary shows a character counter against the lint limit (`SUMMARY_MAX_CHARS`, 600). It turns red past the limit, and the lint check still reports it.
 
+## ADR-055 — Preview zoom and diagnostics strip (M3)
+
+- A bar above the preview has "Fit width" (the default: pages as wide as the pane, up to the existing maximum) and "100%" (the page's real width at 96 CSS pixels per inch, from the CV's paper size; the pane scrolls sideways if needed). The zoom is not saved.
+- Template messages from the newest preview show in a collapsible strip above the pages, with their severity: warnings from a successful render (such as missing glyphs) and the diagnostics a failed render carries in its error details. The strip is hidden when there are none.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

@@ -15,6 +15,7 @@ mod ipc;
 mod list;
 mod lists;
 mod order;
+mod preview;
 mod style;
 mod variants;
 

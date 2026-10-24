@@ -76,3 +76,11 @@ fieldset.section legend input.custom-title { display: inline-block; width: 16rem
 .counter.over { color: #c0392b; }
 .form label.check .hint { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .form label.add-section { margin-top: 1rem; }
+.preview-bar { position: sticky; top: 0; z-index: 1; display: flex; gap: 0.5rem; align-items: center; margin: -1rem -1rem 0.75rem; padding: 0.4rem 1rem; background: color-mix(in srgb, Canvas 92%, gray); border-bottom: 1px solid var(--border); }
+.zoom { display: flex; gap: 0.25rem; }
+.zoom button[aria-pressed="true"] { font-weight: 600; outline: 1px solid var(--accent); }
+.preview-bar .spinner { position: static; float: none; margin-left: auto; }
+.diagnostics { margin: 0 auto 0.75rem; max-width: 50rem; padding: 0.4rem 0.6rem; background: Canvas; border: 1px solid #e0c060; }
+.diagnostics ul { margin: 0.4rem 0 0; padding-left: 1.2rem; }
+.diagnostics .severity-error strong { color: #c0392b; }
+.preview img.actual { max-width: none; }
