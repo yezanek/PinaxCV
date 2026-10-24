@@ -681,7 +681,7 @@ pub static EN: Strings = Strings {
     consent_name_off: "Not your name.",
     consent_location_on: "Your city and country, nothing more precise.",
     consent_location_off: "Not your location.",
-    consent_import: "Importing a CV with AI is the one exception: it sends the whole text, contact details included, and asks you first.",
+    consent_import: "Importing a CV with AI sends its text without email addresses, phone numbers and links, and shows you that text first.",
     consent_agree: "I agree",
     consent_saved: "Thanks. AI features can be used now.",
     consent_given: "You agreed to what is sent to this provider. Changing the provider asks again.",
