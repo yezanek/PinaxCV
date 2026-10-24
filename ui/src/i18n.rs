@@ -101,12 +101,17 @@ pub struct Strings {
     pub skills: &'static str,
     pub languages: &'static str,
 
-    // Adding sections
-    pub add_work_experience: &'static str,
-    pub add_education: &'static str,
-    pub add_projects: &'static str,
-    pub add_skills: &'static str,
-    pub add_languages: &'static str,
+    // Adding and collapsing sections
+    pub add_section: &'static str,
+    pub add_section_choose: &'static str,
+    pub custom_section: &'static str,
+    pub custom_title: &'static str,
+    pub collapse_section: &'static str,
+    pub expand_section: &'static str,
+    pub locked: &'static str,
+    pub locked_hint: &'static str,
+    /// `{n}` characters of at most `{max}`.
+    pub summary_count: &'static str,
 
     // Sections and entries
     pub move_section_up: &'static str,
@@ -264,11 +269,15 @@ pub static EN: Strings = Strings {
     skills: "Skills",
     languages: "Languages",
 
-    add_work_experience: "+ Work experience",
-    add_education: "+ Education",
-    add_projects: "+ Projects",
-    add_skills: "+ Skills",
-    add_languages: "+ Languages",
+    add_section: "Add section",
+    add_section_choose: "Choose a section to add…",
+    custom_section: "Custom section",
+    custom_title: "Section title",
+    collapse_section: "Collapse section",
+    expand_section: "Expand section",
+    locked: "Locked",
+    locked_hint: "Protects this entry's facts (title, organisation, location and dates) from AI suggestions.",
+    summary_count: "{n} / {max} characters",
 
     move_section_up: "Move section up",
     move_section_down: "Move section down",

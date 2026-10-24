@@ -5,7 +5,7 @@ use cv_core::{Cv, Id, LanguageItem, LanguagesSection, Section, Skill, SkillGroup
 use leptos::prelude::*;
 
 use crate::drag::{DragHandle, move_to};
-use crate::entries::Edit;
+use crate::entries::{Edit, collapse_toggle};
 use crate::i18n::t;
 use crate::ids::new_id;
 use crate::order::shift;
@@ -63,7 +63,7 @@ fn language_mut<'a>(cv: &'a mut Cv, section: &Id, item: &Id) -> Option<&'a mut L
         .find(|i| &i.id == item)
 }
 
-fn new_group(id: Id) -> SkillGroup {
+pub fn new_group(id: Id) -> SkillGroup {
     SkillGroup {
         id,
         label: None,
@@ -71,7 +71,7 @@ fn new_group(id: Id) -> SkillGroup {
     }
 }
 
-fn new_language(id: Id) -> LanguageItem {
+pub fn new_language(id: Id) -> LanguageItem {
     LanguageItem {
         id,
         name: String::new(),
@@ -90,7 +90,7 @@ fn needs_trim(v: &str) -> Option<String> {
     (v.trim().len() != v.len()).then(|| v.trim().to_owned())
 }
 
-/// The skills and languages sections, in CV order, with buttons to add them.
+/// The skills and languages sections, in CV order.
 #[component]
 pub fn ListSections(cv: RwSignal<Option<Cv>>, edit: Edit) -> impl IntoView {
     let sections = move || {
@@ -109,30 +109,6 @@ pub fn ListSections(cv: RwSignal<Option<Cv>>, edit: Edit) -> impl IntoView {
                 .unwrap_or_default()
         })
     };
-    let add_skills = move |_| {
-        let (Some(section_id), Some(group_id)) = (new_id(), new_id()) else {
-            return;
-        };
-        edit.run(Box::new(move |c| {
-            c.sections.push(Section::Skills(SkillsSection {
-                id: section_id,
-                title_override: None,
-                groups: vec![new_group(group_id)],
-            }))
-        }))
-    };
-    let add_languages = move |_| {
-        let (Some(section_id), Some(item_id)) = (new_id(), new_id()) else {
-            return;
-        };
-        edit.run(Box::new(move |c| {
-            c.sections.push(Section::Languages(LanguagesSection {
-                id: section_id,
-                title_override: None,
-                items: vec![new_language(item_id)],
-            }))
-        }))
-    };
     view! {
         <For each=sections key=|(id, _)| id.clone() let:section>
             {if section.1 {
@@ -141,11 +117,6 @@ pub fn ListSections(cv: RwSignal<Option<Cv>>, edit: Edit) -> impl IntoView {
                 view! { <LanguagesEditor cv=cv edit=edit id=section.0 /> }.into_any()
             }}
         </For>
-        <p>
-            <button on:click=add_skills>{t().add_skills}</button>
-            " "
-            <button on:click=add_languages>{t().add_languages}</button>
-        </p>
     }
 }
 
@@ -218,14 +189,17 @@ fn SkillsEditor(cv: RwSignal<Option<Cv>>, edit: Edit, id: Id) -> impl IntoView {
     };
     let section = id.clone();
     let row_id = id.to_string();
+    let collapsed = RwSignal::new(false);
     view! {
         <fieldset class="section" data-drag-list="sections" data-drag-id=row_id>
-            <legend>{t().skills}</legend>
+            <legend>{collapse_toggle(collapsed)}{t().skills}</legend>
             {section_buttons(edit, id)}
+            <div hidden=move || collapsed.get()>
             <For each=groups key=|g| g.clone() let:group>
                 <GroupEditor cv=cv edit=edit section=section.clone() id=group />
             </For>
             <button on:click=add>{t().add_skill_group}</button>
+            </div>
         </fieldset>
     }
 }
@@ -362,14 +336,17 @@ fn LanguagesEditor(cv: RwSignal<Option<Cv>>, edit: Edit, id: Id) -> impl IntoVie
     };
     let section = id.clone();
     let row_id = id.to_string();
+    let collapsed = RwSignal::new(false);
     view! {
         <fieldset class="section" data-drag-list="sections" data-drag-id=row_id>
-            <legend>{t().languages}</legend>
+            <legend>{collapse_toggle(collapsed)}{t().languages}</legend>
             {section_buttons(edit, id)}
+            <div hidden=move || collapsed.get()>
             <For each=items key=|i| i.clone() let:item>
                 <LanguageEditor cv=cv edit=edit section=section.clone() id=item />
             </For>
             <button on:click=add>{t().add_language}</button>
+            </div>
         </fieldset>
     }
 }

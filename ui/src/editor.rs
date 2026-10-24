@@ -7,11 +7,12 @@ use cv_api::{
     ApiError, ErrorCode, ExportHtmlRequest, ExportPdfRequest, ExportResult, PreviewRequest,
     PreviewResponse, SaveCv, Target,
 };
+use cv_core::lint::SUMMARY_MAX_CHARS;
 use cv_core::{Cv, Id, StoredCv, StoredVariant};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 
-use crate::entries::EntrySections;
+use crate::entries::{AddSection, EntrySections};
 use crate::history::{History, Shortcut, shortcut};
 use crate::i18n::{error_message, fill, t};
 use crate::ipc::{IdArg, ReqArg, call};
@@ -23,6 +24,18 @@ use crate::variants::VariantBar;
 const PREVIEW_DELAY: Duration = Duration::from_millis(150);
 /// Autosave debounce from spec section 12.
 const SAVE_DELAY: Duration = Duration::from_millis(600);
+
+/// "120 / 600 characters" under the summary; past the limit the lint check
+/// warns that the summary is too long.
+fn summary_count(n: usize) -> String {
+    fill(
+        t().summary_count,
+        &[
+            ("n", &n.to_string()),
+            ("max", &SUMMARY_MAX_CHARS.to_string()),
+        ],
+    )
+}
 
 /// A blank field becomes `None`; other text is kept as typed, so the input
 /// is not rewritten mid-word (trailing spaces survive until the next key).
@@ -361,6 +374,14 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
         }
     };
 
+    let summary_chars = move || {
+        cv.with(|c| {
+            c.as_ref()
+                .and_then(|c| c.summary.as_deref())
+                .map_or(0, |s| s.trim().chars().count())
+        })
+    };
+
     // The Style tab only hides the Content tab, so inputs keep their state.
     let style_tab = RwSignal::new(false);
     let export_pdf = move |_| flush_then(AfterSave::Export(true));
@@ -401,12 +422,22 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                 {field(t().phone, |c| c.basics.phone.clone().unwrap_or_default(), |c, v| c.basics.phone = opt(v))}
                 {field(t().location, |c| c.basics.location.clone().unwrap_or_default(), |c, v| c.basics.location = opt(v))}
                 <label>{t().summary}
-                    <textarea prop:value=move || cv.with(|c| c.as_ref().and_then(|c| c.summary.clone()).unwrap_or_default())
+                    <textarea aria-describedby="summary-count"
+                        prop:value=move || cv.with(|c| c.as_ref().and_then(|c| c.summary.clone()).unwrap_or_default())
                         on:input=move |ev| {
                             let v = event_target_value(&ev);
                             edit.run(Box::new(move |c| c.summary = opt(v)));
                         }></textarea>
                 </label>
+                {move || {
+                    let n = summary_chars();
+                    let over = n > SUMMARY_MAX_CHARS;
+                    view! {
+                        <p id="summary-count" class="counter" class:over=over>
+                            {summary_count(n)}
+                        </p>
+                    }
+                }}
                 {move || {
                     restored.track();
                     view! {
@@ -414,6 +445,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                         <ListSections cv=cv edit=edit />
                     }
                 }}
+                <AddSection edit=edit />
                 </div>
             </section>
             <section class="preview" class:stale=move || rendering.get() aria-label=t().preview
