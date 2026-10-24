@@ -519,6 +519,11 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - CI replays `recorded.json` (answers per schema name, in request order, so a prompt wording change does not invalidate them). `live_evals` is `#[ignore]` and sends the fixtures to a real provider when `PINAXCV_EVAL_PROVIDER`, `PINAXCV_EVAL_MODEL` and `PINAXCV_EVAL_KEY` are set; `PINAXCV_EVAL_RECORD=1` replaces the recordings with its answers. The key is read from the environment only and never printed. It is run by hand before releases.
 - The first recordings are hand-written answers of the kind a model gives, not captured ones: no provider key is available where they were made. The first live run with `PINAXCV_EVAL_RECORD=1` replaces them. A test feeds deliberately bad answers through the same checks to show each check fails when it should.
 
+## ADR-078 — Opt-in AI reorder of Experience (M7b)
+
+- The option stays off by default (spec section 11.6): recruiters and ATS expect newest first. The tailor panel's checkbox says so, and turning it on only adds a pending `Reorder` suggestion for each Experience section, reviewed, accepted or rejected like any other; nothing moves until it is accepted, and accepting writes the variant's `order`, never the base CV.
+- An entry moves ahead of an earlier one only when it scores at least 10 points more (`selection::REORDER_MIN_LEAD`), so close scores keep chronology and a near tie never produces a suggestion. Unscored entries stay where they are. The suggestion says it puts the most relevant experience first instead of newest first.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
