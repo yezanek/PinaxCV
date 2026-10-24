@@ -1,4 +1,4 @@
-//! `ai_tailor` with `FakeLlm`: stages A to C end to end against a real
+//! `ai_tailor` with `FakeLlm`: stages A to F end to end against a real
 //! SQLite store, with no network.
 
 use std::path::PathBuf;
@@ -11,8 +11,8 @@ use cv_api::{
 use cv_app::{App, ExportKind, FileDialog, JobEvent, JobEvents, UlidIds};
 use cv_core::selection::TailorOptions;
 use cv_core::{
-    Cv, Id, JobTarget, SuggestionAction, SuggestionKind, SuggestionSource, SuggestionStatus,
-    SuggestionTarget, VerificationKind,
+    Cv, GapSeverity, Id, JobTarget, SuggestionAction, SuggestionKind, SuggestionSource,
+    SuggestionStatus, SuggestionTarget, VerificationKind,
 };
 use cv_store::{SqliteStore, SystemClock};
 use serde_json::{Value, json};
@@ -52,7 +52,10 @@ fn id(s: &str) -> Id {
 fn requirements() -> Value {
     json!({
         "title": "Platform Engineer", "seniority": "senior", "language": "en",
-        "must_have": [{ "id": "r1", "text": "SQL", "kind": "skill", "keywords": ["SQL"] }],
+        "must_have": [
+            { "id": "r1", "text": "SQL", "kind": "skill", "keywords": ["SQL"] },
+            { "id": "r2", "text": "Kubernetes", "kind": "skill", "keywords": ["Kubernetes"] }
+        ],
         "nice_to_have": [], "responsibilities": [], "keywords": ["SQL"], "domain": null
     })
 }
@@ -84,6 +87,21 @@ fn rewrites() -> Value {
         ],
         "no_change": []
     })
+}
+
+fn summary() -> Value {
+    json!({
+        "summary": "Backend engineer who led the migration of a billing platform to Rust and mentored four engineers.",
+        "used_entry_ids": [RECENT]
+    })
+}
+
+fn gaps() -> Value {
+    json!({ "gaps": [{
+        "requirement_id": "r2", "severity": "weak",
+        "question": "The job asks for Kubernetes. Have you used it?",
+        "where_to_add_hint": "your Acme GmbH role"
+    }]})
 }
 
 struct Setup {
@@ -176,7 +194,9 @@ async fn tailoring_saves_pending_suggestions_and_caches_the_parse() {
     let llm = FakeLlm::new()
         .reply("JobRequirements", requirements())
         .reply("RelevanceResult", relevance())
-        .reply("RewriteResult", rewrites());
+        .reply("RewriteResult", rewrites())
+        .reply("SummaryResult", summary())
+        .reply("GapResult", gaps());
     let s = setup(llm, "We need SQL. Kubernetes is a plus.", true);
     let (events, outcome) = run(&s, TailorOptions::default()).await;
     let result = outcome.expect("tailored");
@@ -227,9 +247,10 @@ async fn tailoring_saves_pending_suggestions_and_caches_the_parse() {
                     id: id("01J02000000000000000000006")
                 }
             ),
+            (SuggestionKind::Summary, SuggestionTarget::Summary),
         ]
     );
-    assert_eq!(result.suggestions, 5);
+    assert_eq!(result.suggestions, 6);
     assert!(result.failed_stages.is_empty());
     // The new number dropped one rewrite; the new term marks another.
     assert_eq!(result.discarded.len(), 1);
@@ -251,6 +272,21 @@ async fn tailoring_saves_pending_suggestions_and_caches_the_parse() {
     );
     // Nothing is applied until the user accepts.
     assert!(v.hidden.is_empty() && v.collapsed.is_empty());
+    // The summary replaces the base one and passed every check.
+    assert_eq!(
+        v.suggestions[5].before.as_deref(),
+        Some(
+            "Backend engineer with eight years of experience building reliable distributed systems in Rust and Go."
+        )
+    );
+    assert!(v.suggestions[5].warnings.is_empty());
+    // Kubernetes is not in the CV: a question, never CV content.
+    let asked: Vec<_> = v
+        .gaps
+        .iter()
+        .map(|g| (g.requirement.as_str(), g.severity, g.must_have))
+        .collect();
+    assert_eq!(asked, [("Kubernetes", GapSeverity::Missing, true)]);
     assert!(v.job.requirements.is_some() && v.job.description_hash.is_some());
     assert_eq!(
         v.suggestions[2].action,
@@ -280,11 +316,18 @@ async fn tailoring_saves_pending_suggestions_and_caches_the_parse() {
     // sent, and replaces the pending suggestions instead of adding to them.
     let (_, again) = run(&s, TailorOptions::default()).await;
     let again = again.expect("rerun");
-    assert_eq!(again.variant.variant.suggestions.len(), 5);
+    assert_eq!(again.variant.variant.suggestions.len(), 6);
+    assert_eq!(again.variant.variant.gaps.len(), 1);
     let names: Vec<_> = s.llm.seen().iter().map(|r| r.schema_name).collect();
     assert_eq!(
         names,
-        ["JobRequirements", "RelevanceResult", "RewriteResult"]
+        [
+            "JobRequirements",
+            "RelevanceResult",
+            "RewriteResult",
+            "SummaryResult",
+            "GapResult"
+        ]
     );
     // Only the recent entry's bullets were sent for rewriting: the older
     // one is about to be hidden.
@@ -297,12 +340,15 @@ async fn a_failed_rewrite_stage_keeps_the_other_suggestions() {
     let llm = FakeLlm::new()
         .reply("JobRequirements", requirements())
         .reply("RelevanceResult", relevance())
-        .fail("RewriteResult", cv_ai::LlmError::Http { status: 500 });
+        .fail("RewriteResult", cv_ai::LlmError::Http { status: 500 })
+        .fail("SummaryResult", cv_ai::LlmError::Http { status: 500 })
+        .reply("GapResult", gaps());
     let s = setup(llm, "We need SQL.", true);
     let (_, outcome) = run(&s, TailorOptions::default()).await;
     let result = outcome.expect("partial");
-    assert_eq!(result.failed_stages, [AiStage::Rewrite]);
+    assert_eq!(result.failed_stages, [AiStage::Rewrite, AiStage::Summary]);
     assert_eq!(result.suggestions, 3);
+    assert_eq!(result.variant.variant.gaps.len(), 1);
 }
 
 #[tokio::test]

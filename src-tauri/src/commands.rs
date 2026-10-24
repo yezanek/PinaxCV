@@ -4,10 +4,11 @@
 use std::sync::Arc;
 
 use cv_api::{
-    AiConfig, AiStatus, AiTailor, ApiError, DuplicateCv, DuplicateVariant, ErrorCode,
+    AiConfig, AiReview, AiStatus, AiTailor, ApiError, DuplicateCv, DuplicateVariant, ErrorCode,
     ExportHtmlRequest, ExportPdfRequest, ExportResult, FitOutcome, FitVariant, ImportCommit,
     ImportMatch, ImportMatchRequest, ImportPreview, JobId, NewCv, NewVariant, PreviewRequest,
-    PreviewResponse, PruneResult, SaveCv, SaveVariant, Target, TemplateManifest,
+    PreviewResponse, PruneResult, ReviewDecide, ReviewDecided, ReviewSession, SaveCv, SaveVariant,
+    Target, TemplateManifest,
 };
 use cv_app::App;
 use cv_core::{AtsReport, CvSummary, Id, LintIssue, StoredCv, StoredVariant, VariantSummary};
@@ -128,6 +129,28 @@ pub async fn ai_tailor<R: Runtime>(
 ) -> Reply<JobId> {
     let app = Arc::clone(app.inner());
     crate::jobs::start(&handle, |events| app.ai_tailor(events, req))
+}
+
+/// Starts an AI review of a base CV; progress and the result arrive as
+/// `ai://` events for the returned job ID.
+#[tauri::command]
+pub async fn ai_review<R: Runtime>(
+    handle: AppHandle<R>,
+    app: Shared<'_>,
+    req: AiReview,
+) -> Reply<JobId> {
+    let app = Arc::clone(app.inner());
+    crate::jobs::start(&handle, |events| app.ai_review(events, req))
+}
+
+#[tauri::command]
+pub async fn get_review(app: Shared<'_>, cv_id: Id) -> Reply<Option<ReviewSession>> {
+    run(app, move |a| a.get_review(&cv_id)).await
+}
+
+#[tauri::command]
+pub async fn review_decide(app: Shared<'_>, req: ReviewDecide) -> Reply<ReviewDecided> {
+    run(app, move |a| a.review_decide(req)).await
 }
 
 /// Cancels a running AI job; its `ai://error` event says `ai_cancelled`.

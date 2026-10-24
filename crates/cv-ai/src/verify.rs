@@ -116,6 +116,70 @@ pub fn verify_rewrite(original: &str, rewrite: &str, ctx: &Context<'_>) -> Verdi
     }
 }
 
+/// Longest summary in characters (spec section 11.9).
+pub const SUMMARY_MAX_CHARS: usize = 420;
+
+/// Checks a proposed summary against the whole CV (spec section 11.9):
+/// `cv_text` is every text of the CV, `current` the summary it would
+/// replace, and `max_years` the longest experience span its periods allow,
+/// so "8 years" may be derived from the dates. New numbers, a summary over
+/// [`SUMMARY_MAX_CHARS`] and a language change drop it; new terms are
+/// warnings.
+pub fn verify_summary(
+    summary: &str,
+    current: Option<&str>,
+    cv_text: &str,
+    max_years: Option<u32>,
+) -> Verdict {
+    if summary.trim().is_empty() || current.is_some_and(|c| normalize(c) == normalize(summary)) {
+        return Verdict::Same;
+    }
+    let mut found = Vec::new();
+    let finding = |kind, severity, detail: String| VerificationWarning {
+        kind,
+        severity,
+        detail,
+    };
+    let known = numbers(cv_text);
+    for (token, value) in number_tokens(summary) {
+        let years = max_years
+            .is_some_and(|m| value >= 1.0 && value <= f64::from(m) && value.fract() == 0.0);
+        if !years && !known.iter().any(|k| same_number(*k, value)) {
+            found.push(finding(VerificationKind::NewNumber, Severity::Error, token));
+        }
+    }
+    let sources_lower = cv_text.to_lowercase();
+    let mut seen = BTreeSet::new();
+    for term in terms(summary) {
+        let lower = term.to_lowercase();
+        if !contains_word(&sources_lower, &lower) && seen.insert(lower) {
+            found.push(finding(VerificationKind::NewTerm, Severity::Warning, term));
+        }
+    }
+    let n = summary.chars().count();
+    if n > SUMMARY_MAX_CHARS {
+        found.push(finding(
+            VerificationKind::LengthOutOfRange,
+            Severity::Error,
+            format!("{n} characters, at most {SUMMARY_MAX_CHARS}"),
+        ));
+    }
+    if let (Some(x), Some(y)) = (language(cv_text), language(summary))
+        && x != y
+    {
+        found.push(finding(
+            VerificationKind::LanguageChanged,
+            Severity::Error,
+            format!("{} → {}", x.code(), y.code()),
+        ));
+    }
+    if found.iter().any(|f| f.severity == Severity::Error) {
+        Verdict::Drop(found)
+    } else {
+        Verdict::Keep(found)
+    }
+}
+
 fn normalize(text: &str) -> String {
     text.split_whitespace()
         .collect::<Vec<_>>()
@@ -338,6 +402,34 @@ mod tests {
     }
 
     const ORIGINAL: &str = "Led the migration of the billing platform to Rust, cutting p99 latency by 40% for four teams";
+
+    #[test]
+    fn summaries_are_checked_against_the_whole_cv() {
+        let cv = "Backend Engineer at Acme. Led the migration of billing to Rust for four teams. Skills: Rust, PostgreSQL";
+        let ok = "Backend engineer with 6 years of experience in Rust and PostgreSQL, who led a billing migration for four teams.";
+        assert_eq!(verify_summary(ok, None, cv, Some(8)), Verdict::Keep(vec![]));
+        // More years than the dates allow, and a number the CV lacks.
+        let v = verify_summary(ok, None, cv, Some(5));
+        assert_eq!(kinds(&v), [VerificationKind::NewNumber]);
+        let v = verify_summary(
+            "Engineer who cut costs by 30% using Kubernetes.",
+            None,
+            cv,
+            None,
+        );
+        assert!(matches!(&v, Verdict::Drop(_)));
+        assert_eq!(
+            kinds(&v),
+            [VerificationKind::NewNumber, VerificationKind::NewTerm]
+        );
+        let long = "Backend engineer. ".repeat(30);
+        assert_eq!(
+            kinds(&verify_summary(&long, None, cv, None)),
+            [VerificationKind::LengthOutOfRange]
+        );
+        assert_eq!(verify_summary(ok, Some(ok), cv, Some(8)), Verdict::Same);
+        assert_eq!(verify_summary("  ", None, cv, None), Verdict::Same);
+    }
 
     #[test]
     fn faithful_rewrites_pass() {

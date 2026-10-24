@@ -305,12 +305,17 @@ pub struct Strings {
     pub stage_selection: &'static str,
     pub stage_fit: &'static str,
     pub stage_rewrite: &'static str,
+    pub stage_summary: &'static str,
+    pub stage_gaps: &'static str,
+    pub stage_review: &'static str,
     pub stage_working: &'static str,
     /// `{n}`.
     pub tailor_done: &'static str,
     pub tailor_nothing: &'static str,
     pub tailor_cancelled: &'static str,
     pub rewrite_failed: &'static str,
+    pub summary_failed: &'static str,
+    pub gaps_failed: &'static str,
     /// `{n}`.
     pub discarded_count: &'static str,
     pub discarded_before: &'static str,
@@ -347,6 +352,37 @@ pub struct Strings {
     pub badge_terminology: &'static str,
     pub badge_length: &'static str,
     pub badge_language: &'static str,
+
+    // Gap questions (spec section 12.6)
+    pub gaps_heading: &'static str,
+    pub gaps_hint: &'static str,
+    pub gap_missing: &'static str,
+    pub gap_weak: &'static str,
+    pub gap_must_have: &'static str,
+    pub gap_nice_to_have: &'static str,
+    /// `{hint}`: where the model suggests adding it.
+    pub gap_where: &'static str,
+    pub add_to_cv: &'static str,
+    pub dismiss: &'static str,
+
+    // AI review of the base CV (spec section 11.11)
+    pub ai_review_heading: &'static str,
+    pub ai_review_hint: &'static str,
+    pub review_cv_with_ai: &'static str,
+    pub ai_review_progress: &'static str,
+    /// `{n}`.
+    pub ai_review_done: &'static str,
+    pub ai_review_nothing: &'static str,
+    pub ai_review_cancelled: &'static str,
+    /// `{at}`: when the shown review ran.
+    pub ai_review_last: &'static str,
+    pub ai_review_notes: &'static str,
+    pub note_impact: &'static str,
+    pub note_clarity: &'static str,
+    pub note_structure: &'static str,
+    pub note_consistency: &'static str,
+    pub whole_cv: &'static str,
+    pub wait_for_save: &'static str,
 
     // Errors raised by the UI itself
     pub no_secure_random: &'static str,
@@ -635,11 +671,16 @@ pub static EN: Strings = Strings {
     stage_selection: "Choosing what to show…",
     stage_fit: "Fitting to the page target…",
     stage_rewrite: "Suggesting rewrites…",
+    stage_summary: "Writing a summary…",
+    stage_gaps: "Looking for what the job asks and your CV does not show…",
+    stage_review: "Reviewing your CV…",
     stage_working: "Working…",
     tailor_done: "{n} suggestions are ready for review. Nothing changes until you accept them.",
     tailor_nothing: "Tailoring found nothing to change.",
     tailor_cancelled: "Tailoring was cancelled.",
     rewrite_failed: "Rewrites could not be suggested this time; the other suggestions were saved.",
+    summary_failed: "A summary could not be suggested this time.",
+    gaps_failed: "The job's requirements could not be checked for gaps this time.",
     discarded_count: "{n} suggestions discarded by safety checks",
     discarded_before: "Original",
     discarded_after: "Discarded rewrite",
@@ -673,6 +714,32 @@ pub static EN: Strings = Strings {
     badge_terminology: "Terminology changed: {detail}",
     badge_length: "Length: {detail}",
     badge_language: "Language changed: {detail}",
+
+    gaps_heading: "Questions about this job",
+    gaps_hint: "The job asks for these and your CV does not clearly show them. Add them only if they are true.",
+    gap_missing: "Not in your CV",
+    gap_weak: "Only weakly shown",
+    gap_must_have: "Must-have",
+    gap_nice_to_have: "Nice to have",
+    gap_where: "Where it could go: {hint}",
+    add_to_cv: "Add to CV…",
+    dismiss: "Dismiss",
+
+    ai_review_heading: "Review with AI",
+    ai_review_hint: "A review without a job: rewrites and advice for the base CV. Accepting a rewrite changes the base CV.",
+    review_cv_with_ai: "Review CV with AI",
+    ai_review_progress: "Review progress",
+    ai_review_done: "{n} suggestions are ready. Nothing changes until you accept them.",
+    ai_review_nothing: "The review found nothing to rewrite.",
+    ai_review_cancelled: "The review was cancelled.",
+    ai_review_last: "Last review: {at}",
+    ai_review_notes: "Advice",
+    note_impact: "Impact",
+    note_clarity: "Clarity",
+    note_structure: "Structure",
+    note_consistency: "Consistency",
+    whole_cv: "Whole CV",
+    wait_for_save: "Wait until your edits are saved.",
 
     no_secure_random: "Could not add the item: the system's secure random source is unavailable.",
     app_not_answering: "The app did not answer. Restart PinaxCV.",
@@ -840,6 +907,7 @@ mod tests {
 
     /// Every other source file in `src/`.
     const FILES: &[(&str, &str)] = &[
+        ("advice.rs", include_str!("advice.rs")),
         ("checks.rs", include_str!("checks.rs")),
         ("dates.rs", include_str!("dates.rs")),
         ("diff.rs", include_str!("diff.rs")),

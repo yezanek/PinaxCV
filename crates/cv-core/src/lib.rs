@@ -39,8 +39,8 @@ pub use resolved::{
     ResolvedSkillsSection,
 };
 pub use suggestion::{
-    Severity, Suggestion, SuggestionAction, SuggestionKind, SuggestionSource, SuggestionStatus,
-    SuggestionTarget, VerificationKind, VerificationWarning,
+    GapQuestion, GapSeverity, Severity, Suggestion, SuggestionAction, SuggestionKind,
+    SuggestionSource, SuggestionStatus, SuggestionTarget, VerificationKind, VerificationWarning,
 };
 pub use variant::{JobTarget, VARIANT_SCHEMA_VERSION, Variant};
 

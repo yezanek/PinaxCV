@@ -3,7 +3,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{Id, IdSource};
+use crate::{Id, IdSource, SuggestionTarget};
 
 /// Current version of the [`Cv`] JSON shape. Bumped together with a migration step.
 pub const CV_SCHEMA_VERSION: u32 = 1;
@@ -28,6 +28,52 @@ pub struct Cv {
 }
 
 impl Cv {
+    /// Applies an accepted text suggestion to the base CV ("Apply to base
+    /// CV", spec section 4.5): `text` replaces a bullet's text, an entry's
+    /// description or the summary, but only while the current text is still
+    /// `before`. Returns whether anything changed.
+    pub fn apply_text(&mut self, target: &SuggestionTarget, before: &str, text: &str) -> bool {
+        // A CV without a summary gets one when the review proposed it.
+        if matches!(target, SuggestionTarget::Summary) && self.summary.is_none() {
+            if before.is_empty() && !text.is_empty() {
+                self.summary = Some(text.to_owned());
+                return true;
+            }
+            return false;
+        }
+        let slot: Option<&mut String> = match target {
+            SuggestionTarget::Summary => self.summary.as_mut(),
+            SuggestionTarget::Bullet { id } => self
+                .entries_mut()
+                .flat_map(|e| e.bullets.iter_mut())
+                .find(|b| b.id == *id)
+                .map(|b| &mut b.text),
+            SuggestionTarget::Entry { id } => self
+                .entries_mut()
+                .find(|e| e.id == *id)
+                .and_then(|e| e.description.as_mut()),
+            _ => None,
+        };
+        match slot {
+            Some(current) if current == before && current != text => {
+                *current = text.to_owned();
+                true
+            }
+            _ => false,
+        }
+    }
+
+    fn entries_mut(&mut self) -> impl Iterator<Item = &mut Entry> {
+        self.sections.iter_mut().flat_map(|s| match s {
+            Section::Experience(s)
+            | Section::Education(s)
+            | Section::Projects(s)
+            | Section::Certifications(s) => s.entries.iter_mut(),
+            Section::Custom(s) => s.entries.iter_mut(),
+            Section::Skills(_) | Section::Languages(_) => [].iter_mut(),
+        })
+    }
+
     /// Returns a copy in which the CV and every entity in it has a new ID
     /// from `ids`. Used when duplicating a CV, so overlays and suggestions of
     /// the original never match the copy.
@@ -296,6 +342,24 @@ mod tests {
     use super::*;
     use crate::test_fixtures::sample_cv;
     use crate::test_ids::id;
+
+    #[test]
+    fn apply_text_needs_the_reviewed_text() {
+        let mut cv = sample_cv();
+        let bullet = SuggestionTarget::Bullet { id: id(5) };
+        let before = match &cv.sections[0] {
+            Section::Experience(s) => s.entries[0].bullets[0].text.clone(),
+            _ => unreachable!(),
+        };
+        assert!(!cv.apply_text(&bullet, "Something else", "New"));
+        assert!(cv.apply_text(&bullet, &before, "New"));
+        assert!(!cv.apply_text(&bullet, &before, "Newer"));
+        assert!(!cv.apply_text(&SuggestionTarget::Bullet { id: id(99) }, "", "x"));
+        // No summary yet: a reviewed empty summary may be filled.
+        assert!(cv.apply_text(&SuggestionTarget::Summary, "", "Engineer."));
+        assert_eq!(cv.summary.as_deref(), Some("Engineer."));
+        assert!(!cv.apply_text(&SuggestionTarget::Summary, "", "Other."));
+    }
 
     #[test]
     fn cv_round_trips_through_json() {

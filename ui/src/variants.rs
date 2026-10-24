@@ -9,6 +9,7 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use serde::Serialize;
 
+use crate::advice::GapList;
 use crate::drag::DragHandle;
 use crate::fit::{EditFn, FitPanel};
 use crate::i18n::{error_message, fill, t};
@@ -591,6 +592,7 @@ pub fn VariantBar(
             <TailorPanel variant=variant error=error changed=changed busy=busy
                 tailoring=tailoring edit=edit_cb />
             <SuggestionReview cv=cv variant=variant busy=busy edit=edit_cb />
+            <GapList cv=cv variant=variant busy=busy edit=edit_cb />
             <FitPanel cv=cv variant=variant error=error changed=changed busy=busy settled=settled
                 fitting=fitting edit=edit_cb />
             <fieldset class="variant-overlay" prop:disabled=move || fitting.get() || tailoring.get()>

@@ -1,6 +1,6 @@
 //! `ai_tailor` (spec section 11.13): stages A (job parse), B (relevance),
-//! C (selection) and D (verified rewrites), then fit-to-length when the
-//! variant has a page target. Runs as a job; the suggestions are saved on
+//! C (selection), D (verified rewrites), E (summary) and F (gap
+//! questions), then fit-to-length when the variant has a page target. Runs as a job; the suggestions are saved on
 //! the variant as `Pending` and nothing else in the variant changes.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -8,8 +8,8 @@ use std::sync::Arc;
 
 use cv_ai::cache::{ResponseCache, sha256_hex};
 use cv_ai::{
-    LlmError, PayloadOptions, Rewrites, StageContext, build_cv_payload, parse_job, rewrite_bullets,
-    score_relevance,
+    LlmError, PayloadOptions, Rewrites, StageContext, build_cv_payload, find_gaps, parse_job,
+    rewrite_bullets, score_relevance, summarize,
 };
 use cv_api::{AiStage, AiTailor, ApiError, DiscardedRewrite, ErrorCode, JobId, TailorResult};
 use cv_core::fit::{FitResult, fit};
@@ -20,11 +20,12 @@ use cv_core::{
 };
 use cv_store::Store;
 
+use crate::review::{summary_suggestion, year_now};
 use crate::{App, JobContext, JobEvents, Result, llm_error, store_error};
 
 /// The `ai_cache` table as the stages' cache. A failing read is a miss and
 /// a failing write is skipped: the provider is only asked again.
-struct StoreCache<'a>(&'a dyn Store);
+pub(crate) struct StoreCache<'a>(pub(crate) &'a dyn Store);
 
 impl ResponseCache for StoreCache<'_> {
     fn get(&self, key: &str) -> Option<String> {
@@ -139,7 +140,7 @@ impl App {
                 let (kept, dropped) = rewrite_suggestions(&base, rewrites);
                 selection.extend(self.with_ids(|ids| {
                     kept.into_iter()
-                        .map(|r| r.into_suggestion(ids))
+                        .map(|r| r.into_suggestion(SuggestionSource::Tailor, ids))
                         .collect::<Vec<_>>()
                 }));
                 discarded = dropped;
@@ -147,6 +148,40 @@ impl App {
             Err(LlmError::Cancelled) => return Err(llm_error(LlmError::Cancelled)),
             Err(_) => failed_stages.push(AiStage::Rewrite),
         }
+        ctx.check()?;
+
+        // E: a tailored summary, unless this variant already has its own.
+        // Optional, like D.
+        if stored.variant.summary_override.is_none() {
+            ctx.progress(AiStage::Summary, 60);
+            match summarize(&stage, &requirements, &payload, year_now()).await {
+                Ok(Some(summary)) => {
+                    let before = base.summary.as_deref();
+                    match self.with_ids(|ids| {
+                        summary_suggestion(summary, before, SuggestionSource::Tailor, ids)
+                    }) {
+                        Ok(s) => selection.push(s),
+                        Err(d) => discarded.push(d),
+                    }
+                }
+                Ok(None) => {}
+                Err(LlmError::Cancelled) => return Err(llm_error(LlmError::Cancelled)),
+                Err(_) => failed_stages.push(AiStage::Summary),
+            }
+            ctx.check()?;
+        }
+
+        // F: questions for the requirements the CV does not clearly show.
+        // A failure keeps the questions of the last run.
+        ctx.progress(AiStage::Gaps, 70);
+        let gaps = match find_gaps(&stage, &requirements, &relevance, &payload).await {
+            Ok(gaps) => Some(gaps),
+            Err(LlmError::Cancelled) => return Err(llm_error(LlmError::Cancelled)),
+            Err(_) => {
+                failed_stages.push(AiStage::Gaps);
+                None
+            }
+        };
         ctx.check()?;
 
         // Fit to length on top of the selection, as if it were accepted.
@@ -192,6 +227,9 @@ impl App {
                 variant.job.description_hash = Some(hash.clone());
             }
             let mut count = variant.replace_pending(SuggestionSource::Tailor, selection.clone());
+            if let Some(gaps) = &gaps {
+                variant.replace_gaps(gaps.clone());
+            }
             if let Some(FitResult::Fits { cuts, .. }) = &fitted {
                 variant.page_target = req.options.page_target;
                 count += cuts.len();
@@ -230,10 +268,14 @@ fn hidden_by(selection: &[Suggestion]) -> impl Iterator<Item = Id> + '_ {
 }
 
 /// A kept rewrite whose original is still the bullet's text.
-struct KeptRewrite(cv_ai::CheckedRewrite);
+pub(crate) struct KeptRewrite(cv_ai::CheckedRewrite);
 
 impl KeptRewrite {
-    fn into_suggestion(self, ids: &mut dyn IdSource) -> Suggestion {
+    pub(crate) fn into_suggestion(
+        self,
+        source: SuggestionSource,
+        ids: &mut dyn IdSource,
+    ) -> Suggestion {
         let r = self.0;
         Suggestion {
             id: ids.next_id(),
@@ -246,7 +288,7 @@ impl KeptRewrite {
             confidence: 0.6,
             warnings: r.warnings,
             status: SuggestionStatus::Pending,
-            source: SuggestionSource::Tailor,
+            source,
         }
     }
 }
@@ -254,7 +296,7 @@ impl KeptRewrite {
 /// Stage D's rewrites as suggestions and discarded details. A rewrite whose
 /// original is not the bullet's current text (it was redacted or changed)
 /// is dropped without a trace: it could not be applied as reviewed.
-fn rewrite_suggestions(
+pub(crate) fn rewrite_suggestions(
     base: &ResolvedCv,
     rewrites: Rewrites,
 ) -> (Vec<KeptRewrite>, Vec<DiscardedRewrite>) {
@@ -284,7 +326,7 @@ fn rewrite_suggestions(
         .into_iter()
         .filter(|r| current(r))
         .map(|r| DiscardedRewrite {
-            bullet_id: r.bullet_id,
+            bullet_id: Some(r.bullet_id),
             before: r.before,
             after: r.after,
             warnings: r.warnings,

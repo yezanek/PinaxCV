@@ -12,6 +12,7 @@ use cv_core::{Cv, Diagnostic, Id, StoredCv, StoredVariant};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 
+use crate::advice::AiReviewPanel;
 use crate::checks::{ChecksTab, EMAIL_FIELD, FULL_NAME_FIELD, SUMMARY_FIELD, Spot, focus_spot};
 use crate::entries::{AddSection, EntrySections};
 use crate::history::{History, Shortcut, shortcut};
@@ -435,6 +436,14 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
         tab.set(Tab::Content);
         set_timeout(move || focus_spot(&to), Duration::ZERO);
     });
+    // An accepted AI review suggestion saved the base CV on the server.
+    let dirty = Signal::derive(move || saving.get() || saved_edit.get() != edits.get());
+    let review_applied = Callback::new(move |stored: StoredCv| {
+        revision.set(stored.revision);
+        cv.set(Some(stored.cv));
+        restored.update(|n| *n += 1);
+        preview_now();
+    });
     let export_pdf = move |_| flush_then(AfterSave::Export(true));
     let export_html = move |_| flush_then(AfterSave::Export(false));
     let leave = move |_| flush_then(AfterSave::Leave);
@@ -466,6 +475,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                     <Show when=move || tab.get() == Tab::Checks>
                         <ChecksTab cv_id=id_for_checks.clone() variant_id=checks_variant refresh=checks_refresh jump=jump />
                     </Show>
+                    <AiReviewPanel cv_id=id.clone() cv=cv dirty=dirty applied=review_applied />
                 </div>
                 <div id="panel-content" role="tabpanel" aria-labelledby="tab-content" hidden=move || tab.get() != Tab::Content>
                 <VariantBar cv_id=id.clone() cv=cv variant=variant error=error changed=variant_changed

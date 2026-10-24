@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 
 use cv_core::{
     Cv, Id, Section, Severity, StoredVariant, Suggestion, SuggestionAction, SuggestionKind,
-    SuggestionSource, SuggestionStatus, SuggestionTarget, VerificationKind,
+    SuggestionSource, SuggestionStatus, SuggestionTarget, VerificationKind, VerificationWarning,
 };
 use leptos::prelude::*;
 
@@ -180,6 +180,39 @@ pub fn describe(
     }
 }
 
+/// `before` and `after` as a word diff.
+pub(crate) fn diff_view(before: &str, after: &str) -> impl IntoView + use<> {
+    let parts = word_diff(before, after)
+        .into_iter()
+        .map(|p| match p {
+            Part::Same(w) => view! { <span>{w}" "</span> }.into_any(),
+            Part::Removed(w) => view! { <del>{w}</del>" " }.into_any(),
+            Part::Added(w) => view! { <ins>{w}</ins>" " }.into_any(),
+        })
+        .collect_view();
+    view! { <p class="rewrite">{parts}</p> }
+}
+
+/// Amber badges for warnings, blue ones for notes.
+pub(crate) fn badges_view(warnings: &[VerificationWarning]) -> impl IntoView + use<> {
+    warnings
+        .iter()
+        .map(|w| {
+            view! {
+                <span class="badge" class:warn=w.severity != Severity::Info
+                    class:info=w.severity == Severity::Info>
+                    {fill(badge(w.kind), &[("detail", &w.detail)])}
+                </span>
+            }
+        })
+        .collect_view()
+}
+
+/// Whether a card needs a "Needs attention" mark.
+pub(crate) fn needs_attention(warnings: &[VerificationWarning]) -> bool {
+    warnings.iter().any(|w| w.severity != Severity::Info)
+}
+
 pub(crate) fn badge(kind: VerificationKind) -> &'static str {
     let s = t();
     match kind {
@@ -271,24 +304,9 @@ pub fn SuggestionReview(
                         let cards = items.into_iter().map(|s| {
                             let text = describe(&s, &labels, &entries);
                             let (a, r, e) = (s.id.clone(), s.id.clone(), s.id.clone());
-                            let rewrite = s.after.clone().map(|after| {
-                                let parts = word_diff(s.before.as_deref().unwrap_or_default(), &after)
-                                    .into_iter()
-                                    .map(|p| match p {
-                                        Part::Same(w) => view! { <span>{w}" "</span> }.into_any(),
-                                        Part::Removed(w) => view! { <del>{w}</del>" " }.into_any(),
-                                        Part::Added(w) => view! { <ins>{w}</ins>" " }.into_any(),
-                                    })
-                                    .collect_view();
-                                view! { <p class="rewrite">{parts}</p> }
-                            });
-                            let attention = s.warnings.iter().any(|w| w.severity != Severity::Info);
-                            let badges = s.warnings.iter().map(|w| view! {
-                                <span class="badge" class:warn=w.severity != Severity::Info
-                                    class:info=w.severity == Severity::Info>
-                                    {fill(badge(w.kind), &[("detail", &w.detail)])}
-                                </span>
-                            }).collect_view();
+                            let rewrite = s.after.as_deref().map(|after| diff_view(s.before.as_deref().unwrap_or_default(), after));
+                            let attention = needs_attention(&s.warnings);
+                            let badges = badges_view(&s.warnings);
                             let editable = s.after.clone();
                             let id = s.id.clone();
                             let is_editing = move || editing.with(|e| e.as_ref().is_some_and(|(i, _)| *i == id));

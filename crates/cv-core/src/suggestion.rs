@@ -88,6 +88,30 @@ pub enum SuggestionSource {
     Fit,
 }
 
+/// A job requirement the CV does not clearly show, as a question for the
+/// user (spec section 11.10). Never CV content.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct GapQuestion {
+    pub requirement_id: String,
+    /// The requirement as the job states it.
+    pub requirement: String,
+    pub must_have: bool,
+    pub severity: GapSeverity,
+    pub question: String,
+    /// The kind of place to add it, such as "the skills section".
+    pub where_to_add_hint: String,
+    pub dismissed: bool,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Copy, Debug, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum GapSeverity {
+    /// Nothing in the CV matches the requirement.
+    Missing,
+    /// Only weakly relevant items match it.
+    Weak,
+}
+
 /// A finding from deterministic rewrite verification.
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
 pub struct VerificationWarning {

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-ai-review"
+description = "Enables the ai_review command without any pre-configured scope."
+commands.allow = ["ai_review"]
+
+[[permission]]
+identifier = "deny-ai-review"
+description = "Denies the ai_review command without any pre-configured scope."
+commands.deny = ["ai_review"]
