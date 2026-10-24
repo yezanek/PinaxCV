@@ -17,8 +17,10 @@ mod import;
 mod jobs;
 mod preview;
 mod review;
+mod settings;
 mod tailor;
 
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, PoisonError};
 
@@ -64,6 +66,7 @@ pub struct App {
     jobs: JobRegistry,
     next_preview: AtomicU64,
     preview_base: String,
+    data_dir: Option<PathBuf>,
 }
 
 impl App {
@@ -87,6 +90,7 @@ impl App {
             jobs: JobRegistry::default(),
             next_preview: AtomicU64::new(0),
             preview_base: preview_base.into(),
+            data_dir: None,
         }
     }
 
@@ -121,7 +125,7 @@ impl App {
 
     /// Creates a blank CV: no name, contacts or sections yet.
     pub fn create_cv(&self, req: NewCv) -> Result<StoredCv> {
-        let cv = blank_cv(self.next_id(), req.title.trim());
+        let cv = self.with_defaults(blank_cv(self.next_id(), req.title.trim()))?;
         self.store.create_cv(&cv).map_err(store_error)
     }
 

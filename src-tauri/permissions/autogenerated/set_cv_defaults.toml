@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-set-cv-defaults"
+description = "Enables the set_cv_defaults command without any pre-configured scope."
+commands.allow = ["set_cv_defaults"]
+
+[[permission]]
+identifier = "deny-set-cv-defaults"
+description = "Denies the set_cv_defaults command without any pre-configured scope."
+commands.deny = ["set_cv_defaults"]
