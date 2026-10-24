@@ -346,6 +346,14 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Debian and Ubuntu users install the Snap, the Flatpak or the AppImage instead.
 - Changes spec section 14 and the M8 acceptance criteria. Tracked in #33 (Flatpak), #34 (Snap) and #68 (AppImage).
 
+## ADR-068 — AI providers over ureq (M7a)
+
+- `cv-ai` implements `Llm` for Anthropic (Messages API, structured output by forcing one tool whose `input_schema` is the request schema, API version `2023-06-01`), OpenAI (Chat Completions with a `json_schema` response format, `strict: true`, `max_completion_tokens`), Gemini (`generateContent` with `responseMimeType: application/json` and `responseJsonSchema`) and any OpenAI-compatible server by base URL, such as Ollama at `http://localhost:11434/v1`. `FakeLlm` answers from queues keyed by schema name and records what it was sent.
+- Models and keys have no defaults; a missing model, a missing key (except for compatible servers) or a base URL that is not `http(s)://` is `NotConfigured`. Gemini model names may not contain `/`, `?` or `#`, since the name goes into the URL path.
+- Compatible servers do not all enforce JSON Schema. Their output is parsed here (a Markdown code fence is tolerated), and invalid output gets one retry that says what was wrong (spec section 11.2).
+- HTTP uses `ureq` 3 with rustls and the `ring` provider instead of the spec's `reqwest`: `ureq` is already in the workspace, needs no async runtime of its own, and avoids `aws-lc-rs`, which needs CMake and NASM on Windows. Calls run on `tokio::task::spawn_blocking`; cancelling returns at once and drops the answer.
+- Defaults: 15 s to connect, 60 s per request (configurable with `UreqTransport::with_timeout` for slow local models), up to two retries with 1 s and 4 s waits on network errors and statuses 408, 429, 500, 502, 503, 504 and 529, responses capped at 8 MB. Errors carry the status or a short reason, never a request or response body.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

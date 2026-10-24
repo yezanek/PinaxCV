@@ -1,10 +1,17 @@
 //! LLM provider abstraction, prompts, redaction and verification.
 //! Receives explicit payloads; never reads the database.
 //!
-//! This commit defines the provider seam (spec section 11.2); providers, the
-//! pipeline and verification arrive in M7a and M7b.
+//! The provider seam and the providers (spec section 11.2) are here; the
+//! pipeline and verification arrive with the rest of M7a and M7b.
 
 #![forbid(unsafe_code)]
+
+pub mod fake;
+pub mod http;
+pub mod providers;
+
+pub use fake::FakeLlm;
+pub use providers::{AnthropicLlm, GeminiLlm, OpenAiCompatibleLlm, OpenAiLlm};
 
 use serde_json::Value;
 use tokio_util::sync::CancellationToken;
