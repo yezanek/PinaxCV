@@ -113,3 +113,16 @@ jobs:
           } finally {
             Stop-Process -Id $driver.Id -ErrorAction SilentlyContinue
           }
+      # Temporary: shows whether the app starts and opens a DevTools port
+      # when the Windows WebDriver session cannot be created.
+      - name: Diagnose the Windows WebDriver start
+        if: failure() && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = '--remote-debugging-port=9222'
+          $p = Start-Process (Join-Path $PWD 'target\debug\pinaxcv.exe') -PassThru
+          Start-Sleep -Seconds 15
+          Write-Host "still running: $(-not $p.HasExited); exit code: $($p.ExitCode)"
+          try { (Invoke-WebRequest http://127.0.0.1:9222/json/version -UseBasicParsing).Content } catch { Write-Host "no DevTools endpoint: $_" }
+          Get-ChildItem -Recurse -Force $env:LOCALAPPDATA, $env:TEMP -Filter DevToolsActivePort -ErrorAction SilentlyContinue | ForEach-Object FullName
+          Stop-Process -Id $p.Id -ErrorAction SilentlyContinue
