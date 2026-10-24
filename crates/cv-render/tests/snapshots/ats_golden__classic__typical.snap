@@ -12,8 +12,8 @@ Summary
 Backend engineer with eight years of experience building reliable distributed systems in Rust and Go. 
 Work Experience 
 Senior Backend Engineer 
-, Acme GmbH 
-Mar 2021 – Present | Berlin 
+Mar 2021 – Present 
+Acme GmbH | Berlin 
 •
 Led the migration of the billing platform to Rust, cutting p99 latency by 43%. 
 •
@@ -21,16 +21,16 @@ Designed an event-sourced ledger processing 2.1 million transactions per day.
 •
 Mentored four engineers and introduced property-based testing across three services. 
 Backend Engineer 
-, Example AG 
-Jan 2017 – Feb 2021 | Munich 
+Jan 2017 – Feb 2021 
+Example AG | Munich 
 •
 Built the search API (Go, PostgreSQL, Elasticsearch) serving 12k requests per second. 
 •
 Reduced cloud costs by 28% through right-sizing and caching. 
 Education 
 M.Sc. Computer Science 
-, Technical University of Munich 
 Oct 2014 – Sep 2016 
+Technical University of Munich 
 Skills 
 Languages 
 : Rust, Go, SQL 

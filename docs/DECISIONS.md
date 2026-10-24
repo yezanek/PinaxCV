@@ -346,6 +346,14 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Debian and Ubuntu users install the Snap, the Flatpak or the AppImage instead.
 - Changes spec section 14 and the M8 acceptance criteria. Tracked in #33 (Flatpak), #34 (Snap) and #68 (AppImage).
 
+## ADR-061 — Checking exports with an open-source resume parser (M2 hardening)
+
+- The product owner asked to back the ATS check with a real parser. CI exports every fixture (`cargo run -p cv-render --example export_fixtures`) and parses the PDFs with the parser from [OpenResume](https://github.com/xitanggg/open-resume), the most complete open-source PDF resume parser we found (pdf.js text items, then feature scoring like commercial parsers). It must read back the name, email, phone (US-style numbers only, the parser's limit), every job's title and organisation, and every school.
+- OpenResume is AGPL-3.0. The `resume parser` CI job clones it at a pinned commit and runs it through `scripts/ats-parser/check.ts`; none of its code is copied into this repository or shipped. The harness pins its own Node dependencies.
+- Fixtures the parser cannot read for reasons outside the template are listed in the harness with the reason and do not fail the job: CJK (no glyphs in Inter, ADR-033), job titles with digits or outside its English word list, and a name with quotes and an ampersand. Any other miss fails CI.
+- The first run showed that the `classic` entry heading ("**Title**, Org" then "Period | Location") was read as one run, so the parser lost the title and the school. Entries now print the title in bold with the period right-aligned on the same line, then the organisation and location on the next line. Each is a separate text run with clear space around it. This is still one column in reading order (ATS rules 1 and 2), and the golden ATS suite snapshots were updated.
+- PDFs are already tagged. Exports now also declare PDF/UA-1 when Typst can meet it, and fall back to the same tagged PDF without the claim when it cannot, for example when glyphs are missing.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

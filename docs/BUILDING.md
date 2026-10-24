@@ -82,6 +82,15 @@ To measure preview and export speed on your own machine (spec section 16; number
 cargo run --release -p cv-render --example preview_latency
 ```
 
+To run the open-source resume parser check from CI (ADR-061; needs Node.js 22):
+
+```sh
+cargo run -p cv-render --example export_fixtures -- /tmp/pinaxcv-fixtures
+cd scripts/ats-parser
+git clone https://github.com/xitanggg/open-resume.git && git -C open-resume checkout 4f8255a2c763479837f69f1dccf2a3338730cd79
+npm ci && npx tsx check.ts /tmp/pinaxcv-fixtures
+```
+
 ## 4. Try the spike app (until M3)
 
 The M0.5 spike is a small Tauri + Leptos window that shows a pre-rendered CV page through the `preview` URI scheme:
