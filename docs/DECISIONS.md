@@ -366,6 +366,12 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Undo and redo restore the snapshot and then preview and autosave like any edit. Fields that read the model only once (dates, skill lines) are rebuilt after a restore.
 - `Ctrl+Z` undoes, and `Ctrl+Shift+Z` or `Ctrl+Y` redoes. `Ctrl+S` saves now and `Ctrl+E` exports a PDF. Cmd works in place of Ctrl. The editor's undo replaces the browser's per-field undo, which would not match the CV model. Undo and Redo buttons in the header do the same.
 
+## ADR-053 — Drag-and-drop reordering with pointer events (M3)
+
+- Sections, entries, bullets, skill groups and language rows can be dragged by a handle (spec section 12.10). The handle captures the pointer, finds the item of the same list under it with `elementFromPoint`, outlines it, and on release moves the dragged item to that item's place. Each list is one parent, so an item never moves to another parent.
+- Pointer events are used instead of HTML5 drag and drop, because Tauri's file-drop handling turns HTML5 drag and drop off in the Windows WebView, and instead of SortableJS, so there is no JavaScript to vendor.
+- Dragging near the top or bottom of the form scrolls it. The Move up/Move down buttons stay as the keyboard alternative, and the handle is hidden from assistive technology.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

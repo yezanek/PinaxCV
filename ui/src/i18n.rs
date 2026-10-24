@@ -94,6 +94,7 @@ pub struct Strings {
     pub move_section_up: &'static str,
     pub move_section_down: &'static str,
     pub remove_section: &'static str,
+    pub drag_to_reorder: &'static str,
     pub add_entry: &'static str,
     pub remove_entry: &'static str,
     pub move_entry_up: &'static str,
@@ -240,6 +241,7 @@ pub static EN: Strings = Strings {
     move_section_up: "Move section up",
     move_section_down: "Move section down",
     remove_section: "Remove section",
+    drag_to_reorder: "Drag to reorder",
     add_entry: "+ Entry",
     remove_entry: "Remove entry",
     move_entry_up: "Move entry up",
@@ -455,6 +457,7 @@ mod tests {
     /// Every other source file in `src/`.
     const FILES: &[(&str, &str)] = &[
         ("dates.rs", include_str!("dates.rs")),
+        ("drag.rs", include_str!("drag.rs")),
         ("editor.rs", include_str!("editor.rs")),
         ("entries.rs", include_str!("entries.rs")),
         ("history.rs", include_str!("history.rs")),

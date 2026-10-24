@@ -6,6 +6,7 @@ use cv_core::{Bullet, Cv, Entry, EntrySection, Id, PartialDate, Period, Section}
 use leptos::prelude::*;
 
 use crate::dates;
+use crate::drag::{DragHandle, move_to};
 use crate::i18n::t;
 use crate::ids::new_id;
 use crate::order::shift;
@@ -181,10 +182,16 @@ fn SectionEditor(
     };
     let section_down = move |_| move_section(false);
     let section_id = id.clone();
+    let drop_section = Callback::new(move |(a, b): (Id, Id)| {
+        edit.run(Box::new(move |c| {
+            move_to(&mut c.sections, |s| s.id() == &a, |s| s.id() == &b);
+        }));
+    });
     view! {
-        <fieldset class="section">
+        <fieldset class="section" data-drag-list="sections" data-drag-id=id.to_string()>
             <legend>{label}</legend>
             <div class="order">
+                <DragHandle list="sections".to_owned() id=id.clone() dropped=drop_section />
                 <button aria-label=t().move_section_up on:click=section_up>"↑"</button>
                 <button aria-label=t().move_section_down on:click=section_down>"↓"</button>
             </div>
@@ -341,8 +348,21 @@ fn EntryEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> imp
         }
     };
     let (bs, be) = (section.clone(), id.clone());
+    let drop_entry = {
+        let s = section.clone();
+        Callback::new(move |(a, b): (Id, Id)| {
+            let s = s.clone();
+            edit.run(Box::new(move |c| {
+                if let Some(x) = entry_section_mut(c, &s) {
+                    move_to(&mut x.entries, |e| e.id == a, |e| e.id == b);
+                }
+            }));
+        })
+    };
+    let entry_list = format!("entries-{section}");
     view! {
-        <div class="entry">
+        <div class="entry" data-drag-list=entry_list.clone() data-drag-id=id.to_string()>
+            <DragHandle list=entry_list.clone() id=id.clone() dropped=drop_entry />
             {text(t().entry_title, |e| e.title.clone(), |e, v| e.title = v)}
             {text(t().organisation, |e| e.org.clone(), |e, v| e.org = v)}
             {text(t().location, |e| e.location.clone().unwrap_or_default(), |e, v| e.location = opt(v))}
@@ -376,6 +396,7 @@ fn BulletEditor(
 ) -> impl IntoView {
     let (s1, e1, b1) = (section.clone(), entry.clone(), id.clone());
     let (s2, e2, b2) = (section.clone(), entry.clone(), id.clone());
+    let (s3, e3, b3) = (section.clone(), entry.clone(), id.clone());
     let value = move || {
         cv.with(|c| {
             c.as_ref()
@@ -409,8 +430,21 @@ fn BulletEditor(
             }
         }));
     };
+    let drop_bullet = {
+        let (s, e) = (s3.clone(), e3.clone());
+        Callback::new(move |(a, b): (Id, Id)| {
+            let (s, e) = (s.clone(), e.clone());
+            edit.run(Box::new(move |c| {
+                if let Some(x) = entry_mut(c, &s, &e) {
+                    move_to(&mut x.bullets, |bl| bl.id == a, |bl| bl.id == b);
+                }
+            }));
+        })
+    };
+    let bullet_list = format!("bullets-{e3}");
     view! {
-        <div class="bullet">
+        <div class="bullet" data-drag-list=bullet_list.clone() data-drag-id=b3.to_string()>
+            <DragHandle list=bullet_list.clone() id=b3.clone() dropped=drop_bullet />
             <textarea aria-label=t().bullet prop:value=value
                 on:input=move |ev| {
                     let v = event_target_value(&ev);

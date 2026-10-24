@@ -4,6 +4,7 @@
 use cv_core::{Cv, Id, LanguageItem, LanguagesSection, Section, Skill, SkillGroup, SkillsSection};
 use leptos::prelude::*;
 
+use crate::drag::{DragHandle, move_to};
 use crate::entries::Edit;
 use crate::i18n::t;
 use crate::ids::new_id;
@@ -164,12 +165,19 @@ fn section_buttons(edit: Edit, id: Id) -> impl IntoView {
         move |_| mv(true)
     };
     let down = move |_| mv(false);
+    let drop_section = Callback::new(move |(a, b): (Id, Id)| {
+        edit.run(Box::new(move |c| {
+            move_to(&mut c.sections, |s| s.id() == &a, |s| s.id() == &b);
+        }))
+    });
+    let handle_id = id.clone();
     let remove = move |_| {
         let id = id.clone();
         edit.run(Box::new(move |c| c.sections.retain(|s| s.id() != &id)))
     };
     view! {
         <div class="order">
+            <DragHandle list="sections".to_owned() id=handle_id dropped=drop_section />
             <button aria-label=t().move_section_up on:click=up>"↑"</button>
             <button aria-label=t().move_section_down on:click=down>"↓"</button>
             <button aria-label=t().remove_section on:click=remove>"×"</button>
@@ -209,8 +217,9 @@ fn SkillsEditor(cv: RwSignal<Option<Cv>>, edit: Edit, id: Id) -> impl IntoView {
         }
     };
     let section = id.clone();
+    let row_id = id.to_string();
     view! {
-        <fieldset class="section">
+        <fieldset class="section" data-drag-list="sections" data-drag-id=row_id>
             <legend>{t().skills}</legend>
             {section_buttons(edit, id)}
             <For each=groups key=|g| g.clone() let:group>
@@ -270,8 +279,21 @@ fn GroupEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> imp
         move |_| m(true)
     };
     let group_down = move |_| move_group(false);
+    let drop_group = {
+        let s = section.clone();
+        Callback::new(move |(a, b): (Id, Id)| {
+            let s = s.clone();
+            edit.run(Box::new(move |c| {
+                if let Some(x) = skills_mut(c, &s) {
+                    move_to(&mut x.groups, |g| g.id == a, |g| g.id == b);
+                }
+            }))
+        })
+    };
+    let group_list = format!("groups-{section}");
     view! {
-        <div class="entry">
+        <div class="entry" data-drag-list=group_list.clone() data-drag-id=id.to_string()>
+            <DragHandle list=group_list.clone() id=id.clone() dropped=drop_group />
             <label>{t().group_label}
                 <input value=label on:input=move |ev| {
                     let v = event_target_value(&ev);
@@ -339,8 +361,9 @@ fn LanguagesEditor(cv: RwSignal<Option<Cv>>, edit: Edit, id: Id) -> impl IntoVie
         }
     };
     let section = id.clone();
+    let row_id = id.to_string();
     view! {
-        <fieldset class="section">
+        <fieldset class="section" data-drag-list="sections" data-drag-id=row_id>
             <legend>{t().languages}</legend>
             {section_buttons(edit, id)}
             <For each=items key=|i| i.clone() let:item>
@@ -423,6 +446,19 @@ fn LanguageEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> 
         move |_| m(true)
     };
     let item_down = move |_| move_item(false);
+    let drop_item = {
+        let s = section.clone();
+        Callback::new(move |(a, b): (Id, Id)| {
+            let s = s.clone();
+            edit.run(Box::new(move |c| {
+                if let Some(x) = languages_mut(c, &s) {
+                    move_to(&mut x.items, |it| it.id == a, |it| it.id == b);
+                }
+            }))
+        })
+    };
+    let item_list = format!("languages-{section}");
+    let (handle_id, row_id) = (id.clone(), id.to_string());
     let remove = move |_| {
         let (s, i) = (section.clone(), id.clone());
         edit.run(Box::new(move |c| {
@@ -432,7 +468,8 @@ fn LanguageEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> 
         }))
     };
     view! {
-        <div class="language">
+        <div class="language" data-drag-list=item_list.clone() data-drag-id=row_id>
+            <DragHandle list=item_list.clone() id=handle_id dropped=drop_item />
             <input aria-label=t().language placeholder=t().language
                 prop:value=read(|l| l.name.clone()) on:input=write(|l, v| l.name = v)
                 on:change=tidy(|l, v| l.name = v) />
