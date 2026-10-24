@@ -337,7 +337,7 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Export and "← CVs" wait for both the CV save and the variant save queue, because export reads the variant from storage. If a variant save fails, the export or leave is dropped and the error is shown.
 - Preview requests have their own counter, so selecting a variant re-renders without affecting the CV's autosave.
 - A delete confirmation remembers the variant it was opened for; changing the selection cancels it.
-- UI strings are still literal English, like every other screen so far. Moving them into the `i18n` module is a separate change that covers all screens at once.
+- UI strings were literal English at first; they moved into the `i18n` module with ADR-050.
 
 ## ADR-049 — Linux packages: AppImage, Flatpak and Snap
 
@@ -345,6 +345,14 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Linux ships as AppImage, Flatpak and Snap. The `.deb` package is dropped.
 - Debian and Ubuntu users install the Snap, the Flatpak or the AppImage instead.
 - Changes spec section 14 and the M8 acceptance criteria. Tracked in #33 (Flatpak), #34 (Snap) and #68 (AppImage).
+
+## ADR-050 — UI strings in one i18n module
+
+- Every user-facing UI string lives in `ui/src/i18n.rs` as a field of `Strings`; `EN` is the only locale in v1 and `t()` returns it. Another locale is one more `Strings` value, so a missing translation is a compile error.
+- Strings that carry values are templates with named `{placeholders}`, filled by `fill`, so a translation can reorder them.
+- Language-neutral glyphs (↑, ↓, ×) and separators stay in the views.
+- `error_message` maps `ErrorCode` to text (spec section 15). Codes that are complete on their own (`NotFound`, `Conflict`, `Cancelled`, `Keychain`, `AiNotConfigured`, `AiConsentRequired`, `AiCancelled`) get a fixed i18n string. For the others the backend message is the specific, actionable part (which field failed validation, what was wrong with an imported file), so the UI shows it as sent. The match has no wildcard, so a new code has to choose.
+- A unit test scans the other UI source files and fails on string literals that look like user-facing text.
 
 ## Open decisions
 

@@ -5,6 +5,7 @@ use cv_core::{Cv, Id, LanguageItem, LanguagesSection, Section, Skill, SkillGroup
 use leptos::prelude::*;
 
 use crate::entries::Edit;
+use crate::i18n::t;
 use crate::ids::new_id;
 use crate::order::shift;
 
@@ -140,9 +141,9 @@ pub fn ListSections(cv: RwSignal<Option<Cv>>, edit: Edit) -> impl IntoView {
             }}
         </For>
         <p>
-            <button on:click=add_skills>"+ Skills"</button>
+            <button on:click=add_skills>{t().add_skills}</button>
             " "
-            <button on:click=add_languages>"+ Languages"</button>
+            <button on:click=add_languages>{t().add_languages}</button>
         </p>
     }
 }
@@ -169,9 +170,9 @@ fn section_buttons(edit: Edit, id: Id) -> impl IntoView {
     };
     view! {
         <div class="order">
-            <button aria-label="Move section up" on:click=up>"↑"</button>
-            <button aria-label="Move section down" on:click=down>"↓"</button>
-            <button aria-label="Remove section" on:click=remove>"×"</button>
+            <button aria-label=t().move_section_up on:click=up>"↑"</button>
+            <button aria-label=t().move_section_down on:click=down>"↓"</button>
+            <button aria-label=t().remove_section on:click=remove>"×"</button>
         </div>
     }
 }
@@ -210,12 +211,12 @@ fn SkillsEditor(cv: RwSignal<Option<Cv>>, edit: Edit, id: Id) -> impl IntoView {
     let section = id.clone();
     view! {
         <fieldset class="section">
-            <legend>"Skills"</legend>
+            <legend>{t().skills}</legend>
             {section_buttons(edit, id)}
             <For each=groups key=|g| g.clone() let:group>
                 <GroupEditor cv=cv edit=edit section=section.clone() id=group />
             </For>
-            <button on:click=add>"+ Skill group"</button>
+            <button on:click=add>{t().add_skill_group}</button>
         </fieldset>
     }
 }
@@ -271,7 +272,7 @@ fn GroupEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> imp
     let group_down = move |_| move_group(false);
     view! {
         <div class="entry">
-            <label>"Group label (optional)"
+            <label>{t().group_label}
                 <input value=label on:input=move |ev| {
                     let v = event_target_value(&ev);
                     let (s, g) = (s1.clone(), g1.clone());
@@ -284,7 +285,7 @@ fn GroupEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> imp
                     edit.run(Box::new(move |c| if let Some(x) = group_mut(c, &s, &g) { x.label = opt(t) }));
                 } />
             </label>
-            <label>"Skills, separated by commas"
+            <label>{t().skills_line}
                 <input value=line on:input=move |ev| {
                     let v = event_target_value(&ev);
                     let (s, g) = (s2.clone(), g2.clone());
@@ -298,10 +299,10 @@ fn GroupEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> imp
             <button on:click=move |_| {
                 let (s, g) = (s3.clone(), g3.clone());
                 edit.run(Box::new(move |c| if let Some(x) = skills_mut(c, &s) { x.groups.retain(|gr| gr.id != g) }));
-            }>"Remove group"</button>
+            }>{t().remove_group}</button>
             " "
-            <button aria-label="Move skill group up" on:click=group_up>"↑"</button>
-            <button aria-label="Move skill group down" on:click=group_down>"↓"</button>
+            <button aria-label=t().move_group_up on:click=group_up>"↑"</button>
+            <button aria-label=t().move_group_down on:click=group_down>"↓"</button>
         </div>
     }
 }
@@ -340,12 +341,12 @@ fn LanguagesEditor(cv: RwSignal<Option<Cv>>, edit: Edit, id: Id) -> impl IntoVie
     let section = id.clone();
     view! {
         <fieldset class="section">
-            <legend>"Languages"</legend>
+            <legend>{t().languages}</legend>
             {section_buttons(edit, id)}
             <For each=items key=|i| i.clone() let:item>
                 <LanguageEditor cv=cv edit=edit section=section.clone() id=item />
             </For>
-            <button on:click=add>"+ Language"</button>
+            <button on:click=add>{t().add_language}</button>
         </fieldset>
     }
 }
@@ -432,15 +433,15 @@ fn LanguageEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> 
     };
     view! {
         <div class="language">
-            <input aria-label="Language" placeholder="Language"
+            <input aria-label=t().language placeholder=t().language
                 prop:value=read(|l| l.name.clone()) on:input=write(|l, v| l.name = v)
                 on:change=tidy(|l, v| l.name = v) />
-            <input aria-label="Level" placeholder="Level, for example C1"
+            <input aria-label=t().level placeholder=t().level_placeholder
                 prop:value=read(|l| l.level.clone().unwrap_or_default()) on:input=write(|l, v| l.level = opt(v))
                 on:change=tidy(|l, v| l.level = opt(v)) />
-            <button aria-label="Move language up" on:click=item_up>"↑"</button>
-            <button aria-label="Move language down" on:click=item_down>"↓"</button>
-            <button aria-label="Remove language" on:click=remove>"×"</button>
+            <button aria-label=t().move_language_up on:click=item_up>"↑"</button>
+            <button aria-label=t().move_language_down on:click=item_down>"↓"</button>
+            <button aria-label=t().remove_language on:click=remove>"×"</button>
         </div>
     }
 }

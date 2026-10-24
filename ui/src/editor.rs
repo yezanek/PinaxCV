@@ -12,6 +12,7 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 
 use crate::entries::EntrySections;
+use crate::i18n::{error_message, fill, t};
 use crate::ipc::{IdArg, ReqArg, call};
 use crate::lists::ListSections;
 use crate::variants::VariantBar;
@@ -43,7 +44,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
     // Bumped on every edit; a timer acts only if no newer edit happened.
     let edits = RwSignal::new(0u64);
     let pages: RwSignal<Vec<String>> = RwSignal::new(Vec::new());
-    let status = RwSignal::new(String::from("Loading…"));
+    let status = RwSignal::new(String::from(t().loading));
     let error: RwSignal<Option<String>> = RwSignal::new(None);
     // The variant being viewed; `None` is the base CV.
     let variant: RwSignal<Option<StoredVariant>> = RwSignal::new(None);
@@ -88,7 +89,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
             rendering.set(false);
             match result {
                 Ok(resp) => pages.set(resp.page_urls),
-                Err(e) => error.set(Some(e.message)),
+                Err(e) => error.set(Some(error_message(&e))),
             }
         });
     };
@@ -104,7 +105,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
             cv_id: cv_id.get_value(),
             variant_id: variant.with_untracked(|v| v.as_ref().map(|v| v.variant.id.clone())),
         };
-        status.set("Exporting…".into());
+        status.set(t().exporting.into());
         spawn_local(async move {
             let result: Result<ExportResult, ApiError> = if pdf {
                 call(
@@ -126,15 +127,15 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                 Ok(r) => {
                     let ats = r
                         .ats
-                        .map(|a| format!(", ATS score {}", a.score))
+                        .map(|a| fill(t().ats_score, &[("score", &a.score.to_string())]))
                         .unwrap_or_default();
-                    status.set(format!("Exported to {}{ats}", r.path));
+                    status.set(fill(t().exported_to, &[("path", &r.path), ("ats", &ats)]));
                     error.set(None);
                 }
-                Err(e) if e.code == ErrorCode::Cancelled => status.set("Export cancelled".into()),
+                Err(e) if e.code == ErrorCode::Cancelled => status.set(t().export_cancelled.into()),
                 Err(e) => {
-                    status.set("Export failed".into());
-                    error.set(Some(e.message));
+                    status.set(t().export_failed.into());
+                    error.set(Some(error_message(&e)));
                 }
             }
         });
@@ -144,7 +145,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
     let finish = move |then: AfterSave| {
         if variant_busy.get_untracked() {
             after_variant.set(Some(then));
-            status.set("Saving…".into());
+            status.set(t().saving.into());
             return;
         }
         match then {
@@ -162,7 +163,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
         if ok {
             finish(then);
         } else {
-            status.set("Not saved".into());
+            status.set(t().not_saved.into());
         }
     });
 
@@ -174,7 +175,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
             return;
         }
         saving.set(true);
-        status.set("Saving…".into());
+        status.set(t().saving.into());
         spawn_local(async move {
             loop {
                 let Some(current) = cv.try_get_untracked().flatten() else {
@@ -196,7 +197,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                             continue;
                         }
                         saving.set(false);
-                        status.set("Saved".into());
+                        status.set(t().saved.into());
                         error.set(None);
                         if let Some(then) = after_save.get_untracked() {
                             after_save.set(None);
@@ -212,8 +213,8 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                             return;
                         }
                         after_save.set(None);
-                        status.set("Not saved".into());
-                        error.set(Some(e.message));
+                        status.set(t().not_saved.into());
+                        error.set(Some(error_message(&e)));
                         return;
                     }
                 }
@@ -239,10 +240,10 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                 Ok(stored) => {
                     revision.set(stored.revision);
                     cv.set(Some(stored.cv));
-                    status.set("Saved".into());
+                    status.set(t().saved.into());
                     preview_now();
                 }
-                Err(e) => error.set(Some(e.message)),
+                Err(e) => error.set(Some(error_message(&e))),
             }
         }
     });
@@ -256,7 +257,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
         });
         let n = edits.get_untracked() + 1;
         edits.set(n);
-        status.set("Editing…".into());
+        status.set(t().editing.into());
         // Timers check the editor is still open (`try_get_untracked`).
         set_timeout(
             move || {
@@ -302,24 +303,24 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
 
     view! {
         <header class="bar">
-            <button on:click=leave>"← CVs"</button>
+            <button on:click=leave>{t().back_to_cvs}</button>
             <h1>{move || cv.with(|c| c.as_ref().map(|c| c.title.clone()).unwrap_or_default())}</h1>
             <span class="status">{move || status.get()}</span>
-            <button on:click=export_pdf>"Export PDF"</button>
-            <button on:click=export_html>"Export HTML"</button>
+            <button on:click=export_pdf>{t().export_pdf}</button>
+            <button on:click=export_html>{t().export_html}</button>
         </header>
         <div class="editor">
-            <section class="form" aria-label="Content">
+            <section class="form" aria-label=t().content>
                 <p class="error">{move || error.get()}</p>
                 <VariantBar cv_id=id.clone() cv=cv variant=variant error=error changed=variant_changed
                     busy=variant_busy settled=variant_settled />
-                {field("CV title (only you see this)", |c| c.title.clone(), |c, v| c.title = v)}
-                {field("Full name", |c| c.basics.full_name.clone(), |c, v| c.basics.full_name = v)}
-                {field("Headline", |c| c.basics.headline.clone().unwrap_or_default(), |c, v| c.basics.headline = opt(v))}
-                {field("Email", |c| c.basics.email.clone().unwrap_or_default(), |c, v| c.basics.email = opt(v))}
-                {field("Phone", |c| c.basics.phone.clone().unwrap_or_default(), |c, v| c.basics.phone = opt(v))}
-                {field("Location", |c| c.basics.location.clone().unwrap_or_default(), |c, v| c.basics.location = opt(v))}
-                <label>"Summary"
+                {field(t().cv_title, |c| c.title.clone(), |c, v| c.title = v)}
+                {field(t().full_name, |c| c.basics.full_name.clone(), |c, v| c.basics.full_name = v)}
+                {field(t().headline, |c| c.basics.headline.clone().unwrap_or_default(), |c, v| c.basics.headline = opt(v))}
+                {field(t().email, |c| c.basics.email.clone().unwrap_or_default(), |c, v| c.basics.email = opt(v))}
+                {field(t().phone, |c| c.basics.phone.clone().unwrap_or_default(), |c, v| c.basics.phone = opt(v))}
+                {field(t().location, |c| c.basics.location.clone().unwrap_or_default(), |c, v| c.basics.location = opt(v))}
+                <label>{t().summary}
                     <textarea prop:value=move || cv.with(|c| c.as_ref().and_then(|c| c.summary.clone()).unwrap_or_default())
                         on:input=move |ev| {
                             let v = event_target_value(&ev);
@@ -329,13 +330,13 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                 <EntrySections cv=cv edit=edit />
                 <ListSections cv=cv edit=edit />
             </section>
-            <section class="preview" class:stale=move || rendering.get() aria-label="Preview"
+            <section class="preview" class:stale=move || rendering.get() aria-label=t().preview
                 aria-busy=move || rendering.get().to_string()>
                 <Show when=move || rendering.get()>
-                    <span class="spinner" role="status" aria-label="Updating preview"></span>
+                    <span class="spinner" role="status" aria-label=t().updating_preview></span>
                 </Show>
                 <For each=move || pages.get() key=|u| u.clone() let:url>
-                    <img src=url alt="CV page preview" />
+                    <img src=url alt=t().page_preview />
                 </For>
             </section>
         </div>
