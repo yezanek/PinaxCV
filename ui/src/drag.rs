@@ -66,7 +66,8 @@ pub fn DragHandle(list: String, id: Id, dropped: Callback<(Id, Id)>) -> impl Int
     // The item currently highlighted as the drop target.
     let target: StoredValue<Option<(web_sys::Element, Id)>, LocalStorage> =
         StoredValue::new_local(None);
-    let dragging = StoredValue::new(false);
+    // The pointer that started the drag; other pointers are ignored.
+    let dragging: StoredValue<Option<i32>> = StoredValue::new(None);
     let clear = move || {
         if let Some((el, _)) = target.get_value() {
             let _ = el.class_list().remove_1(TARGET_CLASS);
@@ -76,19 +77,19 @@ pub fn DragHandle(list: String, id: Id, dropped: Callback<(Id, Id)>) -> impl Int
     view! {
         <span class="drag-handle" aria-hidden="true" title=t().drag_to_reorder
             on:pointerdown=move |ev: web_sys::PointerEvent| {
-                if ev.button() != 0 {
+                if ev.button() != 0 || !ev.is_primary() || dragging.get_value().is_some() {
                     return;
                 }
                 ev.prevent_default();
                 if let Some(el) = ev.current_target().and_then(|t| t.dyn_into::<web_sys::Element>().ok()) {
                     let _ = el.set_pointer_capture(ev.pointer_id());
                 }
-                dragging.set_value(true);
+                dragging.set_value(Some(ev.pointer_id()));
             }
             on:pointermove={
                 let list = list.clone();
                 move |ev: web_sys::PointerEvent| {
-                    if !dragging.get_value() {
+                    if dragging.get_value() != Some(ev.pointer_id()) {
                         return;
                     }
                     if let Some(handle) = ev.current_target().and_then(|t| t.dyn_into::<web_sys::Element>().ok()) {
@@ -108,13 +109,16 @@ pub fn DragHandle(list: String, id: Id, dropped: Callback<(Id, Id)>) -> impl Int
             }
             on:pointerup={
                 let id = id.clone();
-                move |_| {
-                    if !dragging.get_value() {
+                let list = list.clone();
+                move |ev: web_sys::PointerEvent| {
+                    if dragging.get_value() != Some(ev.pointer_id()) {
                         return;
                     }
-                    dragging.set_value(false);
-                    let over = target.get_value().map(|(_, over)| over);
+                    dragging.set_value(None);
                     clear();
+                    // Hit-test again: the form may have scrolled under a
+                    // pointer that did not move.
+                    let over = item_at(ev.client_x(), ev.client_y(), &list).map(|(_, over)| over);
                     if let Some(over) = over
                         && over != id
                     {
@@ -122,9 +126,11 @@ pub fn DragHandle(list: String, id: Id, dropped: Callback<(Id, Id)>) -> impl Int
                     }
                 }
             }
-            on:pointercancel=move |_| {
-                dragging.set_value(false);
-                clear();
+            on:pointercancel=move |ev: web_sys::PointerEvent| {
+                if dragging.get_value() == Some(ev.pointer_id()) {
+                    dragging.set_value(None);
+                    clear();
+                }
             }>
             "⠿"
         </span>
