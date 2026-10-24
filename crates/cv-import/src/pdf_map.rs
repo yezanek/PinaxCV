@@ -3,7 +3,8 @@
 //! warning, and the user reviews the result in the merge step.
 
 use cv_core::{
-    Entry, EntrySection, Id, LanguageItem, LanguagesSection, PartialDate, Period, Section,
+    Entry, EntrySection, Id, LanguageItem, LanguagesSection, PartialDate, Period, Section, Skill,
+    SkillGroup, SkillsSection,
 };
 
 use crate::partial::{CvPartial, ImportResult, ImportWarning};
@@ -167,6 +168,115 @@ fn language(line: &str, fresh: &mut dyn FnMut() -> Id) -> LanguageItem {
     }
 }
 
+/// Skill lines: "Label: a, b" becomes a labelled group; other lines are
+/// split on commas, bullets, pipes and semicolons into one unlabelled group.
+/// Repeats (ignoring case) are dropped.
+fn skill_groups(lines: &[String], fresh: &mut dyn FnMut() -> Id) -> Vec<SkillGroup> {
+    let mut seen = std::collections::HashSet::new();
+    let mut split = |text: &str| -> Vec<String> {
+        text.split([',', '·', '•', '|', ';'])
+            .map(str::trim)
+            .filter(|s| !s.is_empty() && seen.insert(s.to_lowercase()))
+            .map(str::to_owned)
+            .collect()
+    };
+    let mut labelled = Vec::new();
+    let mut loose = Vec::new();
+    for line in lines {
+        match line.split_once(':') {
+            // "Languages: Rust, Go"; a colon in a URL-like word is not a label.
+            Some((label, rest)) if !label.trim().is_empty() && !rest.starts_with("//") => {
+                labelled.push((label.trim().to_owned(), split(rest)));
+            }
+            _ => loose.extend(split(line)),
+        }
+    }
+    let mut groups: Vec<(Option<String>, Vec<String>)> = labelled
+        .into_iter()
+        .map(|(label, names)| (Some(label), names))
+        .collect();
+    if !loose.is_empty() {
+        groups.insert(0, (None, loose));
+    }
+    groups
+        .into_iter()
+        .filter(|(_, names)| !names.is_empty())
+        .map(|(label, names)| SkillGroup {
+            id: fresh(),
+            label,
+            skills: names
+                .into_iter()
+                .map(|name| Skill { id: fresh(), name })
+                .collect(),
+        })
+        .collect()
+}
+
+/// A trailing date such as "(2021)", ", Mar 2021" or " 2021-03", and the
+/// text before it.
+fn trailing_date(line: &str) -> (String, Option<PartialDate>) {
+    let line = line.trim();
+    let trimmed = line.trim_end_matches(')');
+    let words: Vec<&str> = trimmed.split_whitespace().collect();
+    for take in [2, 1] {
+        if words.len() < take {
+            continue;
+        }
+        let tail = words[words.len() - take..]
+            .join(" ")
+            .trim_start_matches('(')
+            .to_owned();
+        if let Some(date) = parse_date(&tail) {
+            let head = words[..words.len() - take]
+                .join(" ")
+                .trim_end_matches(['(', ',', '-', '–', '·', ' '])
+                .trim()
+                .to_owned();
+            return (head, Some(date));
+        }
+    }
+    (line.to_owned(), None)
+}
+
+/// Certification lines: "Name", "Name - Issuer" or "Name, Issuer (2021)".
+/// A line that is only a date belongs to the certification above it.
+fn certifications(lines: &[String], fresh: &mut dyn FnMut() -> Id) -> Vec<Entry> {
+    let mut out: Vec<Entry> = Vec::new();
+    for line in lines {
+        let (text, date) = trailing_date(line);
+        if text.is_empty() {
+            if let (Some(last), Some(date)) = (out.last_mut(), date) {
+                last.period.start.get_or_insert(date);
+            }
+            continue;
+        }
+        let (title, org) = match text
+            .split_once(" - ")
+            .or_else(|| text.split_once(" – "))
+            .or_else(|| text.split_once(" | "))
+        {
+            Some((t, o)) => (t.trim().to_owned(), o.trim().to_owned()),
+            None => (text, String::new()),
+        };
+        out.push(Entry {
+            id: fresh(),
+            title,
+            org,
+            location: None,
+            period: Period {
+                start: date,
+                end: None,
+                current: false,
+            },
+            bullets: Vec::new(),
+            description: None,
+            url: None,
+            locked: false,
+        });
+    }
+    out
+}
+
 fn is_sidebar(h: Heading) -> bool {
     matches!(
         h,
@@ -179,6 +289,7 @@ pub fn text_to_partial(text: &str, fresh: &mut dyn FnMut() -> Id) -> ImportResul
     let mut sections = split_sections(text);
     let mut warnings = Vec::new();
     let mut partial = CvPartial::default();
+    let mut later = Vec::new();
 
     // LinkedIn puts its sidebar first, so the name, headline and location end
     // the last sidebar section before the main column starts. A section with
@@ -246,23 +357,38 @@ pub fn text_to_partial(text: &str, fresh: &mut dyn FnMut() -> Id) -> ImportResul
             Heading::Languages => {
                 let items: Vec<LanguageItem> = lines.iter().map(|l| language(l, fresh)).collect();
                 if !items.is_empty() {
-                    partial.sections.push(Section::Languages(LanguagesSection {
+                    later.push(Section::Languages(LanguagesSection {
                         id: fresh(),
                         title_override: None,
                         items,
                     }));
                 }
             }
-            Heading::Skills | Heading::Certifications => {
-                if !lines.is_empty() {
-                    warnings.push(ImportWarning::new(format!(
-                        "{} lines under {heading:?} were not imported yet.",
-                        lines.len()
-                    )));
+            Heading::Skills => {
+                let groups = skill_groups(lines, fresh);
+                if !groups.is_empty() {
+                    later.push(Section::Skills(SkillsSection {
+                        id: fresh(),
+                        title_override: None,
+                        groups,
+                    }));
+                }
+            }
+            Heading::Certifications => {
+                let found = certifications(lines, fresh);
+                if !found.is_empty() {
+                    later.push(Section::Certifications(EntrySection {
+                        id: fresh(),
+                        title_override: None,
+                        entries: found,
+                    }));
                 }
             }
         }
     }
+    // Skills, languages and certifications (LinkedIn's sidebar) come after
+    // the main sections, as a CV usually orders them.
+    partial.sections.extend(later);
     ImportResult {
         cv_partial: partial,
         warnings,
@@ -314,12 +440,13 @@ mod tests {
         assert_eq!(p.email.as_deref(), Some("alex@example.org"));
         assert_eq!(p.phone.as_deref(), Some("+49 30 1234567"));
         assert_eq!(p.summary.as_deref(), Some("I build reliable systems."));
-        let Section::Languages(l) = &p.sections[0] else {
+        // The sidebar's sections follow the main column's.
+        let Section::Languages(l) = &p.sections[3] else {
             panic!("languages")
         };
         assert_eq!(l.items[0].level.as_deref(), Some("Native or Bilingual"));
         assert_eq!(l.items[1].level, None);
-        let Section::Experience(x) = &p.sections[1] else {
+        let Section::Experience(x) = &p.sections[0] else {
             panic!("experience")
         };
         assert_eq!(x.entries.len(), 2);
@@ -335,13 +462,20 @@ mod tests {
         assert!(x.entries[0].period.current);
         assert_eq!(x.entries[1].period.end, d(2021, Some(2)));
         assert_eq!(x.entries[1].description.as_deref(), Some("Shipped things."));
-        let Section::Education(e) = &p.sections[2] else {
+        let Section::Education(e) = &p.sections[1] else {
             panic!("education")
         };
         assert_eq!(e.entries[0].title, "BSc, Computer Science");
         assert_eq!(e.entries[0].period.end, d(2017, None));
         assert!(r.warnings.iter().any(|w| w.message.contains("sidebar")));
-        assert!(r.warnings.iter().any(|w| w.message.contains("Skills")));
+        let Section::Skills(k) = &p.sections[2] else {
+            panic!("skills")
+        };
+        assert_eq!(k.groups[0].skills[0].name, "Rust");
+        let Section::Certifications(c) = &p.sections[4] else {
+            panic!("certifications")
+        };
+        assert_eq!(c.entries[0].title, "Cloud Basics");
     }
 
     #[test]
@@ -364,5 +498,56 @@ mod tests {
         assert_eq!(r.cv_partial.full_name.as_deref(), Some("Alex Sample"));
         assert!(r.cv_partial.sections.is_empty());
         assert_eq!(r.warnings.len(), 1);
+    }
+
+    #[test]
+    fn skills_split_into_groups() {
+        let lines: Vec<String> = [
+            "Rust, Go · Python",
+            "Cloud: AWS, GCP",
+            "rust | Kubernetes",
+            "https://example.com",
+        ]
+        .map(String::from)
+        .to_vec();
+        let groups = skill_groups(&lines, &mut ids());
+        let names = |g: &SkillGroup| g.skills.iter().map(|s| s.name.clone()).collect::<Vec<_>>();
+        assert_eq!(groups[0].label, None);
+        assert_eq!(
+            names(&groups[0]),
+            ["Rust", "Go", "Python", "Kubernetes", "https://example.com"]
+        );
+        assert_eq!(groups[1].label.as_deref(), Some("Cloud"));
+        assert_eq!(names(&groups[1]), ["AWS", "GCP"]);
+    }
+
+    #[test]
+    fn certifications_read_issuers_and_dates() {
+        let lines: Vec<String> = [
+            "Cloud Basics",
+            "Kubernetes Admin - Example Foundation (2021)",
+            "Data Engineer, Mar 2022",
+            "2023",
+            "Security+ | Example Org",
+        ]
+        .map(String::from)
+        .to_vec();
+        let c = certifications(&lines, &mut ids());
+        assert_eq!(c.len(), 4);
+        assert_eq!(
+            (c[0].title.as_str(), c[0].period.start),
+            ("Cloud Basics", None)
+        );
+        assert_eq!(
+            (c[1].title.as_str(), c[1].org.as_str(), c[1].period.start),
+            ("Kubernetes Admin", "Example Foundation", d(2021, None))
+        );
+        assert_eq!(
+            (c[2].title.as_str(), c[2].period.start),
+            ("Data Engineer", d(2022, Some(3)))
+        );
+        assert_eq!(c[3].org, "Example Org");
+        let lone = certifications(&["Name".into(), "2019".into()], &mut ids());
+        assert_eq!(lone[0].period.start, d(2019, None));
     }
 }
