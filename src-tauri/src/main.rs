@@ -11,6 +11,7 @@ use tauri::Manager;
 
 mod commands;
 mod dialog;
+mod log;
 mod preview;
 
 /// File name of the database inside the app data directory.
@@ -24,9 +25,14 @@ fn main() {
             preview::respond(app.as_deref().map(Arc::as_ref), request.uri().path())
         })
         .setup(|tauri_app| {
+            if let Ok(logs) = tauri_app.path().app_log_dir() {
+                log::init(&logs);
+            }
             let dir = tauri_app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
-            let store = SqliteStore::open(&dir.join(DB_FILE))?;
+            // The error text is not logged: it can quote stored content.
+            let store = SqliteStore::open(&dir.join(DB_FILE))
+                .inspect_err(|_| tracing::error!("could not open the database"))?;
             let app = App::new(
                 Box::new(store),
                 Box::new(dialog::TauriSaveDialog::new(tauri_app.handle().clone())),

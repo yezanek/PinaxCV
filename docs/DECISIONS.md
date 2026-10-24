@@ -346,6 +346,14 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Debian and Ubuntu users install the Snap, the Flatpak or the AppImage instead.
 - Changes spec section 14 and the M8 acceptance criteria. Tracked in #33 (Flatpak), #34 (Snap) and #68 (AppImage).
 
+## ADR-056 — Local log file (M3)
+
+- The desktop shell logs with `tracing` to `pinaxcv.log` in Tauri's app log directory (`docs/SECURITY.md` lists the paths). Release builds log at info level and debug builds at debug level.
+- Each command logs its name, duration and, on failure, the error code. Arguments and error messages are never logged, because both can quote CV content. A database that fails to open is logged without the error text for the same reason.
+- A panic hook logs the panic's location and message, cut to 300 characters, then runs the default hook.
+- At startup a log over 1 MB is renamed to `pinaxcv.1.log`, replacing the older one, so at most about 2 MB is kept. If the log cannot be opened, the app runs without one.
+- Opening the log folder from the app comes with the Settings screen (`open_data_dir`, spec section 10.2).
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
