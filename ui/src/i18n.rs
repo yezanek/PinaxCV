@@ -34,6 +34,32 @@ pub struct Strings {
     pub one_variant: &'static str,
     /// `{n}`.
     pub n_variants: &'static str,
+    pub import_cv: &'static str,
+    pub import_cv_hint: &'static str,
+
+    // Import wizard
+    pub import_title: &'static str,
+    pub import_no_name: &'static str,
+    /// `{section}` and `{n}`, the number of items read into it.
+    pub import_section_line: &'static str,
+    pub import_warnings: &'static str,
+    pub import_into: &'static str,
+    pub import_as_new: &'static str,
+    pub import_merge: &'static str,
+    pub import_merge_into: &'static str,
+    pub imported_cv_default: &'static str,
+    pub import_review_hint: &'static str,
+    /// `{value}`.
+    pub keep_mine: &'static str,
+    /// `{value}`.
+    pub use_imported: &'static str,
+    pub import_entries: &'static str,
+    pub import_add_new: &'static str,
+    pub import_skip: &'static str,
+    /// `{entry}`: the existing entry the import would overwrite.
+    pub import_replace: &'static str,
+    pub import_merge_note: &'static str,
+    pub import_button: &'static str,
 
     // Editor bar and status
     pub back_to_cvs: &'static str,
@@ -217,6 +243,27 @@ pub static EN: Strings = Strings {
     n_pages: "{n} pages",
     one_variant: "1 variant",
     n_variants: "{n} variants",
+    import_cv: "Import…",
+    import_cv_hint: "Import a Europass CV (PDF or XML) or another CV saved as PDF",
+
+    import_title: "Import a CV",
+    import_no_name: "No name found",
+    import_section_line: "{section}: {n}",
+    import_warnings: "Check these after importing",
+    import_into: "Save as",
+    import_as_new: "A new CV",
+    import_merge: "Merge into an existing CV",
+    import_merge_into: "CV to merge into",
+    imported_cv_default: "Imported CV",
+    import_review_hint: "These details differ. Choose which to keep.",
+    keep_mine: "Keep mine: {value}",
+    use_imported: "Use imported: {value}",
+    import_entries: "Imported entries",
+    import_add_new: "Add as new",
+    import_skip: "Skip",
+    import_replace: "Replace {entry}",
+    import_merge_note: "New skills, languages and links are added. A snapshot of the CV is saved first, so the merge can be undone.",
+    import_button: "Import",
 
     back_to_cvs: "← CVs",
     export_pdf: "Export PDF",
@@ -517,6 +564,7 @@ mod tests {
         ("editor.rs", include_str!("editor.rs")),
         ("entries.rs", include_str!("entries.rs")),
         ("history.rs", include_str!("history.rs")),
+        ("import.rs", include_str!("import.rs")),
         ("ids.rs", include_str!("ids.rs")),
         ("ipc.rs", include_str!("ipc.rs")),
         ("list.rs", include_str!("list.rs")),

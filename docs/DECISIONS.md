@@ -392,6 +392,15 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - WebDriver cannot drive native file dialogs, so the shell's `e2e` cargo feature replaces the save dialog with one that writes into `PINAXCV_E2E_EXPORT_DIR`. Only the e2e job enables the feature; release builds do not contain it.
 - The `tauri-action` build from spec section 14 belongs to the packaging milestone (M8).
 
+## ADR-058 — Import wizard: parse, match, commit (M4)
+
+- Importing is three commands (spec sections 9.5 and 10.2). `import_parse` opens the backend's file dialog (PDF and XML for now), reads at most 20 MB, runs the importers (Europass first, then the PDF text importer, ADR-047) and returns an `ImportPreview`: what was read, with fresh IDs, and the warnings. The parsed import stays in memory under its `preview_id`; the four newest are kept. Nothing is saved yet.
+- `import_match(preview_id, cv_id)` returns the contact fields that both sides fill with different values and the suggested entry matches (same kind of section, organisation, title and start year).
+- `import_commit(preview_id, target, use_imported, entries)` saves a new CV, or merges into an existing one. A merge checks the CV's revision, applies the user's choices (each conflicting field: keep mine or use imported; each imported entry: skip, add as new, or replace an existing entry, which keeps that entry's ID), takes an `import` snapshot and saves. Empty fields are always filled, and new skills, languages and links are always added. The preview is dropped once saved.
+- The format is detected from the file's content, not chosen by the user, so the spec's `kind` argument is not needed yet. JSON Resume (#44) and LinkedIn ZIP (#45) add their extensions and detection to the same commands.
+- The wizard replaces the CV list while it is open: summary, warnings, then "A new CV" (title, defaulting to the imported name) or "Merge into an existing CV" with the review. Matched entries default to Replace, others to Add as new, and conflicting fields to Keep mine. The end-to-end build's dialog reads `PINAXCV_E2E_IMPORT_FILE`.
+- The `SaveDialog` trait became `FileDialog` with an open method, so the shell keeps owning every path.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

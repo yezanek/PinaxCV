@@ -384,7 +384,7 @@ fn import_into_a_new_cv() {
         preview_id: preview.preview_id,
         cv_id: stored.cv.id.clone(),
     });
-    assert_eq!(again.map_err(|e| e.code), Err(ErrorCode::NotFound));
+    assert_eq!(again.map_err(|e| e.code), Err(ErrorCode::Import));
 }
 
 /// Spec section 9.5: the merge review's choices are applied, and the CV is

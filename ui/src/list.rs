@@ -1,14 +1,16 @@
 //! The home screen (spec section 12.2): the user's CVs as cards, creating,
-//! duplicating and deleting them. A delete can be undone from a toast.
+//! duplicating, deleting and importing them. A delete can be undone from a
+//! toast.
 
 use std::time::Duration;
 
-use cv_api::{ApiError, DuplicateCv, NewCv};
+use cv_api::{ApiError, DuplicateCv, ImportPreview, NewCv};
 use cv_core::{CvSummary, Id, StoredCv};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 
 use crate::i18n::{error_message, fill, t};
+use crate::import::{ImportWizard, choose_file};
 use crate::ipc::{IdArg, NoArgs, ReqArg, call};
 
 /// How long the "Deleted" toast offers Undo.
@@ -79,6 +81,10 @@ pub fn CvList(open: RwSignal<Option<Id>>) -> impl IntoView {
     // older toast's timer does not hide a newer one.
     let deleted: RwSignal<Option<(Id, String)>> = RwSignal::new(None);
     let toasts = RwSignal::new(0u64);
+    // The open import, while the wizard shows; `choosing` while the file
+    // dialog is open.
+    let importing: RwSignal<Option<ImportPreview>> = RwSignal::new(None);
+    let choosing = RwSignal::new(false);
 
     let reload = move || {
         spawn_local(async move {
@@ -170,48 +176,75 @@ pub fn CvList(open: RwSignal<Option<Id>>) -> impl IntoView {
         });
     };
 
+    let start_import = move |_| {
+        if choosing.get_untracked() {
+            return;
+        }
+        choosing.set(true);
+        error.set(None);
+        spawn_local(async move {
+            let result = choose_file().await;
+            if choosing.try_set(false).is_some() {
+                return;
+            }
+            match result {
+                Ok(preview) => importing.set(preview),
+                Err(message) => error.set(Some(message)),
+            }
+        });
+    };
+
     let s = t();
-    view! {
-        <header class="bar"><h1>{s.app_name}</h1></header>
-        <main class="list">
-            <h2>{s.your_cvs}</h2>
-            <p class="error">{move || error.get()}</p>
-            <p class="new-cv">
-                <input aria-label=s.new_cv_title placeholder=s.new_cv_title_placeholder prop:value=move || title.get()
-                    on:input=move |ev| title.set(event_target_value(&ev)) />
-                <button on:click=create prop:disabled=move || creating.get()>{s.new_cv}</button>
-            </p>
-            <Show when=move || cvs.with(Vec::is_empty)>
-                <p class="status">{s.no_cvs_yet}</p>
-            </Show>
-            <ul class="cards">
-                <For each=move || cvs.get() key=|c| (c.id.clone(), c.updated_at.0.clone(), c.title.clone()) let:cv>
-                    {
-                        let (id, dup, del) = (cv.id.clone(), cv.id.clone(), cv.id.clone());
-                        let (dup_title, del_title) = (cv.title.clone(), cv.title.clone());
-                        view! {
-                            <li class="card">
-                                <button class="open" on:click=move |_| open.set(Some(id.clone()))>
-                                    <strong>{cv.title.clone()}</strong>
-                                    <span class="status">{details(&cv)}</span>
-                                </button>
-                                <div class="card-actions">
-                                    <button on:click=move |_| duplicate(dup.clone(), dup_title.clone())>{s.duplicate}</button>
-                                    <button on:click=move |_| delete(del.clone(), del_title.clone())>{s.delete}</button>
-                                </div>
-                            </li>
+    let home = move || {
+        if let Some(preview) = importing.get() {
+            return view! { <ImportWizard preview=preview cvs=cvs.get_untracked() importing=importing open=open /> }
+                .into_any();
+        }
+        view! {
+            <header class="bar"><h1>{s.app_name}</h1></header>
+            <main class="list">
+                <h2>{s.your_cvs}</h2>
+                <p class="error">{move || error.get()}</p>
+                <p class="new-cv">
+                    <input aria-label=s.new_cv_title placeholder=s.new_cv_title_placeholder prop:value=move || title.get()
+                        on:input=move |ev| title.set(event_target_value(&ev)) />
+                    <button on:click=create prop:disabled=move || creating.get()>{s.new_cv}</button>
+                    <button title=s.import_cv_hint on:click=start_import prop:disabled=move || choosing.get()>{s.import_cv}</button>
+                </p>
+                <Show when=move || cvs.with(Vec::is_empty)>
+                    <p class="status">{s.no_cvs_yet}</p>
+                </Show>
+                <ul class="cards">
+                    <For each=move || cvs.get() key=|c| (c.id.clone(), c.updated_at.0.clone(), c.title.clone()) let:cv>
+                        {
+                            let (id, dup, del) = (cv.id.clone(), cv.id.clone(), cv.id.clone());
+                            let (dup_title, del_title) = (cv.title.clone(), cv.title.clone());
+                            view! {
+                                <li class="card">
+                                    <button class="open" on:click=move |_| open.set(Some(id.clone()))>
+                                        <strong>{cv.title.clone()}</strong>
+                                        <span class="status">{details(&cv)}</span>
+                                    </button>
+                                    <div class="card-actions">
+                                        <button on:click=move |_| duplicate(dup.clone(), dup_title.clone())>{s.duplicate}</button>
+                                        <button on:click=move |_| delete(del.clone(), del_title.clone())>{s.delete}</button>
+                                    </div>
+                                </li>
+                            }
                         }
-                    }
-                </For>
-            </ul>
-        </main>
-        <Show when=move || deleted.with(Option::is_some)>
-            <div class="toast" role="status">
-                <span>{move || deleted.with(|d| d.as_ref().map(|(_, title)| fill(s.deleted_cv, &[("title", title)])))}</span>
-                <button on:click=undo_delete>{s.undo}</button>
-            </div>
-        </Show>
-    }
+                    </For>
+                </ul>
+            </main>
+            <Show when=move || deleted.with(Option::is_some)>
+                <div class="toast" role="status">
+                    <span>{move || deleted.with(|d| d.as_ref().map(|(_, title)| fill(s.deleted_cv, &[("title", title)])))}</span>
+                    <button on:click=undo_delete>{s.undo}</button>
+                </div>
+            </Show>
+        }
+        .into_any()
+    };
+    view! { {home} }
 }
 
 #[cfg(test)]

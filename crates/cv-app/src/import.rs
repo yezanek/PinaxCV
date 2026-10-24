@@ -61,9 +61,11 @@ impl ImportCache {
     }
 }
 
+/// `Import`, not `NotFound`, so the UI shows this message rather than the
+/// generic "no longer exists" one.
 fn expired() -> ApiError {
     ApiError::new(
-        ErrorCode::NotFound,
+        ErrorCode::Import,
         "This import is no longer open. Choose the file again.",
     )
 }
@@ -262,7 +264,7 @@ mod tests {
         cache.remove(ids[KEPT_PREVIEWS]);
         assert_eq!(
             cache.get(ids[KEPT_PREVIEWS]).map_err(|e| e.code),
-            Err(ErrorCode::NotFound)
+            Err(ErrorCode::Import)
         );
     }
 
