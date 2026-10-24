@@ -187,6 +187,11 @@ pub struct Strings {
     pub move_language_down: &'static str,
     pub move_skill_up: &'static str,
     pub move_skill_down: &'static str,
+    pub edit_bullet_in_variant: &'static str,
+    pub edit_description_in_variant: &'static str,
+    pub edit_summary_in_variant: &'static str,
+    pub edited_in_variant: &'static str,
+    pub revert_to_base: &'static str,
     pub remove_language: &'static str,
 
     // Variants
@@ -380,6 +385,11 @@ pub static EN: Strings = Strings {
     move_language_down: "Move language down",
     move_skill_up: "Move skill up",
     move_skill_down: "Move skill down",
+    edit_bullet_in_variant: "Edit text for this variant",
+    edit_description_in_variant: "Edit description for this variant",
+    edit_summary_in_variant: "Edit summary for this variant",
+    edited_in_variant: "edited",
+    revert_to_base: "Revert to base",
     remove_language: "Remove language",
 
     version: "Version",
