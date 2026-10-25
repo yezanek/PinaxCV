@@ -172,7 +172,7 @@ pub fn FitPanel(
         <Show when=move || !cuts().is_empty()>
             <div class="cuts">
                 <strong>{t().proposed_cuts}</strong>
-                <button prop:disabled=move || busy.get() on:click=accept_all>{t().accept_all}</button>
+                <button prop:disabled=move || busy.get() || fitting.get() on:click=accept_all>{t().accept_all}</button>
                 <ul>
                     <For each=cuts key=|s| s.id.clone() let:s>
                         {
@@ -181,8 +181,8 @@ pub fn FitPanel(
                             view! {
                                 <li>
                                     <span>{label}</span>
-                                    <button on:click=move |_| accept(a.clone())>{t().accept}</button>
-                                    <button on:click=move |_| reject(r.clone())>{t().reject}</button>
+                                    <button prop:disabled=move || busy.get() || fitting.get() on:click=move |_| accept(a.clone())>{t().accept}</button>
+                                    <button prop:disabled=move || busy.get() || fitting.get() on:click=move |_| reject(r.clone())>{t().reject}</button>
                                 </li>
                             }
                         }
