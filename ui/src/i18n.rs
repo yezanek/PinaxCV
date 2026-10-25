@@ -365,6 +365,7 @@ pub struct Strings {
     pub summary_failed: &'static str,
     pub gaps_failed: &'static str,
     /// `{n}`.
+    pub discarded_one: &'static str,
     pub discarded_count: &'static str,
     pub discarded_before: &'static str,
     pub discarded_after: &'static str,
@@ -775,6 +776,7 @@ pub static EN: Strings = Strings {
     rewrite_failed: "Rewrites could not be suggested this time; the other suggestions were saved.",
     summary_failed: "A summary could not be suggested this time.",
     gaps_failed: "The job's requirements could not be checked for gaps this time.",
+    discarded_one: "1 suggestion discarded by safety checks",
     discarded_count: "{n} suggestions discarded by safety checks",
     discarded_before: "Original",
     discarded_after: "Discarded rewrite",
