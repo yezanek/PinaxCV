@@ -64,6 +64,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Install pinned toolchain
         run: rustup show active-toolchain || rustup toolchain install
       - name: Install Tauri system libraries and the WebKit driver
@@ -90,7 +92,11 @@ jobs:
           export PINAXCV_E2E_EXPORT_DIR="$RUNNER_TEMP/e2e-exports"
           export PINAXCV_E2E_APP="$PWD/target/debug/pinaxcv"
           mkdir -p "$PINAXCV_E2E_EXPORT_DIR"
-          xvfb-run -a sh -c 'tauri-driver & sleep 2; cargo test -p pinaxcv-e2e --locked -- --nocapture'
+          xvfb-run -a sh -c 'tauri-driver & driver=$!; trap "kill $driver" EXIT
+            i=0; until curl -s -o /dev/null http://127.0.0.1:4444/status; do
+              i=$((i+1)); [ "$i" -ge 30 ] && { echo "tauri-driver did not start" >&2; exit 1; }; sleep 1
+            done
+            cargo test -p pinaxcv-e2e --locked -- --nocapture'
       # msedgedriver must match the WebView2 runtime the app uses.
       - name: Smoke test (Windows)
         if: runner.os == 'Windows'
@@ -106,8 +112,13 @@ jobs:
           New-Item -ItemType Directory -Force $env:PINAXCV_E2E_EXPORT_DIR | Out-Null
           $env:PINAXCV_E2E_APP = Join-Path $PWD 'target\debug\pinaxcv.exe'
           $driver = Start-Process tauri-driver -ArgumentList '--native-driver', (Join-Path $drivers 'msedgedriver.exe') -PassThru -NoNewWindow
-          Start-Sleep -Seconds 3
           try {
+            $ready = $false
+            for ($i = 0; $i -lt 30; $i++) {
+              try { Invoke-WebRequest http://127.0.0.1:4444/status -SkipHttpErrorCheck | Out-Null; $ready = $true; break }
+              catch { Start-Sleep -Seconds 1 }
+            }
+            if (-not $ready) { throw 'tauri-driver did not start' }
             cargo test -p pinaxcv-e2e --locked -- --nocapture
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           } finally {

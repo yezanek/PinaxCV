@@ -3,8 +3,11 @@
 //! built with `--features e2e` and `tauri-driver` is listening; CI sets both
 //! up (see `.github/workflows/ci.yml` and `docs/BUILDING.md`).
 
-use std::path::PathBuf;
-use std::time::{Duration, Instant};
+#![forbid(unsafe_code)]
+
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant, SystemTime};
 use std::{env, fs, thread};
 
 use pinaxcv_e2e::{Session, WAIT, xpath_literal};
@@ -15,6 +18,21 @@ fn field(label: &str) -> String {
         "//label[normalize-space(text())={}]/input",
         xpath_literal(label)
     )
+}
+
+/// Each PDF in `dir` with its modification time.
+fn pdfs(dir: &Path) -> HashMap<PathBuf, SystemTime> {
+    fs::read_dir(dir)
+        .expect("export dir")
+        .filter_map(Result::ok)
+        .filter(|e| e.path().extension().is_some_and(|x| x == "pdf"))
+        .map(|e| {
+            (
+                e.path(),
+                e.metadata().and_then(|m| m.modified()).expect("mtime"),
+            )
+        })
+        .collect()
 }
 
 fn button(text: &str) -> String {
@@ -50,6 +68,8 @@ fn create_edit_preview_and_export() {
         .expect("preview page");
 
     // Export; the e2e build saves into the export folder without a dialog.
+    // A PDF left by an earlier run counts only if this export rewrote it.
+    let before = pdfs(&export_dir);
     s.click(&s.wait_for(&button("Export PDF")).expect("export button"))
         .expect("export");
     let status = s
@@ -64,12 +84,11 @@ fn create_edit_preview_and_export() {
         assert!(start.elapsed() < WAIT, "export did not finish: {text}");
         thread::sleep(Duration::from_millis(250));
     }
-    let pdf = fs::read_dir(&export_dir)
-        .expect("export dir")
-        .filter_map(Result::ok)
-        .map(|e| e.path())
-        .find(|p| p.extension().is_some_and(|x| x == "pdf"))
-        .expect("an exported PDF");
+    let pdf = pdfs(&export_dir)
+        .into_iter()
+        .find(|(p, t)| before.get(p) != Some(t))
+        .map(|(p, _)| p)
+        .expect("a PDF from this export");
     let bytes = fs::read(&pdf).expect("read pdf");
     assert!(bytes.starts_with(b"%PDF"), "not a PDF: {}", pdf.display());
 
