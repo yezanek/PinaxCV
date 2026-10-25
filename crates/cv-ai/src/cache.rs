@@ -14,9 +14,12 @@ use crate::{Llm, LlmError, LlmRequest};
 
 /// Where cached responses live. Failures are the implementation's to log:
 /// a cache that cannot read or write only means the provider is asked again.
+/// The methods are async so a database-backed cache can do its reads and
+/// writes off the async runtime.
+#[async_trait::async_trait]
 pub trait ResponseCache: Send + Sync {
-    fn get(&self, key: &str) -> Option<String>;
-    fn put(&self, key: &str, kind: &str, response: &str);
+    async fn get(&self, key: &str) -> Option<String>;
+    async fn put(&self, key: &str, kind: &str, response: &str);
 }
 
 /// SHA-256 of `text`, as lowercase hex.
@@ -51,11 +54,15 @@ pub async fn generate_cached(
         return Err(LlmError::Cancelled);
     }
     let key = cache_key(kind, model, &request.user);
-    if let Some(hit) = cache.get(&key).and_then(|s| serde_json::from_str(&s).ok()) {
+    if let Some(hit) = cache
+        .get(&key)
+        .await
+        .and_then(|s| serde_json::from_str(&s).ok())
+    {
         return Ok(hit);
     }
     let value = llm.generate_json(request).await?;
-    cache.put(&key, kind.as_str(), &value.to_string());
+    cache.put(&key, kind.as_str(), &value.to_string()).await;
     Ok(value)
 }
 
@@ -75,12 +82,13 @@ impl MemoryCache {
     }
 }
 
+#[async_trait::async_trait]
 impl ResponseCache for MemoryCache {
-    fn get(&self, key: &str) -> Option<String> {
+    async fn get(&self, key: &str) -> Option<String> {
         self.entries.lock().ok()?.get(key).cloned()
     }
 
-    fn put(&self, key: &str, _kind: &str, response: &str) {
+    async fn put(&self, key: &str, _kind: &str, response: &str) {
         if let Ok(mut e) = self.entries.lock() {
             e.insert(key.to_owned(), response.to_owned());
         }
