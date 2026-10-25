@@ -281,7 +281,7 @@ impl Cv { pub fn resolve(&self, v: Option<&Variant>) -> ResolvedCv }
 
 Resolve rules (implement exactly; property-test them):
 
-1. Start from the base. Unknown IDs in the variant (deleted content) are ignored silently and reported by `Variant::prune(&Cv)`, which the UI calls after base edits.
+1. Start from the base. Unknown IDs in the variant (deleted content) are ignored silently and reported by `Variant::prune(&Cv)`, which the UI runs when a variant is opened, so base edits made since it was last open are cleaned up (ADR-064).
 2. Remove sections, entries, bullets, skills and language items whose IDs are in `hidden`. If a section ends up with zero visible children, omit the section.
 3. `collapsed` entries render with title, org, and period only (no bullets, no description).
 4. Apply `order` for each parent: listed IDs first in the given order, then remaining children in base order. The CV id as parent orders sections. Experience entries keep base (reverse-chronological) order unless the user reorders them manually or accepts an opt-in AI reorder suggestion (section 11.6).
