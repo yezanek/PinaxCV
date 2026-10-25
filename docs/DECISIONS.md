@@ -472,6 +472,7 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Long AI work (tailoring, review, text import) runs as a job. `App::start_job` registers a cancellation token under a fresh ULID and returns the ID together with a future; the shell spawns the future on Tauri's async runtime, so the command that starts a job answers with the ID at once (spec section 10.2).
 - The job's work gets a `JobContext` with its ID, the token (passed on to every `LlmRequest`, so provider calls stop too) and `progress(stage, pct)`. Progress is clamped to 100 and never goes back, and a job always starts with `starting` at 0.
 - Every job ends with exactly one `ai://done { job_id, result }` or `ai://error { job_id, error }`. `ai_cancel(job_id)` cancels at once, whatever the work is waiting on, and the job ends with `ai://error` and code `ai_cancelled`; a job cancelled while finishing reports the cancellation too. Cancelling an unknown or finished job is not an error, since the job may have just ended.
+- The job's future owns a guard. If the future is dropped before it finishes, or the work panics, the guard still removes the job from the registry and reports `ai://error` with code `internal`. On a normal end the guard is marked finished before the terminal event is sent, so no job reports twice.
 - `cv-app` stays free of Tauri: events go through a `JobEvents` trait that the shell implements with `AppHandle::emit`, and tests record them. Events go to every window; there is only one.
 
 ## ADR-072 — Tailoring stages A to C and the tailor panel (M7a)
