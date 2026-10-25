@@ -589,6 +589,7 @@ pub fn VariantBar(
             <div class="variant-actions">
                 <label>{t().variant_name}" "
                     <input prop:value=move || variant.with(|v| v.as_ref().map(|v| v.variant.name.clone()).unwrap_or_default())
+                        prop:disabled=move || fitting.get()
                         on:change=move |ev| rename.run(event_target_value(&ev)) />
                 </label>
                 <label class="check">
