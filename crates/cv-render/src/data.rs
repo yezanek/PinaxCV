@@ -58,6 +58,9 @@ pub struct BasicsData {
     pub phone: Option<String>,
     pub location: Option<String>,
     pub links: Vec<LinkData>,
+    /// Whether the template draws `photo.jpg`: the CV shows its photo and
+    /// the export was given one.
+    pub photo: bool,
 }
 
 /// `clickable` is true only for `https:` and `mailto:` URLs.
@@ -154,6 +157,7 @@ pub fn to_typst_data(cv: &ResolvedCv, options: &ExportOptions) -> TypstData {
                 .iter()
                 .filter_map(|l| link(Some(&l.label), &l.url))
                 .collect(),
+            photo: cv.show_photo && options.photo.is_some(),
         },
         summary: text(&cv.summary),
         sections: cv.sections.iter().filter_map(|s| section(s, cv)).collect(),
@@ -362,6 +366,7 @@ mod tests {
         let opts = ExportOptions {
             include_email: false,
             include_phone: false,
+            photo: None,
         };
         let d = to_typst_data(&cv, &opts);
         assert_eq!((d.basics.email, d.basics.phone), (None, None));

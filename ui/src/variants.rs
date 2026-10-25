@@ -576,6 +576,15 @@ pub fn VariantBar(
                     <input prop:value=move || variant.with(|v| v.as_ref().map(|v| v.variant.name.clone()).unwrap_or_default())
                         on:change=move |ev| rename.run(event_target_value(&ev)) />
                 </label>
+                <label class="check">
+                    <input type="checkbox"
+                        prop:checked=move || variant.with(|v| v.as_ref().is_some_and(|v| v.variant.show_photo))
+                        on:change=move |ev| {
+                            let on = event_target_checked(&ev);
+                            edit(Box::new(move |v| v.show_photo = on));
+                        } />
+                    {t().photo_show_variant}
+                </label>
                 <button prop:disabled=move || busy.get() on:click=move |_| duplicate.run(())>{t().duplicate_variant}</button>
                 <Show when=move || confirming.with(Option::is_none)
                     fallback=move || view! {

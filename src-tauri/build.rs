@@ -48,6 +48,10 @@ const COMMANDS: &[&str] = &[
     "clear_ai_cache",
     "delete_all_data",
     "third_party_licenses",
+    "photo_choose",
+    "photo_get",
+    "photo_apply",
+    "photo_remove",
 ];
 
 fn main() {

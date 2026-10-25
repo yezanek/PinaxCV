@@ -170,3 +170,20 @@ main.import ul.import-summary li, main.import ul.warnings li { border: none; pad
 .discarded .badge { align-self: start; font-size: 0.8em; border: 1px solid currentColor; border-radius: 0.6em; padding: 0 0.5em; color: var(--warning); }
 .review .needs-attention, .gaps .needs-attention, .ai-review .needs-attention { align-self: start; font-size: 0.8em; font-weight: 600; color: var(--warning); }
 textarea.licences { display: block; width: 100%; box-sizing: border-box; font-family: ui-monospace, monospace; font-size: 0.8rem; resize: vertical; }
+fieldset.photo { border: 1px solid var(--border); margin: 0 0 0.75rem; padding: 0.75rem; }
+fieldset.photo .hint { margin: 0 0 0.5rem; color: var(--muted); font-size: 0.9em; }
+.photo-row { display: flex; gap: 0.75rem; align-items: flex-start; }
+.photo-thumb { width: 5rem; height: auto; border: 1px solid var(--border); }
+.photo-actions { display: flex; flex-direction: column; gap: 0.4rem; }
+.photo-actions div { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.modal-backdrop { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; background: rgb(0 0 0 / 0.45); }
+.modal { max-width: 90vw; max-height: 90vh; overflow: auto; padding: 1rem 1.25rem; background: Canvas; color: CanvasText; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 24px rgb(0 0 0 / 0.35); }
+.modal h2 { margin: 0 0 0.5rem; font-size: 1.1rem; }
+.modal .hint { margin: 0 0 0.75rem; color: var(--muted); font-size: 0.9em; }
+.modal label { display: block; margin: 0.75rem 0; }
+.modal .shapes { display: flex; gap: 1rem; }
+.modal .shapes label { margin: 0; }
+.modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
+.crop-frame { position: relative; overflow: hidden; margin: 0 auto; cursor: grab; touch-action: none; user-select: none; background: color-mix(in srgb, Canvas 85%, gray); outline: 2px solid var(--accent); }
+.crop-frame:active { cursor: grabbing; }
+.crop-frame img { position: absolute; max-width: none; pointer-events: none; }

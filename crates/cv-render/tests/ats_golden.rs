@@ -103,3 +103,66 @@ fn header_words_do_not_merge_for_line_joining_extractors() {
     );
     assert!(norm.starts_with(&header), "header words merged:\n{norm}");
 }
+
+/// The profile photo is an image only (ADR-083): the PDF holds it, but the
+/// extracted text, the ATS result and the page count do not change.
+#[test]
+fn the_photo_adds_an_image_but_no_text() {
+    let photo: std::sync::Arc<[u8]> = include_bytes!("fixtures/photo.jpg").as_slice().into();
+    for name in ["typical", "long", "minimal"] {
+        let cv = fixture(name);
+        let mut shown = cv.resolve(None);
+        shown.show_photo = true;
+        let renderer = Renderer::new();
+        let plain = renderer
+            .compile(&cv.resolve(None), &ExportOptions::default())
+            .expect("compiles");
+        let options = ExportOptions {
+            photo: Some(photo.clone()),
+            ..ExportOptions::default()
+        };
+        let with_photo = renderer.compile(&shown, &options).expect("compiles");
+        assert!(
+            with_photo.warnings().is_empty(),
+            "{name}: {:?}",
+            with_photo.warnings()
+        );
+        assert_eq!(with_photo.page_count(), plain.page_count(), "{name}");
+        let (plain_pdf, photo_pdf) = (
+            plain.to_pdf().expect("pdf"),
+            with_photo.to_pdf().expect("pdf"),
+        );
+        assert_eq!(images(&plain_pdf), 0, "{name}");
+        assert_eq!(images(&photo_pdf), 1, "{name}");
+        let text = LopdfExtractor.extract(&plain_pdf).expect("extracts");
+        assert_eq!(
+            LopdfExtractor.extract(&photo_pdf).expect("extracts"),
+            text,
+            "{name}"
+        );
+        let report = ats_report(&photo_pdf, &shown);
+        assert!(report.failed_checks().next().is_none(), "{name}");
+
+        // Given a photo but not shown (a variant with the switch off): no image.
+        let hidden = renderer
+            .compile(&cv.resolve(None), &options)
+            .expect("compiles")
+            .to_pdf()
+            .expect("pdf");
+        assert_eq!(images(&hidden), 0, "{name}");
+    }
+}
+
+fn images(pdf: &[u8]) -> usize {
+    let doc = lopdf::Document::load_mem(pdf).expect("parses");
+    doc.objects
+        .values()
+        .filter(|o| {
+            o.as_stream()
+                .ok()
+                .and_then(|s| s.dict.get(b"Subtype").ok())
+                .and_then(|t| t.as_name().ok())
+                == Some(b"Image".as_slice())
+        })
+        .count()
+}

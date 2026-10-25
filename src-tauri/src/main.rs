@@ -115,6 +115,10 @@ fn main() {
             commands::restore_db,
             commands::clear_ai_cache,
             commands::delete_all_data,
+            commands::photo_choose,
+            commands::photo_get,
+            commands::photo_apply,
+            commands::photo_remove,
         ])
         .run(context)
         .unwrap_or_else(|e| panic!("PinaxCV could not start: {e}"));

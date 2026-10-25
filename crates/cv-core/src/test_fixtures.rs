@@ -27,6 +27,7 @@ pub fn sample_cv() -> Cv {
                 label: "Website".into(),
                 url: "https://example.com".into(),
             }],
+            show_photo: false,
         },
         summary: None,
         sections: vec![

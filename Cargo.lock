@@ -1335,12 +1335,15 @@ dependencies = [
 name = "cv-app"
 version = "0.0.0"
 dependencies = [
+ "base64 0.22.1",
  "cv-ai",
  "cv-api",
  "cv-core",
  "cv-import",
  "cv-render",
  "cv-store",
+ "image",
+ "lopdf 0.45.0",
  "serde",
  "serde_json",
  "tempfile",

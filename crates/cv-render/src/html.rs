@@ -41,7 +41,11 @@ pub fn to_html(cv: &ResolvedCv, options: &ExportOptions) -> String {
     let d = to_typst_data(cv, options);
     let mut out = String::with_capacity(8 * 1024);
     head(&mut out, &d);
-    header(&mut out, &d);
+    header(
+        &mut out,
+        &d,
+        options.photo.as_deref().filter(|_| d.basics.photo),
+    );
     out.push_str("<main>\n");
     if let Some(summary) = &d.summary {
         let _ = writeln!(
@@ -73,6 +77,28 @@ fn head(out: &mut String, d: &TypstData) {
     );
 }
 
+/// Standard base64 with padding, for the photo's `data:` URI.
+fn base64(bytes: &[u8]) -> String {
+    const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for chunk in bytes.chunks(3) {
+        let b = [
+            chunk[0],
+            chunk.get(1).copied().unwrap_or(0),
+            chunk.get(2).copied().unwrap_or(0),
+        ];
+        let n = (u32::from(b[0]) << 16) | (u32::from(b[1]) << 8) | u32::from(b[2]);
+        for i in 0..4 {
+            if i <= chunk.len() {
+                out.push(char::from(ALPHABET[((n >> (18 - 6 * i)) & 63) as usize]));
+            } else {
+                out.push('=');
+            }
+        }
+    }
+    out
+}
+
 /// A `#RRGGBB` accent, or the text colour when unset or malformed, so a
 /// stored value can never inject CSS.
 fn accent(value: Option<&str>) -> String {
@@ -88,9 +114,18 @@ fn accent(value: Option<&str>) -> String {
     }
 }
 
-fn header(out: &mut String, d: &TypstData) {
+fn header(out: &mut String, d: &TypstData, photo: Option<&[u8]>) {
     let b = &d.basics;
     out.push_str("<header>\n");
+    // Decorative (empty alt), so the page's text is the same with and
+    // without the photo (ADR-083).
+    if let Some(jpeg) = photo {
+        let _ = writeln!(
+            out,
+            "<img class=\"photo\" src=\"data:image/jpeg;base64,{}\" alt=\"\">",
+            base64(jpeg)
+        );
+    }
     let _ = writeln!(out, "<h1>{}</h1>", esc(&b.full_name));
     if let Some(h) = &b.headline {
         let _ = writeln!(out, "<p class=\"headline\">{}</p>", esc(h));
@@ -452,6 +487,32 @@ mod tests {
     }
 
     #[test]
+    fn base64_matches_the_standard_alphabet_and_padding() {
+        assert_eq!(base64(b""), "");
+        assert_eq!(base64(b"f"), "Zg==");
+        assert_eq!(base64(b"fo"), "Zm8=");
+        assert_eq!(base64(b"foo"), "Zm9v");
+        assert_eq!(base64(&[0xfb, 0xff, 0xbf]), "+/+/");
+    }
+
+    #[test]
+    fn a_shown_photo_is_an_embedded_decorative_image() {
+        let jpeg: std::sync::Arc<[u8]> = vec![0xff, 0xd8, 0xff, 0xd9].into();
+        let options = ExportOptions {
+            photo: Some(jpeg),
+            ..ExportOptions::html_default()
+        };
+        let mut cv = testdata::fixture("typical").resolve(None);
+        assert!(!to_html(&cv, &options).contains("<img"), "not shown");
+        let plain = to_html(&cv, &ExportOptions::html_default());
+        cv.show_photo = true;
+        let doc = to_html(&cv, &options);
+        let img = "<img class=\"photo\" src=\"data:image/jpeg;base64,/9j/2Q==\" alt=\"\">\n";
+        assert!(doc.contains(img), "{doc}");
+        assert_eq!(doc.replace(img, ""), plain, "the photo adds nothing else");
+    }
+
+    #[test]
     fn contact_options_control_email_and_phone() {
         let cv = testdata::fixture("typical").resolve(None);
         let default = to_html(&cv, &ExportOptions::html_default());
@@ -461,6 +522,7 @@ mod tests {
             &ExportOptions {
                 include_email: true,
                 include_phone: true,
+                photo: None,
             },
         );
         assert!(both.contains("mailto:jane@example.com") && both.contains("+49 30 1234 5678"));
@@ -469,6 +531,7 @@ mod tests {
             &ExportOptions {
                 include_email: false,
                 include_phone: false,
+                photo: None,
             },
         );
         assert!(!neither.contains("jane@example.com") && !neither.contains("+49 30"));

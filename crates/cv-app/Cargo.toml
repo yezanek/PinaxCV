@@ -9,12 +9,14 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
+base64.workspace = true
 cv-ai.workspace = true
 cv-api.workspace = true
 cv-core.workspace = true
 cv-import.workspace = true
 cv-render.workspace = true
 cv-store.workspace = true
+image.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tokio = { workspace = true, features = ["macros", "rt"] }
@@ -22,6 +24,7 @@ tokio-util.workspace = true
 ulid.workspace = true
 
 [dev-dependencies]
+lopdf.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt", "time"] }
 

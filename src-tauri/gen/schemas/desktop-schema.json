@@ -393,6 +393,30 @@
           "markdownDescription": "Enables the open_data_dir command without any pre-configured scope."
         },
         {
+          "description": "Enables the photo_apply command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-photo-apply",
+          "markdownDescription": "Enables the photo_apply command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the photo_choose command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-photo-choose",
+          "markdownDescription": "Enables the photo_choose command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the photo_get command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-photo-get",
+          "markdownDescription": "Enables the photo_get command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the photo_remove command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-photo-remove",
+          "markdownDescription": "Enables the photo_remove command without any pre-configured scope."
+        },
+        {
           "description": "Enables the preview command without any pre-configured scope.",
           "type": "string",
           "const": "allow-preview",
@@ -661,6 +685,30 @@
           "type": "string",
           "const": "deny-open-data-dir",
           "markdownDescription": "Denies the open_data_dir command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the photo_apply command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-photo-apply",
+          "markdownDescription": "Denies the photo_apply command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the photo_choose command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-photo-choose",
+          "markdownDescription": "Denies the photo_choose command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the photo_get command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-photo-get",
+          "markdownDescription": "Denies the photo_get command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the photo_remove command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-photo-remove",
+          "markdownDescription": "Denies the photo_remove command without any pre-configured scope."
         },
         {
           "description": "Denies the preview command without any pre-configured scope.",

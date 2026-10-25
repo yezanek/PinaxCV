@@ -50,6 +50,10 @@
     "allow-restore-db",
     "allow-clear-ai-cache",
     "allow-delete-all-data",
-    "allow-third-party-licenses"
+    "allow-third-party-licenses",
+    "allow-photo-choose",
+    "allow-photo-get",
+    "allow-photo-apply",
+    "allow-photo-remove"
   ]
 }

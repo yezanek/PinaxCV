@@ -8,6 +8,11 @@ sends, and how to remove it.
 
 - **Your CVs, variants and settings** are kept in one database file in the
   app's data folder. Settings → Your data → "Open folder" shows where it is.
+- **Your photo**, if you add one to a CV, is kept in the same database. When
+  you choose it, PinaxCV re-encodes it and drops its metadata (camera details,
+  GPS location and the like), so only the picture itself is stored and
+  exported. It is off unless you switch it on, and "Remove photo" or deleting
+  the CV removes it.
 - **Cached AI answers.** When you use AI features, PinaxCV keeps the answers
   in the same database so the same request is not sent twice. They contain
   text from your CV. Settings → Your data → "Clear AI cache" removes them.
@@ -63,7 +68,7 @@ will be off unless you turn it on.
 
 - **Clear AI cache** removes every cached AI answer and keeps your CVs.
 - **Delete all data…** (after you confirm) deletes every CV, variant,
-  snapshot, setting and cached answer, compacts the database so the deleted text is not
+  photo, snapshot, setting and cached answer, compacts the database so the deleted text is not
   left in the file, removes the safety copies made by a restore, and deletes
   your API keys from the keychain. Files you saved elsewhere (exports and
   backups) and the log file are not touched; delete them yourself if you

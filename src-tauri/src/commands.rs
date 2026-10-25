@@ -7,9 +7,9 @@ use cv_api::{
     AiConfig, AiImport, AiReview, AiStatus, AiTailor, ApiError, AppSettings, BackupResult,
     CvDefaults, DuplicateCv, DuplicateVariant, ErrorCode, ExportHtmlRequest, ExportPdfRequest,
     ExportResult, FitOutcome, FitVariant, ImportCommit, ImportMatch, ImportMatchRequest,
-    ImportPreview, ImportText, ImportTextSource, JobId, NewCv, NewVariant, PreviewRequest,
-    PreviewResponse, PruneResult, RestoreResult, ReviewDecide, ReviewDecided, ReviewSession,
-    SaveCv, SaveVariant, Target, TemplateManifest,
+    ImportPreview, ImportText, ImportTextSource, JobId, NewCv, NewVariant, PhotoApply, PhotoInfo,
+    PhotoSource, PreviewRequest, PreviewResponse, PruneResult, RestoreResult, ReviewDecide,
+    ReviewDecided, ReviewSession, SaveCv, SaveVariant, Target, TemplateManifest,
 };
 use cv_app::App;
 use cv_core::{AtsReport, CvSummary, Id, LintIssue, StoredCv, StoredVariant, VariantSummary};
@@ -503,6 +503,27 @@ pub async fn clear_ai_cache(app: Shared<'_>) -> Reply<()> {
 #[tauri::command]
 pub async fn delete_all_data(app: Shared<'_>) -> Reply<()> {
     run(app, App::delete_all_data).await
+}
+
+/// Asks for a JPEG or PNG and returns it, without metadata, to crop.
+#[tauri::command]
+pub async fn photo_choose(app: Shared<'_>) -> Reply<PhotoSource> {
+    run(app, App::photo_choose).await
+}
+
+#[tauri::command]
+pub async fn photo_get(app: Shared<'_>, id: Id) -> Reply<Option<PhotoInfo>> {
+    run(app, move |a| a.photo_get(&id)).await
+}
+
+#[tauri::command]
+pub async fn photo_apply(app: Shared<'_>, req: PhotoApply) -> Reply<PhotoInfo> {
+    run(app, move |a| a.photo_apply(req)).await
+}
+
+#[tauri::command]
+pub async fn photo_remove(app: Shared<'_>, id: Id) -> Reply<()> {
+    run(app, move |a| a.photo_remove(&id)).await
 }
 
 /// The licences of the fonts and crates the app ships

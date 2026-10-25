@@ -16,6 +16,7 @@ mod files;
 mod ids;
 mod import;
 mod jobs;
+mod photo;
 mod preview;
 mod review;
 mod settings;
@@ -23,7 +24,7 @@ mod tailor;
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Mutex, PoisonError};
+use std::sync::{Arc, Mutex, PoisonError};
 
 use cv_api::{
     ApiError, DuplicateCv, DuplicateVariant, ErrorCode, ExportHtmlRequest, ExportPdfRequest,
@@ -33,9 +34,9 @@ use cv_api::{
 use cv_core::fit::{FitResult, fit};
 use cv_core::validate;
 use cv_core::{
-    AtsReport, Basics, CV_SCHEMA_VERSION, Cv, CvSummary, Id, IdSource, LintIssue, Locale, Paper,
-    ResolvedCv, SnapshotReason, StoredCv, StoredVariant, TemplateId, TemplateOptions, Variant,
-    VariantSummary,
+    AtsReport, Basics, CV_SCHEMA_VERSION, Cv, CvSummary, Id, IdSource, LintIssue, Locale,
+    PageCountError, PageCounter, Paper, ResolvedCv, SnapshotReason, StoredCv, StoredVariant,
+    TemplateId, TemplateOptions, Variant, VariantSummary,
 };
 use cv_render::{ExportOptions, Exporter, HtmlExporter, PdfExporter, Renderer, ats};
 use cv_store::Store;
@@ -47,7 +48,31 @@ pub use files::{BACKUP_EXTENSION, ExportKind, FileDialog, create_atomically, wri
 pub use ids::UlidIds;
 pub use import::{IMPORT_EXTENSIONS, ImportCache};
 pub use jobs::{JobContext, JobEvent, JobEvents, JobRegistry};
+pub use photo::{MAX_PHOTO_FILE, PHOTO_EXTENSIONS, PhotoSources};
 pub use preview::PreviewCache;
+
+/// Counts pages as the PDF export draws them, with the CV's photo when the
+/// resolved CV shows it.
+struct PhotoPages<'a> {
+    renderer: &'a Renderer,
+    photo: Option<Arc<[u8]>>,
+}
+
+impl PageCounter for PhotoPages<'_> {
+    fn pages(&self, cv: &ResolvedCv) -> std::result::Result<u32, PageCountError> {
+        let options = ExportOptions {
+            photo: self.photo.clone().filter(|_| cv.show_photo),
+            ..ExportOptions::default()
+        };
+        self.renderer
+            .compile(cv, &options)
+            .map(|c| c.page_count())
+            .map_err(|diags| {
+                let messages: Vec<&str> = diags.iter().map(|d| d.message.as_str()).collect();
+                PageCountError(messages.join("; "))
+            })
+    }
+}
 
 /// Pixels per point for preview pages (ADR-025).
 pub const PREVIEW_PIXELS_PER_PT: f32 = 1.5;
@@ -63,6 +88,7 @@ pub struct App {
     previews: PreviewCache,
     imports: ImportCache,
     texts: TextCache,
+    photo_sources: PhotoSources,
     ai: AiState,
     jobs: JobRegistry,
     next_preview: AtomicU64,
@@ -87,6 +113,7 @@ impl App {
             previews: PreviewCache::default(),
             imports: ImportCache::default(),
             texts: TextCache::default(),
+            photo_sources: PhotoSources::default(),
             ai: AiState::default(),
             jobs: JobRegistry::default(),
             next_preview: AtomicU64::new(0),
@@ -232,8 +259,12 @@ impl App {
         let mut variant = req.variant;
         variant.page_target = Some(req.page_target);
         variant.replace_fit_cuts(Vec::new());
+        let pages = PhotoPages {
+            renderer: &self.renderer,
+            photo: self.photo_for(&cv.resolve(Some(&variant)))?,
+        };
         let result = self
-            .with_ids(|ids| fit(&cv, &variant, None, req.page_target, &self.renderer, ids))
+            .with_ids(|ids| fit(&cv, &variant, None, req.page_target, &pages, ids))
             .map_err(|e| {
                 ApiError::new(
                     ErrorCode::Render,
@@ -287,7 +318,7 @@ impl App {
         let resolved = cv.resolve(variant.as_ref());
         let compiled = self
             .renderer
-            .compile(&resolved, &ExportOptions::default())
+            .compile(&resolved, &self.pdf_options(&resolved)?)
             .map_err(|d| render_error(cv_render::RenderError::Compile(d)))?;
         let pages = compiled
             .preview_png(PREVIEW_PIXELS_PER_PT)
@@ -317,7 +348,7 @@ impl App {
         let doc = PdfExporter {
             renderer: &self.renderer,
         }
-        .export(&resolved, &ExportOptions::default())
+        .export(&resolved, &self.pdf_options(&resolved)?)
         .map_err(render_error)?;
         let report = ats::ats_report(&doc.bytes, &resolved);
         let path = self.save_file(&doc.suggested_file_name, ExportKind::Pdf, &doc.bytes)?;
@@ -334,6 +365,7 @@ impl App {
         let options = ExportOptions {
             include_email: req.include_email,
             include_phone: req.include_phone,
+            photo: self.photo_for(&resolved)?,
         };
         let doc = HtmlExporter
             .export(&resolved, &options)
@@ -353,7 +385,7 @@ impl App {
         let resolved = cv.resolve(variant.as_ref());
         let pdf = self
             .renderer
-            .compile(&resolved, &ExportOptions::default())
+            .compile(&resolved, &self.pdf_options(&resolved)?)
             .map_err(|d| render_error(cv_render::RenderError::Compile(d)))?
             .to_pdf()
             .map_err(render_error)?;
@@ -366,10 +398,24 @@ impl App {
         let resolved = cv.resolve(variant.as_ref());
         let pages = self
             .renderer
-            .compile(&resolved, &ExportOptions::default())
+            .compile(&resolved, &self.pdf_options(&resolved)?)
             .ok()
             .map(|c| c.page_count());
-        Ok(cv_core::lint::lint(&resolved, pages))
+        let mut issues = cv_core::lint::lint(&resolved, pages);
+        if self.photo_for(&resolved)?.is_some() {
+            issues.push(LintIssue {
+                code: cv_core::lint::codes::PHOTO.to_owned(),
+                severity: cv_core::Severity::Info,
+                target: None,
+                message: "This CV shows a photo.".into(),
+                fix_hint: Some(
+                    "Many employers, for example in the US and the UK, prefer CVs without one. \
+                     Turn it off for those applications."
+                        .into(),
+                ),
+            });
+        }
+        Ok(issues)
     }
 
     // Templates
@@ -403,6 +449,15 @@ impl App {
             None => None,
         };
         Ok((cv, variant))
+    }
+
+    /// PDF options for `cv`: contact details printed, and its photo when it
+    /// shows one.
+    fn pdf_options(&self, cv: &ResolvedCv) -> Result<ExportOptions> {
+        Ok(ExportOptions {
+            photo: self.photo_for(cv)?,
+            ..ExportOptions::default()
+        })
     }
 
     fn resolve_for_export(&self, target: &Target) -> Result<ResolvedCv> {
@@ -472,6 +527,7 @@ pub fn blank_cv(id: Id, title: &str) -> Cv {
             phone: None,
             location: None,
             links: Vec::new(),
+            show_photo: false,
         },
         summary: None,
         sections: Vec::new(),

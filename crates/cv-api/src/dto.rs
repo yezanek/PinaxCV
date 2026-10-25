@@ -579,3 +579,67 @@ pub struct ReviewDecided {
     /// The saved CV when an accepted suggestion changed it.
     pub cv: Option<StoredCv>,
 }
+
+/// The frame of a profile photo (ADR-083).
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum PhotoShape {
+    /// 1:1.
+    #[default]
+    Square,
+    /// 3:4, upright.
+    Portrait,
+}
+
+impl PhotoShape {
+    /// Width and height of the frame's aspect ratio.
+    pub const fn ratio(self) -> (u32, u32) {
+        match self {
+            Self::Square => (1, 1),
+            Self::Portrait => (3, 4),
+        }
+    }
+}
+
+/// A rectangle of the original photo, in its pixels.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PhotoCrop {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+    pub shape: PhotoShape,
+}
+
+/// An image to crop: a newly chosen file (`source_id` is set) or the
+/// original kept with the CV's photo.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct PhotoSource {
+    /// The chosen file, held in memory until applied; `None` for the CV's
+    /// own original.
+    pub source_id: Option<u64>,
+    /// `data:image/jpeg;base64,…`, with metadata already removed.
+    pub data_url: String,
+    pub width: u32,
+    pub height: u32,
+}
+
+/// A CV's profile photo.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct PhotoInfo {
+    /// The cropped image the CV shows, as a `data:` URL.
+    pub data_url: String,
+    pub crop: PhotoCrop,
+    /// The original, to crop again.
+    pub original: PhotoSource,
+}
+
+/// Crops a chosen file, or the CV's original again, and makes it the CV's
+/// photo.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct PhotoApply {
+    pub cv_id: Id,
+    /// From [`PhotoSource::source_id`]; `None` crops the CV's original again.
+    pub source_id: Option<u64>,
+    pub crop: PhotoCrop,
+}
