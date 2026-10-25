@@ -118,12 +118,15 @@ pub async fn ai_consent(app: Shared<'_>) -> Reply<AiStatus> {
     run(app, App::ai_consent).await
 }
 
-/// Not on the blocking pool: the provider call is async, and the settings
-/// reads before it are quick.
+/// The settings and keychain reads run on the blocking pool; only the
+/// provider call runs on the async runtime.
 #[tauri::command]
 pub async fn ai_test_connection(app: Shared<'_>) -> Reply<()> {
-    let app = Arc::clone(app.inner());
-    app.ai_test_connection().await
+    let (llm, request) = run(app, App::ai_test_request).await?;
+    llm.generate_json(request)
+        .await
+        .map_err(cv_app::llm_error)?;
+    Ok(())
 }
 
 #[tauri::command]
