@@ -492,7 +492,7 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - The Variants tab lists pending tailoring and review suggestions grouped as Hide or shorten, Order, Rewrites, Summary and Skills order, each card saying what accepting does ("Hide Backend Engineer, Example AG", "Reorder the skills Languages: SQL · Go · Rust"), the reason, any verification badges, and Accept and Reject. Fit-to-length cuts keep their list in the fit panel. Gaps and the discarded count arrive with their stages (M7b).
 - `Variant::accept_suggestion` now applies every kind: hide, collapse and show as before; `Reorder` stores the order for its target, which is the parent being reordered (an entry's bullets, a section's entries, or a skill group's skills through the new `SuggestionTarget::SkillGroup`); a rewrite of a bullet or description becomes a text override, and a summary rewrite the summary override, with `before` as the base text.
 - Bulk actions: Accept all without warnings, Reject all, and Accept all, which asks first when any pending suggestion has a warning (spec section 12.6). They use `Variant::accept_all` and `Variant::reject_all` on the tailoring and review sources only.
-- Decisions stick: `Variant::replace_pending` drops a new suggestion with the same kind, target, action and text as one already accepted or rejected, so a rerun does not ask again.
+- Decisions stick: `Variant::replace_pending` drops a new suggestion with the same kind, target, action and text as one already accepted or rejected, so a rerun does not ask again. The fit-to-length trial applies only the suggestions that will be saved (`Variant::undecided`), so its cuts match what accepting everything gives.
 
 ## Open decisions
 
