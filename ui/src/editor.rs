@@ -446,6 +446,8 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
     });
     let checks_variant =
         Signal::derive(move || variant.with(|v| v.as_ref().map(|v| v.variant.id.clone())));
+    let checks_overlay =
+        Signal::derive(move || variant.with(|v| v.as_ref().map(|v| v.variant.clone())));
     let jump = Callback::new(move |to: Spot| {
         tab.set(Tab::Content);
         set_timeout(move || focus_spot(&to), Duration::ZERO);
@@ -487,7 +489,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                 </div>
                 <div id="panel-checks" role="tabpanel" aria-labelledby="tab-checks" hidden=move || tab.get() != Tab::Checks>
                     <Show when=move || tab.get() == Tab::Checks>
-                        <ChecksTab cv_id=id_for_checks.clone() variant_id=checks_variant refresh=checks_refresh jump=jump />
+                        <ChecksTab cv_id=id_for_checks.clone() variant_id=checks_variant variant=checks_overlay refresh=checks_refresh jump=jump />
                     </Show>
                     <AiReviewPanel cv_id=id.clone() cv=cv dirty=dirty applied=review_applied />
                 </div>
