@@ -5,7 +5,7 @@
 use std::time::Duration;
 
 use cv_api::Target;
-use cv_core::{Id, LintIssue, Severity};
+use cv_core::{Id, LintIssue, Severity, Variant};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use serde::Serialize;
@@ -31,16 +31,21 @@ pub const SUMMARY_FIELD: &str = "field-summary";
 /// Selects the elements a jump can focus.
 const FIELDS: &str = "input,textarea";
 
-/// Where `issue` points, if anywhere.
-pub fn spot(issue: &LintIssue) -> Option<Spot> {
+/// Where `issue` points, if anywhere. When the shown `variant` overrides
+/// the text a finding is about, the finding describes the override, which
+/// the Content tab does not edit, so there is nothing to jump to.
+pub fn spot(issue: &LintIssue, variant: Option<&Variant>) -> Option<Spot> {
     use cv_core::lint::codes;
     if let Some(id) = &issue.target {
-        return Some(Spot::Item(id.clone()));
+        let overridden = variant.is_some_and(|v| v.text_overrides.contains_key(id));
+        return (!overridden).then(|| Spot::Item(id.clone()));
     }
     match issue.code.as_str() {
         codes::MISSING_NAME => Some(Spot::Field(FULL_NAME_FIELD)),
         codes::MISSING_CONTACT | codes::INVALID_EMAIL => Some(Spot::Field(EMAIL_FIELD)),
-        codes::SUMMARY_TOO_LONG => Some(Spot::Field(SUMMARY_FIELD)),
+        codes::SUMMARY_TOO_LONG => variant
+            .is_none_or(|v| v.summary_override.is_none())
+            .then_some(Spot::Field(SUMMARY_FIELD)),
         _ => None,
     }
 }
@@ -115,6 +120,9 @@ pub fn ChecksTab(
     cv_id: Id,
     /// The shown variant, if any.
     variant_id: Signal<Option<Id>>,
+    /// The shown variant's overlay, to tell which findings are about its
+    /// text overrides.
+    variant: Signal<Option<Variant>>,
     /// Changes whenever the checks should run again: the tab was opened or
     /// the CV or variant was saved.
     refresh: Signal<u64>,
@@ -143,7 +151,10 @@ pub fn ChecksTab(
                     error.set(None);
                     issues.set(Some(found));
                 }
-                Err(e) => error.set(Some(error_message(&e))),
+                Err(e) => {
+                    issues.set(None);
+                    error.set(Some(error_message(&e)));
+                }
             }
         });
     });
@@ -164,7 +175,7 @@ pub fn ChecksTab(
                             <h3>{heading}" ("{group.len()}")"</h3>
                             <ul>
                                 {group.into_iter().map(|issue| {
-                                    let to = spot(&issue);
+                                    let to = variant.with(|v| spot(&issue, v.as_ref()));
                                     view! {
                                         <li class="lint-issue">
                                             <span>
@@ -204,21 +215,44 @@ mod tests {
     fn findings_point_to_items_or_fields() {
         let id = Id::parse("01J02000000000000000000004").expect("id");
         assert_eq!(
-            spot(&issue("bullet_too_long", Some(id.clone()))),
+            spot(&issue("bullet_too_long", Some(id.clone())), None),
             Some(Spot::Item(id))
         );
         assert_eq!(
-            spot(&issue("missing_name", None)),
+            spot(&issue("missing_name", None), None),
             Some(Spot::Field(FULL_NAME_FIELD))
         );
         assert_eq!(
-            spot(&issue("invalid_email", None)),
+            spot(&issue("invalid_email", None), None),
             Some(Spot::Field(EMAIL_FIELD))
         );
         assert_eq!(
-            spot(&issue("summary_too_long", None)),
+            spot(&issue("summary_too_long", None), None),
             Some(Spot::Field(SUMMARY_FIELD))
         );
-        assert_eq!(spot(&issue("page_count", None)), None);
+        assert_eq!(spot(&issue("page_count", None), None), None);
+    }
+
+    #[test]
+    fn findings_about_variant_overrides_have_no_jump() {
+        let id = Id::parse("01J02000000000000000000004").expect("id");
+        let cv_id = Id::parse("01J02000000000000000000001").expect("id");
+        let mut v = Variant::empty(
+            Id::parse("01J02000000000000000000002").expect("id"),
+            cv_id,
+            "v",
+        );
+        assert_eq!(
+            spot(&issue("summary_too_long", None), Some(&v)),
+            Some(Spot::Field(SUMMARY_FIELD))
+        );
+        v.summary_override = Some("Shorter".into());
+        v.text_overrides.insert(id.clone(), "Other text".into());
+        assert_eq!(spot(&issue("summary_too_long", None), Some(&v)), None);
+        assert_eq!(spot(&issue("bullet_too_long", Some(id)), Some(&v)), None);
+        assert_eq!(
+            spot(&issue("missing_name", None), Some(&v)),
+            Some(Spot::Field(FULL_NAME_FIELD))
+        );
     }
 }

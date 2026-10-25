@@ -434,7 +434,7 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 
 - The editor has a third tab, Checks (spec section 12.7). It runs `lint` for the shown CV or variant when opened and again after every save of the CV or the variant, and lists the findings grouped as Errors, Warnings and Tips, each with its fix hint.
 - `lint` reads the saved CV, so the tab says it catches up a moment after typing rather than linting unsaved text in the browser.
-- A finding with a target ID, or about the name, email or summary, has a "Show" button. It switches to the Content tab, opens the item's section if it is collapsed, scrolls to the item and focuses its first field. Findings such as the page count have nothing to jump to.
+- A finding with a target ID, or about the name, email or summary, has a "Show" button. It switches to the Content tab, opens the item's section if it is collapsed, scrolls to the item and focuses its first field. Findings such as the page count have nothing to jump to. When the shown variant overrides the summary or an item's text, the finding is about the override, which is edited in the variant panel rather than the Content tab, so it has no "Show" button.
 - The contact and summary fields carry fixed element IDs for this; items are found by the `data-drag-id` they already carry, skipping the variant panel's rows.
 
 ## Open decisions
