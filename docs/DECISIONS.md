@@ -331,7 +331,7 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 
 ## ADR-048 — Variant screen in the editor (M5)
 
-- A "Version" selector above the form picks the base CV or a variant. Text edits always change the base CV; the variant panel only changes what the selected variant hides or collapses, and the order it shows them in (ADR-062).
+- A "Version" selector above the form picks the base CV or a variant. Text edits in the form always change the base CV; the variant panel changes what the selected variant hides or collapses, the order it shows them in (ADR-062), and the variant's own text (ADR-063).
 - The panel lists every item a variant can hide (ADR-015): sections, entries and their bullets, skill groups and their skills, and language items. Only entries can be collapsed to one line.
 - Overlay edits save one at a time. An edit made while a save is in flight is sent next with the revision that save returned. The selector, "New variant" and "Delete" are disabled while a save runs, so the queue only holds the selected variant.
 - Export and "← CVs" wait for both the CV save and the variant save queue, because export reads the variant from storage. If a variant save fails, the export or leave is dropped and the error is shown.
