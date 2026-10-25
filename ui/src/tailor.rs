@@ -300,7 +300,10 @@ pub fn DiscardedDetails(items: Signal<Vec<DiscardedRewrite>>) -> impl IntoView {
     view! {
         <Show when=move || items.with(|d| !d.is_empty())>
             <details class="discarded">
-                <summary>{move || fill(t().discarded_count, &[("n", &items.with(Vec::len).to_string())])}</summary>
+                <summary>{move || match items.with(Vec::len) {
+                    1 => t().discarded_one.to_owned(),
+                    n => fill(t().discarded_count, &[("n", &n.to_string())]),
+                }}</summary>
                 <ul>{move || items.get().into_iter().map(|d| view! {
                     <li>
                         <span>{t().discarded_before}": "{d.before}</span>
