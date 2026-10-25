@@ -249,6 +249,12 @@ impl OpenAiLlm {
         // checked here and retried once instead.
         if self.flavor == Flavor::OpenAi {
             body["response_format"]["json_schema"]["strict"] = json!(true);
+            // Reasoning models refuse any temperature but the default.
+            if is_reasoning_model(&self.endpoint.model)
+                && let Some(body) = body.as_object_mut()
+            {
+                body.remove("temperature");
+            }
         }
         // OpenAI's newer models take only `max_completion_tokens`; local
         // servers mostly know only `max_tokens`.
@@ -408,6 +414,14 @@ impl Llm for GeminiLlm {
     }
 }
 
+/// OpenAI's reasoning models (GPT-5 and the o-series) accept only the
+/// default temperature.
+fn is_reasoning_model(model: &str) -> bool {
+    let m = model.trim().to_ascii_lowercase();
+    m.starts_with("gpt-5")
+        || (m.starts_with('o') && m[1..].starts_with(|c: char| c.is_ascii_digit()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -530,6 +544,39 @@ mod tests {
         assert_eq!(sent.body["max_completion_tokens"], 4096);
         assert!(sent.body.get("max_tokens").is_none());
         assert_eq!(sent.body["messages"][0]["role"], "system");
+    }
+
+    #[tokio::test]
+    async fn openai_reasoning_models_get_no_temperature() {
+        for (model, sent_temperature) in [
+            ("gpt-5-mini", false),
+            ("GPT-5", false),
+            ("o3", false),
+            ("o4-mini", false),
+            ("gpt-4.1", true),
+            ("omni-x", true),
+        ] {
+            let t = Recorder::replying(vec![Recorder::ok(json!({
+                "choices": [{ "message": { "content": "{}" } }],
+            }))]);
+            let llm = OpenAiLlm::with_transport(Some("sk-o"), model, OPENAI_URL, false, t.clone())
+                .expect("llm");
+            let _ = llm.generate_json(request()).await;
+            assert_eq!(
+                t.sent()[0].body.get("temperature").is_some(),
+                sent_temperature,
+                "{model}"
+            );
+        }
+        // Compatible servers always get it, whatever the model is called.
+        let t = Recorder::replying(vec![Recorder::ok(json!({
+            "choices": [{ "message": { "content": "{}" } }],
+        }))]);
+        let llm =
+            OpenAiLlm::with_transport(None, "gpt-5", "http://localhost:11434/v1", true, t.clone())
+                .expect("llm");
+        let _ = llm.generate_json(request()).await;
+        assert!(t.sent()[0].body.get("temperature").is_some());
     }
 
     #[tokio::test]
