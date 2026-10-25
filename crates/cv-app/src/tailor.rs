@@ -167,12 +167,14 @@ impl App {
         }
         ctx.check()?;
 
-        // Fit to length on top of the selection, as if it were accepted.
+        // Fit to length on top of the selection, as if it were accepted;
+        // suggestions the user already decided are left out, as the save
+        // below leaves them out.
         let fitted = match req.options.page_target {
             Some(target) => {
                 ctx.progress(AiStage::Fit, 80);
                 let mut trial = stored.variant.clone();
-                apply(&mut trial, &selection);
+                apply(&mut trial, &stored.variant.undecided(&selection));
                 let app = Arc::clone(self);
                 let scores = relevance.scores.clone();
                 let result = tokio::task::spawn_blocking(move || {
