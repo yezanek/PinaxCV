@@ -51,6 +51,7 @@ impl StageContext<'_> {
         if let Some(hit) = self
             .cache
             .get(&key)
+            .await
             .and_then(|s| serde_json::from_str(&s).ok())
         {
             return Ok(hit);
@@ -68,7 +69,8 @@ impl StageContext<'_> {
             match T::deserialize(&value) {
                 Ok(out) => {
                     self.cache
-                        .put(&key, prompt.kind.as_str(), &value.to_string());
+                        .put(&key, prompt.kind.as_str(), &value.to_string())
+                        .await;
                     return Ok(out);
                 }
                 Err(e) if attempt == 0 => {

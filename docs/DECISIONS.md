@@ -485,7 +485,7 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Stage C is `cv_core::selection::plan_selection` (spec section 11.6): locked entries and the most recent Experience entries are never hidden or collapsed; Education is collapsed rather than hidden; bullets of entries that stay are ordered by score and trimmed to `max_bullets_per_entry`; skills are ordered by score within each group (one `SkillOrder` per group, with the group's full order); Experience is reordered by relevance only when `reorder_entries_by_relevance` is on. Unscored items get no suggestion and sort after scored ones.
 - With a page target, fit-to-length runs on a trial copy with the selection applied, and its cuts are saved as `Pending` like the rest.
 - The job saves on the variant's latest revision, merging onto edits made meanwhile (three tries), and replaces only pending tailoring suggestions: accepted and rejected ones stay. The tailor panel locks the overlay, the fit panel and the variant's rename, duplicate and delete while the job runs, keeps a job's end that arrives before `ai_tailor` answers with the ID, and shows the stage, a progress bar and Cancel.
-- The settings, keychain and database reads of a tailoring job, and its checks before the job starts, run on the blocking pool; only the provider calls run on the async runtime (as in ADR-069).
+- The settings, keychain and database reads of a tailoring job, and its checks before the job starts, run on the blocking pool, and so do the response cache's reads and writes (`ResponseCache` is async); only the provider calls run on the async runtime (as in ADR-069).
 
 ## Open decisions
 
