@@ -41,6 +41,7 @@ pub fn stage_label(stage: AiStage) -> &'static str {
 pub fn result_message(r: &TailorResult) -> String {
     let mut text = match r.suggestions {
         0 => t().tailor_nothing.to_owned(),
+        1 => t().tailor_done_one.to_owned(),
         n => fill(t().tailor_done, &[("n", &n.to_string())]),
     };
     if r.failed_stages.contains(&AiStage::Rewrite) {
@@ -322,6 +323,7 @@ mod tests {
     #[test]
     fn messages_count_suggestions_and_say_when_it_cannot_fit() {
         assert_eq!(result_message(&result(0, None)), t().tailor_nothing);
+        assert_eq!(result_message(&result(1, None)), t().tailor_done_one);
         assert!(result_message(&result(3, None)).contains('3'));
         let over = result_message(&result(3, Some(false)));
         assert!(over.contains('3') && over.contains('2'), "{over}");

@@ -119,7 +119,9 @@ pub async fn ai_consent(app: Shared<'_>) -> Reply<AiStatus> {
 }
 
 /// Starts tailoring a variant to its job description; progress and the
-/// result arrive as `ai://` events for the returned job ID.
+/// result arrive as `ai://` events for the returned job ID. The checks
+/// before the job read the settings and the keychain, so they run on the
+/// blocking pool.
 #[tauri::command]
 pub async fn ai_tailor<R: Runtime>(
     handle: AppHandle<R>,
@@ -127,7 +129,11 @@ pub async fn ai_tailor<R: Runtime>(
     req: AiTailor,
 ) -> Reply<JobId> {
     let app = Arc::clone(app.inner());
-    crate::jobs::start(&handle, |events| app.ai_tailor(events, req))
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::jobs::start(&handle, |events| app.ai_tailor(events, req))
+    })
+    .await
+    .map_err(|_| ApiError::new(ErrorCode::Internal, "The operation stopped unexpectedly."))?
 }
 
 /// Cancels a running AI job; its `ai://error` event says `ai_cancelled`.
