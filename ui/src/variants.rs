@@ -589,11 +589,11 @@ pub fn VariantBar(
             <div class="variant-actions">
                 <label>{t().variant_name}" "
                     <input prop:value=move || variant.with(|v| v.as_ref().map(|v| v.variant.name.clone()).unwrap_or_default())
-                        prop:disabled=move || fitting.get()
+                        prop:disabled=move || fitting.get() || tailoring.get()
                         on:change=move |ev| rename.run(event_target_value(&ev)) />
                 </label>
                 <label class="check">
-                    <input type="checkbox"
+                    <input type="checkbox" prop:disabled=move || tailoring.get()
                         prop:checked=move || variant.with(|v| v.as_ref().is_some_and(|v| v.variant.show_photo))
                         on:change=move |ev| {
                             let on = event_target_checked(&ev);
@@ -601,25 +601,29 @@ pub fn VariantBar(
                         } />
                     {t().photo_show_variant}
                 </label>
-                <button prop:disabled=move || busy.get() || duplicating.get() on:click=move |_| duplicate.run(())>{t().duplicate_variant}</button>
+                <button prop:disabled=move || busy.get() || duplicating.get() || tailoring.get() on:click=move |_| duplicate.run(())>{t().duplicate_variant}</button>
                 <Show when=move || confirming.with(Option::is_none)
                     fallback=move || view! {
                         <span>{t().delete_variant_confirm}</span>
-                        <button prop:disabled=move || busy.get()
+                        <button prop:disabled=move || busy.get() || tailoring.get()
                             on:click=move |_| delete.run(())>{t().delete}</button>
                         <button on:click=move |_| confirming.set(None)>{t().cancel}</button>
                     }>
-                    <button on:click=move |_| confirming.set(
+                    <button prop:disabled=move || tailoring.get() on:click=move |_| confirming.set(
                         variant.with_untracked(|v| v.as_ref().map(|v| v.variant.id.clone())),
                     )>{t().delete_variant}</button>
                 </Show>
             </div>
             <TailorPanel variant=variant error=error changed=changed busy=busy
                 tailoring=tailoring edit=edit_cb />
-            <SuggestionReview cv=cv variant=variant busy=busy edit=edit_cb />
-            <GapList cv=cv variant=variant busy=busy edit=edit_cb />
-            <FitPanel cv=cv variant=variant error=error changed=changed busy=busy settled=settled
-                fitting=fitting edit=edit_cb />
+            // Tailoring saves the variant when it ends, so reviewing, gaps
+            // and fitting wait for it.
+            <fieldset class="variant-overlay" prop:disabled=move || tailoring.get()>
+                <SuggestionReview cv=cv variant=variant busy=busy edit=edit_cb />
+                <GapList cv=cv variant=variant busy=busy edit=edit_cb />
+                <FitPanel cv=cv variant=variant error=error changed=changed busy=busy settled=settled
+                    fitting=fitting edit=edit_cb />
+            </fieldset>
             <fieldset class="variant-overlay" prop:disabled=move || fitting.get() || tailoring.get()>
             <div class="variant-summary">
                 <strong>{t().summary}</strong>
