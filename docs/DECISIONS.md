@@ -442,6 +442,7 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Below the lint list, "Run check" calls `ats_check` for the shown CV or variant. The backend renders the PDF in memory, extracts its text and runs the report checks (docs/ATS_RULES.md). Nothing is written to disk.
 - The panel shows the score as "Score as read by PinaxCV", each check passed or failed with its detail, and the extracted text in a monospace box with a "Copy text" button using the clipboard API.
 - It runs only on request, since it renders a full PDF. The limits text from ATS_RULES.md stands above the button: these are best-practice checks, not vendor rules, and the employer's own flow is the real test.
+- A report belongs to one run for one target: starting a run, or switching the shown variant, clears the old report and error, and an answer to an older run is dropped.
 
 ## Open decisions
 
