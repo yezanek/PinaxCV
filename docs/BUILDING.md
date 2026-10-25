@@ -141,10 +141,12 @@ cargo install tauri-driver --version 2.1.0 --locked
 (cd ui && trunk build --locked)
 cargo build -p pinaxcv --features e2e
 export PINAXCV_E2E_EXPORT_DIR=$(mktemp -d) PINAXCV_E2E_APP=$PWD/target/debug/pinaxcv
-xvfb-run -a sh -c 'tauri-driver & sleep 2; cargo test -p pinaxcv-e2e'
+xvfb-run -a sh -c 'tauri-driver & driver=$!; trap "kill $driver" EXIT
+  until curl -s -o /dev/null http://127.0.0.1:4444/status; do sleep 1; done
+  cargo test -p pinaxcv-e2e'
 ```
 
-The test uses the app's normal data folder, so it adds an "E2E smoke" CV there. On Windows, `tauri-driver` also needs `msedgedriver.exe` matching the installed WebView2 version (`--native-driver`); the CI job shows how to fetch it.
+The shell stops `tauri-driver` when the test ends. The test uses the app's normal data folder, so it adds an "E2E smoke" CV there. On Windows, `tauri-driver` also needs `msedgedriver.exe` matching the installed WebView2 version (`--native-driver`); the CI job shows how to fetch it.
 
 ## Troubleshooting
 
