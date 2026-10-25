@@ -282,7 +282,10 @@ pub fn TailorPanel(
             <p role="status">{move || message.get()}</p>
             <Show when=move || discarded.with(|d| !d.is_empty())>
                 <details class="discarded">
-                    <summary>{move || fill(t().discarded_count, &[("n", &discarded.with(Vec::len).to_string())])}</summary>
+                    <summary>{move || match discarded.with(Vec::len) {
+                        1 => t().discarded_one.to_owned(),
+                        n => fill(t().discarded_count, &[("n", &n.to_string())]),
+                    }}</summary>
                     <ul>{move || discarded.get().into_iter().map(|d| view! {
                         <li>
                             <span>{t().discarded_before}": "{d.before}</span>

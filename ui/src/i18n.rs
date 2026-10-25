@@ -313,6 +313,7 @@ pub struct Strings {
     pub tailor_cancelled: &'static str,
     pub rewrite_failed: &'static str,
     /// `{n}`.
+    pub discarded_one: &'static str,
     pub discarded_count: &'static str,
     pub discarded_before: &'static str,
     pub discarded_after: &'static str,
@@ -642,6 +643,7 @@ pub static EN: Strings = Strings {
     tailor_nothing: "Tailoring found nothing to change.",
     tailor_cancelled: "Tailoring was cancelled.",
     rewrite_failed: "Rewrites could not be suggested this time; the other suggestions were saved.",
+    discarded_one: "1 suggestion discarded by safety checks",
     discarded_count: "{n} suggestions discarded by safety checks",
     discarded_before: "Original",
     discarded_after: "Discarded rewrite",

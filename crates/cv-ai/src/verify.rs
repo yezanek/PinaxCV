@@ -145,12 +145,114 @@ fn number_tokens(text: &str) -> Vec<(String, f64)> {
         .find_iter(text)
         .filter_map(|m| number_value(m.as_str()).map(|v| (m.as_str().trim().to_owned(), v)))
         .collect();
-    for word in text.split(|c: char| !c.is_alphabetic()) {
-        if let Some(v) = spelled(&word.to_lowercase()) {
-            out.push((word.to_owned(), v));
+    let words = alphabetic_words(text);
+    let mut i = 0;
+    while i < words.len() {
+        let (start, end) = words[i];
+        let word = text[start..end].to_lowercase();
+        // "twenty-one", "twenty one": tens then a unit.
+        if let (Some(tens), Some(&(next_start, next_end))) = (tens_value(&word), words.get(i + 1)) {
+            let gap = &text[end..next_start];
+            let joined = !gap.is_empty() && gap.chars().all(|c| c == '-' || c.is_whitespace());
+            if let Some(unit) = joined
+                .then(|| unit_value(&text[next_start..next_end].to_lowercase()))
+                .flatten()
+            {
+                out.push((text[start..next_end].to_owned(), tens + unit));
+                i += 2;
+                continue;
+            }
         }
+        if let Some(v) = spelled(&word) {
+            out.push((text[start..end].to_owned(), v));
+        }
+        i += 1;
     }
     out
+}
+
+/// Byte ranges of the alphabetic runs in `text`.
+fn alphabetic_words(text: &str) -> Vec<(usize, usize)> {
+    let mut words = Vec::new();
+    let mut start = None;
+    for (i, c) in text.char_indices() {
+        match (c.is_alphabetic(), start) {
+            (true, None) => start = Some(i),
+            (false, Some(s)) => {
+                words.push((s, i));
+                start = None;
+            }
+            _ => {}
+        }
+    }
+    if let Some(s) = start {
+        words.push((s, text.len()));
+    }
+    words
+}
+
+const UNITS: &[(&str, f64)] = &[
+    ("one", 1.0),
+    ("two", 2.0),
+    ("three", 3.0),
+    ("four", 4.0),
+    ("five", 5.0),
+    ("six", 6.0),
+    ("seven", 7.0),
+    ("eight", 8.0),
+    ("nine", 9.0),
+];
+
+const TENS: &[(&str, f64)] = &[
+    ("twenty", 20.0),
+    ("thirty", 30.0),
+    ("forty", 40.0),
+    ("fifty", 50.0),
+    ("sixty", 60.0),
+    ("seventy", 70.0),
+    ("eighty", 80.0),
+    ("ninety", 90.0),
+];
+
+const GERMAN_UNITS: &[(&str, f64)] = &[
+    ("ein", 1.0),
+    ("zwei", 2.0),
+    ("drei", 3.0),
+    ("vier", 4.0),
+    ("fünf", 5.0),
+    ("sechs", 6.0),
+    ("sieben", 7.0),
+    ("acht", 8.0),
+    ("neun", 9.0),
+];
+
+const GERMAN_TENS: &[(&str, f64)] = &[
+    ("zwanzig", 20.0),
+    ("dreißig", 30.0),
+    ("vierzig", 40.0),
+    ("fünfzig", 50.0),
+    ("sechzig", 60.0),
+    ("siebzig", 70.0),
+    ("achtzig", 80.0),
+    ("neunzig", 90.0),
+];
+
+fn lookup(table: &[(&str, f64)], word: &str) -> Option<f64> {
+    table.iter().find(|(w, _)| *w == word).map(|(_, v)| *v)
+}
+
+fn unit_value(word: &str) -> Option<f64> {
+    lookup(UNITS, word)
+}
+
+fn tens_value(word: &str) -> Option<f64> {
+    lookup(TENS, word)
+}
+
+/// German unit-plus-tens words: "einundzwanzig" is 21.
+fn german_compound(word: &str) -> Option<f64> {
+    let (unit, tens) = word.split_once("und")?;
+    Some(lookup(GERMAN_UNITS, unit)? + lookup(GERMAN_TENS, tens)?)
 }
 
 fn numbers(text: &str) -> Vec<f64> {
@@ -213,22 +315,16 @@ fn number_value(token: &str) -> Option<f64> {
 /// Spelled-out numbers in English and German.
 fn spelled(word: &str) -> Option<f64> {
     const WORDS: &[(&str, f64)] = &[
-        ("one", 1.0),
-        ("two", 2.0),
-        ("three", 3.0),
-        ("four", 4.0),
-        ("five", 5.0),
-        ("six", 6.0),
-        ("seven", 7.0),
-        ("eight", 8.0),
-        ("nine", 9.0),
         ("ten", 10.0),
         ("eleven", 11.0),
         ("twelve", 12.0),
+        ("thirteen", 13.0),
+        ("fourteen", 14.0),
         ("fifteen", 15.0),
-        ("twenty", 20.0),
-        ("thirty", 30.0),
-        ("fifty", 50.0),
+        ("sixteen", 16.0),
+        ("seventeen", 17.0),
+        ("eighteen", 18.0),
+        ("nineteen", 19.0),
         ("hundred", 100.0),
         ("thousand", 1e3),
         ("million", 1e6),
@@ -253,15 +349,16 @@ fn spelled(word: &str) -> Option<f64> {
         ("zehn", 10.0),
         ("elf", 11.0),
         ("zwölf", 12.0),
-        ("zwanzig", 20.0),
-        ("dreißig", 30.0),
-        ("fünfzig", 50.0),
         ("hundert", 100.0),
         ("tausend", 1e3),
         ("verdoppelt", 2.0),
         ("halbiert", 0.5),
     ];
-    WORDS.iter().find(|(w, _)| *w == word).map(|(_, v)| *v)
+    lookup(WORDS, word)
+        .or_else(|| lookup(UNITS, word))
+        .or_else(|| lookup(TENS, word))
+        .or_else(|| lookup(GERMAN_TENS, word))
+        .or_else(|| german_compound(word))
 }
 
 /// The technology dictionary (spec section 11.8), one term per line.
@@ -364,6 +461,34 @@ mod tests {
             &Context::default(),
         );
         assert_eq!(kinds(&v), [VerificationKind::NewNumber]);
+    }
+
+    #[test]
+    fn compound_number_words_compare_by_value() {
+        let words = |t: &str| numbers(t);
+        assert_eq!(words("twenty-one teams"), [21.0]);
+        assert_eq!(words("forty two teams"), [42.0]);
+        assert_eq!(words("einundzwanzig Teams"), [21.0]);
+        assert_eq!(words("twenty teams"), [20.0]);
+        for (original, rewrite) in [
+            (
+                "Coached twenty-one engineers across the payments org",
+                "Coached 21 engineers across the payments org",
+            ),
+            (
+                "Coached thirty five engineers across the payments org",
+                "Coached 35 engineers across the payments org",
+            ),
+            (
+                "Betreute einundzwanzig Entwickler im Zahlungsbereich",
+                "Betreute 21 Entwickler im Zahlungsbereich",
+            ),
+        ] {
+            assert_eq!(
+                kinds(&verify_rewrite(original, rewrite, &Context::default())),
+                []
+            );
+        }
     }
 
     #[test]
