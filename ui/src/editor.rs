@@ -12,11 +12,10 @@ use cv_core::{Cv, Diagnostic, Id, StoredCv, StoredVariant};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 
-use crate::entries::{AddSection, EntrySections};
+use crate::entries::{AddSection, Sections};
 use crate::history::{History, Shortcut, shortcut};
 use crate::i18n::{error_message, fill, t};
 use crate::ipc::{IdArg, ReqArg, call};
-use crate::lists::ListSections;
 use crate::preview::{DiagnosticsStrip, Zoom, ZoomControls, diagnostics_from, page_width};
 use crate::style::StyleTab;
 use crate::variants::VariantBar;
@@ -388,7 +387,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
         cv.with(|c| {
             c.as_ref()
                 .and_then(|c| c.summary.as_deref())
-                .map_or(0, |s| s.trim().chars().count())
+                .map_or(0, |s| s.chars().count())
         })
     };
 
@@ -451,8 +450,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                 {move || {
                     restored.track();
                     view! {
-                        <EntrySections cv=cv edit=edit />
-                        <ListSections cv=cv edit=edit />
+                        <Sections cv=cv edit=edit />
                     }
                 }}
                 <AddSection edit=edit />
