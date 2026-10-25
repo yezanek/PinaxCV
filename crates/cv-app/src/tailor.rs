@@ -68,10 +68,13 @@ impl App {
     }
 
     async fn tailor(self: &Arc<Self>, ctx: &JobContext, req: AiTailor) -> Result<TailorResult> {
-        let llm = self.llm()?;
-        let status = self.ai_status()?;
-        let model = self.ai_model()?;
-        let stored = self.get_variant(&req.variant_id)?;
+        // Settings, keychain and database reads run on the blocking pool;
+        // only the provider calls run on the async runtime (as in ADR-069).
+        let variant_id = req.variant_id.clone();
+        let (llm, status, stored) = self
+            .blocking(move |app| Ok((app.llm()?, app.ai_status()?, app.get_variant(&variant_id)?)))
+            .await?;
+        let model = status.model.clone();
         let job = stored.variant.job.clone();
         let stage = StageContext {
             llm: llm.as_ref(),
@@ -92,7 +95,8 @@ impl App {
 
         // B: scores for every item of the base CV, hidden ones included.
         ctx.progress(AiStage::Relevance, 10);
-        let mut cv = self.get_cv(&stored.variant.cv_id)?.cv;
+        let cv_id = stored.variant.cv_id.clone();
+        let mut cv = self.blocking(move |app| app.get_cv(&cv_id)).await?.cv;
         // Score and count pages as a save would render them.
         let _ = validate::for_save(&mut cv);
         let base = cv.resolve(None);
@@ -150,28 +154,38 @@ impl App {
             Some(FitResult::CannotFit { pages }) => (Some(*pages), Some(false)),
             None => (None, None),
         };
-        let mut attempts = 0;
-        let (saved, count) = loop {
-            attempts += 1;
-            let latest = self.get_variant(&req.variant_id)?;
-            let mut variant = latest.variant;
-            if variant.job.description_text == job.description_text {
-                variant.job.requirements = Some(requirements.clone());
-                variant.job.description_hash = Some(hash.clone());
-            }
-            let mut count = variant.replace_pending(SuggestionSource::Tailor, selection.clone());
-            if let Some(FitResult::Fits { cuts, .. }) = &fitted {
-                variant.page_target = req.options.page_target;
-                count += cuts.len();
-                variant.replace_fit_cuts(cuts.clone());
-            }
-            match self.store.save_variant(&variant, latest.revision) {
-                Ok(saved) => break (saved, count),
-                // Someone saved in between: merge onto their version.
-                Err(cv_store::StoreError::Conflict { .. }) if attempts < 3 => ctx.check()?,
-                Err(e) => return Err(store_error(e)),
-            }
-        };
+        let cancel = ctx.clone();
+        let variant_id = req.variant_id.clone();
+        let target = req.options.page_target;
+        let (saved, count) = self
+            .blocking(move |app| {
+                let mut attempts = 0;
+                loop {
+                    attempts += 1;
+                    let latest = app.get_variant(&variant_id)?;
+                    let mut variant = latest.variant;
+                    if variant.job.description_text == job.description_text {
+                        variant.job.requirements = Some(requirements.clone());
+                        variant.job.description_hash = Some(hash.clone());
+                    }
+                    let mut count =
+                        variant.replace_pending(SuggestionSource::Tailor, selection.clone());
+                    if let Some(FitResult::Fits { cuts, .. }) = &fitted {
+                        variant.page_target = target;
+                        count += cuts.len();
+                        variant.replace_fit_cuts(cuts.clone());
+                    }
+                    match app.store.save_variant(&variant, latest.revision) {
+                        Ok(saved) => return Ok((saved, count)),
+                        // Someone saved in between: merge onto their version.
+                        Err(cv_store::StoreError::Conflict { .. }) if attempts < 3 => {
+                            cancel.check()?
+                        }
+                        Err(e) => return Err(store_error(e)),
+                    }
+                }
+            })
+            .await?;
         ctx.progress(AiStage::Selection, 100);
         Ok(TailorResult {
             variant: saved,
@@ -179,6 +193,20 @@ impl App {
             pages,
             fits,
         })
+    }
+}
+
+impl App {
+    /// Runs `f` on the blocking pool, for store and keychain work inside a job.
+    pub(crate) async fn blocking<T, F>(self: &Arc<Self>, f: F) -> Result<T>
+    where
+        T: Send + 'static,
+        F: FnOnce(&App) -> Result<T> + Send + 'static,
+    {
+        let app = Arc::clone(self);
+        tokio::task::spawn_blocking(move || f(&app))
+            .await
+            .map_err(|_| ApiError::new(ErrorCode::Internal, "The AI job stopped unexpectedly."))?
     }
 }
 

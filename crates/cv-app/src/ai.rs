@@ -345,6 +345,7 @@ impl App {
     }
 
     /// The model name in the settings, part of every cache key.
+    #[allow(dead_code)] // Tailoring reads it from one status; later stages use this.
     pub(crate) fn ai_model(&self) -> Result<String> {
         Ok(self.ai_status()?.model)
     }
