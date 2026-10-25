@@ -247,16 +247,7 @@ impl Variant {
     pub fn replace_pending(&mut self, source: SuggestionSource, new: Vec<Suggestion>) -> usize {
         self.suggestions
             .retain(|s| !(s.source == source && s.status == SuggestionStatus::Pending));
-        let decided = |n: &Suggestion| {
-            self.suggestions.iter().any(|s| {
-                s.status != SuggestionStatus::Pending
-                    && s.kind == n.kind
-                    && s.target == n.target
-                    && s.action == n.action
-                    && s.after == n.after
-            })
-        };
-        let fresh: Vec<Suggestion> = new.into_iter().filter(|n| !decided(n)).collect();
+        let fresh = self.undecided(&new);
         let added = fresh.len();
         self.suggestions.extend(fresh);
         added
@@ -288,6 +279,24 @@ impl Variant {
             }
             None => false,
         }
+    }
+
+    /// The suggestions of `new` that `replace_pending` would keep: those with
+    /// no accepted or rejected suggestion of the same kind, target, action
+    /// and text.
+    pub fn undecided(&self, new: &[Suggestion]) -> Vec<Suggestion> {
+        new.iter()
+            .filter(|n| {
+                !self.suggestions.iter().any(|s| {
+                    s.status != SuggestionStatus::Pending
+                        && s.kind == n.kind
+                        && s.target == n.target
+                        && s.action == n.action
+                        && s.after == n.after
+                })
+            })
+            .cloned()
+            .collect()
     }
 
     /// Replaces the pending fit-to-length cuts with `cuts`; accepted and
@@ -700,6 +709,7 @@ mod tests {
                 ..collapse
             },
         ];
+        assert_eq!(v.undecided(&rerun).len(), 1);
         assert_eq!(v.replace_pending(SuggestionSource::Tailor, rerun), 1);
         let ids: Vec<_> = v.suggestions.iter().map(|s| s.id.clone()).collect();
         assert_eq!(ids, [id(60), id(63)]);
