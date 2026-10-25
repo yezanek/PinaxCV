@@ -12,7 +12,7 @@ use crate::dates;
 use crate::drag::{DragHandle, move_to};
 use crate::i18n::t;
 use crate::ids::new_id;
-use crate::lists::{new_group, new_language};
+use crate::lists::{LanguagesEditor, SkillsEditor, new_group, new_language};
 use crate::order::shift;
 
 /// Applies an edit to the CV and schedules preview and autosave.
@@ -59,18 +59,33 @@ fn entry_ref<'a>(cv: &'a Cv, section: &Id, entry: &Id) -> Option<&'a Entry> {
     entries_ref(cv, section)?.iter().find(|e| &e.id == entry)
 }
 
-/// IDs and kind labels of the sections made of entries, in order. Custom
-/// sections have no fixed label: their title is edited in place.
-fn entry_sections(cv: &Cv) -> Vec<(Id, Option<&'static str>)> {
+/// The editor a section needs: entries (with a kind label; custom sections
+/// have none, their title is edited in place), skills or languages.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum SectionForm {
+    Entries(Option<&'static str>),
+    Skills,
+    Languages,
+}
+
+/// Every section with its editor, in CV order, so the form follows
+/// creation and reordering across kinds.
+fn section_forms(cv: &Cv) -> Vec<(Id, SectionForm)> {
     cv.sections
         .iter()
-        .filter_map(|s| match s {
-            Section::Experience(x) => Some((x.id.clone(), Some(t().work_experience))),
-            Section::Education(x) => Some((x.id.clone(), Some(t().education))),
-            Section::Projects(x) => Some((x.id.clone(), Some(t().projects))),
-            Section::Certifications(x) => Some((x.id.clone(), Some(t().certifications))),
-            Section::Custom(x) => Some((x.id.clone(), None)),
-            _ => None,
+        .map(|s| match s {
+            Section::Experience(x) => (
+                x.id.clone(),
+                SectionForm::Entries(Some(t().work_experience)),
+            ),
+            Section::Education(x) => (x.id.clone(), SectionForm::Entries(Some(t().education))),
+            Section::Projects(x) => (x.id.clone(), SectionForm::Entries(Some(t().projects))),
+            Section::Certifications(x) => {
+                (x.id.clone(), SectionForm::Entries(Some(t().certifications)))
+            }
+            Section::Custom(x) => (x.id.clone(), SectionForm::Entries(None)),
+            Section::Skills(x) => (x.id.clone(), SectionForm::Skills),
+            Section::Languages(x) => (x.id.clone(), SectionForm::Languages),
         })
         .collect()
 }
@@ -99,15 +114,24 @@ fn opt(s: String) -> Option<String> {
     (!s.trim().is_empty()).then_some(s)
 }
 
+/// The editors of every section, in the order the CV lists them.
 #[component]
-pub fn EntrySections(cv: RwSignal<Option<Cv>>, edit: Edit) -> impl IntoView {
+pub fn Sections(cv: RwSignal<Option<Cv>>, edit: Edit) -> impl IntoView {
     view! {
         <For
-            each=move || cv.with(|c| c.as_ref().map(entry_sections).unwrap_or_default())
+            each=move || cv.with(|c| c.as_ref().map(section_forms).unwrap_or_default())
             key=|(id, _)| id.clone()
             let:section
         >
-            <SectionEditor cv=cv edit=edit id=section.0 label=section.1 />
+            {match section.1 {
+                SectionForm::Entries(label) => {
+                    view! { <SectionEditor cv=cv edit=edit id=section.0 label=label /> }.into_any()
+                }
+                SectionForm::Skills => view! { <SkillsEditor cv=cv edit=edit id=section.0 /> }.into_any(),
+                SectionForm::Languages => {
+                    view! { <LanguagesEditor cv=cv edit=edit id=section.0 /> }.into_any()
+                }
+            }}
         </For>
     }
 }
@@ -634,11 +658,29 @@ mod tests {
         let mut cv: Cv =
             serde_json::from_str(include_str!("../../testdata/cvs/typical.json")).expect("cv");
         cv.sections.push(NewSection::Custom.build(id(1), id(2)));
-        assert_eq!(entry_sections(&cv).last(), Some(&(id(1), None)));
+        assert_eq!(
+            section_forms(&cv).last(),
+            Some(&(id(1), SectionForm::Entries(None)))
+        );
         entry_mut(&mut cv, &id(1), &id(2)).expect("entry").title = "Talk".into();
         assert_eq!(
             entry_ref(&cv, &id(1), &id(2)).map(|e| e.title.as_str()),
             Some("Talk")
         );
+    }
+
+    #[test]
+    fn the_form_follows_section_order_across_kinds() {
+        let mut cv: Cv =
+            serde_json::from_str(include_str!("../../testdata/cvs/typical.json")).expect("cv");
+        cv.sections.push(NewSection::Custom.build(id(1), id(2)));
+        cv.sections.push(NewSection::Skills.build(id(3), id(4)));
+        let forms = section_forms(&cv);
+        let ids: Vec<&Id> = forms.iter().map(|(id, _)| id).collect();
+        let order: Vec<&Id> = cv.sections.iter().map(Section::id).collect();
+        assert_eq!(ids, order);
+        assert_eq!(forms[forms.len() - 1].1, SectionForm::Skills);
+        cv.sections.rotate_right(1);
+        assert_eq!(section_forms(&cv)[0].1, SectionForm::Skills);
     }
 }
