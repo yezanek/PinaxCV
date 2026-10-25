@@ -207,23 +207,39 @@ fn AtsPanel(cv_id: Id, variant_id: Signal<Option<Id>>) -> impl IntoView {
     let error: RwSignal<Option<String>> = RwSignal::new(None);
     let running = RwSignal::new(false);
     let copied = RwSignal::new(None::<&'static str>);
+    // Bumped per run and per change of the shown variant; an answer to an
+    // older run, or for another variant, is dropped.
+    let runs = RwSignal::new(0u64);
+    let reset = move || {
+        runs.update(|n| *n += 1);
+        report.set(None);
+        error.set(None);
+        copied.set(None);
+        running.set(false);
+    };
+    Effect::new(move |first: Option<()>| {
+        variant_id.track();
+        if first.is_some() {
+            reset();
+        }
+    });
     let run = move |_| {
         let target = Target {
             cv_id: cv_id.clone(),
             variant_id: variant_id.get_untracked(),
         };
+        reset();
+        let n = runs.get_untracked();
         running.set(true);
-        copied.set(None);
         spawn_local(async move {
             let result = call::<_, AtsReport>("ats_check", &TargetArg { target: &target }).await;
-            if running.try_set(false).is_some() {
-                return; // The tab was closed.
+            // The tab was closed, or the run is stale.
+            if runs.try_get_untracked() != Some(n) {
+                return;
             }
+            running.set(false);
             match result {
-                Ok(r) => {
-                    error.set(None);
-                    report.set(Some(r));
-                }
+                Ok(r) => report.set(Some(r)),
                 Err(e) => error.set(Some(error_message(&e))),
             }
         });
