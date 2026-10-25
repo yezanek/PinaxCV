@@ -337,44 +337,6 @@ impl fmt::Debug for AiConfig {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn ai_config_debug_never_prints_the_key() {
-        let config = AiConfig {
-            provider: AiProvider::Anthropic,
-            model: "some-model".into(),
-            base_url: None,
-            api_key: Some("sk-secret-value".into()),
-            send_name: false,
-            send_location: true,
-        };
-        let printed = format!("{config:?}");
-        assert!(!printed.contains("sk-secret-value"), "{printed}");
-        assert!(printed.contains("<redacted>"), "{printed}");
-    }
-
-    #[test]
-    fn provider_names_match_settings_values() {
-        let names: Vec<_> = [
-            AiProvider::None,
-            AiProvider::Anthropic,
-            AiProvider::Openai,
-            AiProvider::Gemini,
-            AiProvider::OpenaiCompatible,
-        ]
-        .iter()
-        .map(|p| serde_json::to_value(p).expect("serialize"))
-        .collect();
-        assert_eq!(
-            names,
-            ["none", "anthropic", "openai", "gemini", "openai_compatible"]
-        );
-    }
-}
-
 /// Names a running AI job (spec section 10.2), for `ai_cancel` and events.
 pub type JobId = String;
 
@@ -452,4 +414,42 @@ pub struct DiscardedRewrite {
     pub before: String,
     pub after: String,
     pub warnings: Vec<VerificationWarning>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ai_config_debug_never_prints_the_key() {
+        let config = AiConfig {
+            provider: AiProvider::Anthropic,
+            model: "some-model".into(),
+            base_url: None,
+            api_key: Some("sk-secret-value".into()),
+            send_name: false,
+            send_location: true,
+        };
+        let printed = format!("{config:?}");
+        assert!(!printed.contains("sk-secret-value"), "{printed}");
+        assert!(printed.contains("<redacted>"), "{printed}");
+    }
+
+    #[test]
+    fn provider_names_match_settings_values() {
+        let names: Vec<_> = [
+            AiProvider::None,
+            AiProvider::Anthropic,
+            AiProvider::Openai,
+            AiProvider::Gemini,
+            AiProvider::OpenaiCompatible,
+        ]
+        .iter()
+        .map(|p| serde_json::to_value(p).expect("serialize"))
+        .collect();
+        assert_eq!(
+            names,
+            ["none", "anthropic", "openai", "gemini", "openai_compatible"]
+        );
+    }
 }
