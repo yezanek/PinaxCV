@@ -170,8 +170,13 @@ fn language(line: &str, fresh: &mut dyn FnMut() -> Id) -> LanguageItem {
 
 /// Skill lines: "Label: a, b" becomes a labelled group; other lines are
 /// split on commas, bullets, pipes and semicolons into one unlabelled group.
-/// Repeats (ignoring case) are dropped.
-fn skill_groups(lines: &[String], fresh: &mut dyn FnMut() -> Id) -> Vec<SkillGroup> {
+/// A line that is only "Label:" heads the lines below it, up to the next
+/// label. Repeats (ignoring case) are dropped. Also returns a warning for
+/// each label that ends up with no skills.
+fn skill_groups(
+    lines: &[String],
+    fresh: &mut dyn FnMut() -> Id,
+) -> (Vec<SkillGroup>, Vec<ImportWarning>) {
     let mut seen = std::collections::HashSet::new();
     let mut split = |text: &str| -> Vec<String> {
         text.split([',', '·', '•', '|', ';'])
@@ -180,27 +185,39 @@ fn skill_groups(lines: &[String], fresh: &mut dyn FnMut() -> Id) -> Vec<SkillGro
             .map(str::to_owned)
             .collect()
     };
-    let mut labelled = Vec::new();
+    let mut labelled: Vec<(String, Vec<String>)> = Vec::new();
     let mut loose = Vec::new();
+    // Set by a bare "Label:" line; the lines below it join that group.
+    let mut heading: Option<usize> = None;
     for line in lines {
         match line.split_once(':') {
             // "Languages: Rust, Go"; a colon in a URL-like word is not a label.
             Some((label, rest)) if !label.trim().is_empty() && !rest.starts_with("//") => {
                 labelled.push((label.trim().to_owned(), split(rest)));
+                heading = rest.trim().is_empty().then(|| labelled.len() - 1);
             }
-            _ => loose.extend(split(line)),
+            _ => match heading {
+                Some(i) => labelled[i].1.extend(split(line)),
+                None => loose.extend(split(line)),
+            },
         }
     }
-    let mut groups: Vec<(Option<String>, Vec<String>)> = labelled
-        .into_iter()
-        .map(|(label, names)| (Some(label), names))
-        .collect();
+    let mut warnings = Vec::new();
+    let mut groups: Vec<(Option<String>, Vec<String>)> = Vec::new();
     if !loose.is_empty() {
-        groups.insert(0, (None, loose));
+        groups.push((None, loose));
     }
-    groups
+    for (label, names) in labelled {
+        if names.is_empty() {
+            warnings.push(ImportWarning::new(format!(
+                "The skill heading \"{label}\" had no skills under it, so it was skipped."
+            )));
+        } else {
+            groups.push((Some(label), names));
+        }
+    }
+    let groups = groups
         .into_iter()
-        .filter(|(_, names)| !names.is_empty())
         .map(|(label, names)| SkillGroup {
             id: fresh(),
             label,
@@ -209,7 +226,8 @@ fn skill_groups(lines: &[String], fresh: &mut dyn FnMut() -> Id) -> Vec<SkillGro
                 .map(|name| Skill { id: fresh(), name })
                 .collect(),
         })
-        .collect()
+        .collect();
+    (groups, warnings)
 }
 
 /// A trailing date such as "(2021)", ", Mar 2021" or " 2021-03", and the
@@ -239,14 +257,26 @@ fn trailing_date(line: &str) -> (String, Option<PartialDate>) {
 }
 
 /// Certification lines: "Name", "Name - Issuer" or "Name, Issuer (2021)".
-/// A line that is only a date belongs to the certification above it.
-fn certifications(lines: &[String], fresh: &mut dyn FnMut() -> Id) -> Vec<Entry> {
+/// A line that is only a date belongs to the certification above it; one
+/// with no dateless certification above it is skipped with a warning.
+fn certifications(
+    lines: &[String],
+    fresh: &mut dyn FnMut() -> Id,
+) -> (Vec<Entry>, Vec<ImportWarning>) {
     let mut out: Vec<Entry> = Vec::new();
+    let mut warnings = Vec::new();
     for line in lines {
         let (text, date) = trailing_date(line);
         if text.is_empty() {
-            if let (Some(last), Some(date)) = (out.last_mut(), date) {
-                last.period.start.get_or_insert(date);
+            match (out.last_mut(), date) {
+                (Some(last), Some(date)) if last.period.start.is_none() => {
+                    last.period.start = Some(date);
+                }
+                _ if !line.trim().is_empty() => warnings.push(ImportWarning::new(format!(
+                    "The date \"{}\" in Certifications didn't match a certification, so it was skipped.",
+                    line.trim()
+                ))),
+                _ => {}
             }
             continue;
         }
@@ -274,7 +304,7 @@ fn certifications(lines: &[String], fresh: &mut dyn FnMut() -> Id) -> Vec<Entry>
             locked: false,
         });
     }
-    out
+    (out, warnings)
 }
 
 fn is_sidebar(h: Heading) -> bool {
@@ -365,7 +395,8 @@ pub fn text_to_partial(text: &str, fresh: &mut dyn FnMut() -> Id) -> ImportResul
                 }
             }
             Heading::Skills => {
-                let groups = skill_groups(lines, fresh);
+                let (groups, skipped) = skill_groups(lines, fresh);
+                warnings.extend(skipped);
                 if !groups.is_empty() {
                     later.push(Section::Skills(SkillsSection {
                         id: fresh(),
@@ -375,7 +406,8 @@ pub fn text_to_partial(text: &str, fresh: &mut dyn FnMut() -> Id) -> ImportResul
                 }
             }
             Heading::Certifications => {
-                let found = certifications(lines, fresh);
+                let (found, skipped) = certifications(lines, fresh);
+                warnings.extend(skipped);
                 if !found.is_empty() {
                     later.push(Section::Certifications(EntrySection {
                         id: fresh(),
@@ -510,7 +542,8 @@ mod tests {
         ]
         .map(String::from)
         .to_vec();
-        let groups = skill_groups(&lines, &mut ids());
+        let (groups, warnings) = skill_groups(&lines, &mut ids());
+        assert!(warnings.is_empty());
         let names = |g: &SkillGroup| g.skills.iter().map(|s| s.name.clone()).collect::<Vec<_>>();
         assert_eq!(groups[0].label, None);
         assert_eq!(
@@ -519,6 +552,25 @@ mod tests {
         );
         assert_eq!(groups[1].label.as_deref(), Some("Cloud"));
         assert_eq!(names(&groups[1]), ["AWS", "GCP"]);
+    }
+
+    #[test]
+    fn a_bare_skill_label_heads_the_lines_below_it() {
+        let lines: Vec<String> = ["Go", "Cloud:", "AWS, GCP", "Tools:", "Data: SQL"]
+            .map(String::from)
+            .to_vec();
+        let (groups, warnings) = skill_groups(&lines, &mut ids());
+        let names = |g: &SkillGroup| g.skills.iter().map(|s| s.name.clone()).collect::<Vec<_>>();
+        assert_eq!(groups.len(), 3);
+        assert_eq!(
+            (groups[0].label.as_deref(), names(&groups[0])),
+            (None, vec!["Go".to_owned()])
+        );
+        assert_eq!(groups[1].label.as_deref(), Some("Cloud"));
+        assert_eq!(names(&groups[1]), ["AWS", "GCP"]);
+        assert_eq!(groups[2].label.as_deref(), Some("Data"));
+        assert_eq!(warnings.len(), 1);
+        assert!(warnings[0].message.contains("\"Tools\""), "{warnings:?}");
     }
 
     #[test]
@@ -532,7 +584,9 @@ mod tests {
         ]
         .map(String::from)
         .to_vec();
-        let c = certifications(&lines, &mut ids());
+        let (c, warnings) = certifications(&lines, &mut ids());
+        // "2023" follows a certification that already has its date.
+        assert_eq!(warnings.len(), 1, "{warnings:?}");
         assert_eq!(c.len(), 4);
         assert_eq!(
             (c[0].title.as_str(), c[0].period.start),
@@ -547,7 +601,15 @@ mod tests {
             ("Data Engineer", d(2022, Some(3)))
         );
         assert_eq!(c[3].org, "Example Org");
-        let lone = certifications(&["Name".into(), "2019".into()], &mut ids());
+        let (lone, _) = certifications(&["Name".into(), "2019".into()], &mut ids());
         assert_eq!(lone[0].period.start, d(2019, None));
+        let (stray, warnings) = certifications(
+            &["2018".into(), "Name (2019)".into(), "2020".into()],
+            &mut ids(),
+        );
+        assert_eq!(stray.len(), 1);
+        assert_eq!(stray[0].period.start, d(2019, None));
+        assert_eq!(warnings.len(), 2, "{warnings:?}");
+        assert!(warnings[0].message.contains("\"2018\""));
     }
 }
