@@ -108,6 +108,45 @@ async fn a_failing_job_reports_its_error() {
 }
 
 #[tokio::test]
+async fn a_dropped_job_leaves_the_registry_and_reports_internal() {
+    let app = app();
+    let events = Arc::new(Recorded::default());
+    let (id, run) = app.start_job(events.clone(), |_, _| async { Ok(json!({})) });
+    assert!(app.job_running(&id));
+    drop(run);
+    assert!(!app.job_running(&id));
+    let recorded = events.events();
+    let [JobEvent::Failed(failed)] = recorded.as_slice() else {
+        panic!("expected one error event");
+    };
+    assert_eq!(failed.job_id, id);
+    assert_eq!(failed.error.code, ErrorCode::Internal);
+}
+
+#[tokio::test]
+async fn a_panicking_job_still_reports_once() {
+    let app = app();
+    let events = Arc::new(Recorded::default());
+    let (id, run) = app.start_job(events.clone(), |_, _| async {
+        panic!("boom");
+        #[allow(unreachable_code)]
+        Ok(json!({}))
+    });
+    assert!(tokio::spawn(run).await.is_err());
+    assert!(!app.job_running(&id));
+    let failed: Vec<_> = events
+        .events()
+        .into_iter()
+        .filter_map(|e| match e {
+            JobEvent::Failed(f) => Some(f),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(failed.len(), 1);
+    assert_eq!(failed[0].error.code, ErrorCode::Internal);
+}
+
+#[tokio::test]
 async fn cancelling_ends_a_waiting_job_at_once() {
     let app = app();
     let events = Arc::new(Recorded::default());
