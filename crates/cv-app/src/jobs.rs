@@ -102,6 +102,27 @@ fn cancelled() -> ApiError {
     ApiError::new(ErrorCode::AiCancelled, "The AI job was cancelled.")
 }
 
+/// Owned by a job's future: if the future is dropped before it finishes, or
+/// `work` panics, the job still leaves the registry and reports `internal`.
+struct JobGuard {
+    app: Arc<App>,
+    id: JobId,
+    events: Arc<dyn JobEvents>,
+    finished: bool,
+}
+
+impl Drop for JobGuard {
+    fn drop(&mut self) {
+        self.app.jobs.remove(&self.id);
+        if !self.finished {
+            self.events.emit(JobEvent::Failed(AiFailed {
+                job_id: self.id.clone(),
+                error: ApiError::new(ErrorCode::Internal, "The AI job stopped unexpectedly."),
+            }));
+        }
+    }
+}
+
 impl App {
     /// Registers a job running `work` and returns its ID and the future to
     /// spawn. The future ends with exactly one `Done` or `Failed` event;
@@ -125,27 +146,34 @@ impl App {
             events: Arc::clone(&events),
             last_pct: Arc::default(),
         };
+        let mut guard = JobGuard {
+            app: Arc::clone(self),
+            id: id.clone(),
+            events,
+            finished: false,
+        };
         let app = Arc::clone(self);
-        let job_id = id.clone();
         let run = async move {
             ctx.progress(AiStage::Starting, 0);
-            let jobs = Arc::clone(&app);
             let result = tokio::select! {
                 biased;
                 () = cancel.cancelled() => Err(cancelled()),
                 r = work(app, ctx) => r,
             };
-            jobs.jobs.remove(&job_id);
             // A job cancelled while finishing still reports the cancellation.
             let result = if cancel.is_cancelled() {
                 Err(cancelled())
             } else {
                 result
             };
-            events.emit(match result {
+            let job_id = guard.id.clone();
+            let event = match result {
                 Ok(result) => JobEvent::Done(AiDone { job_id, result }),
                 Err(error) => JobEvent::Failed(AiFailed { job_id, error }),
-            });
+            };
+            guard.app.jobs.remove(&guard.id);
+            guard.finished = true;
+            guard.events.emit(event);
         };
         (id, run)
     }
