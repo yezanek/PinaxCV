@@ -89,12 +89,14 @@ impl App {
     }
 
     async fn review(self: &Arc<Self>, ctx: &JobContext, req: AiReview) -> Result<ReviewSession> {
-        let llm = self.llm()?;
-        let status = self.ai_status()?;
-        let model = self.ai_model()?;
+        let (llm, status) = self
+            .blocking(|app| Ok((app.llm()?, app.ai_status()?)))
+            .await?;
+        let model = status.model.clone();
+        let cache = StoreCache(Arc::clone(self));
         let stage = StageContext {
             llm: llm.as_ref(),
-            cache: &StoreCache(self.store.as_ref()),
+            cache: &cache,
             model: &model,
             cancel: ctx.cancel.clone(),
         };
@@ -108,7 +110,8 @@ impl App {
         let lint = tokio::task::spawn_blocking(move || app.lint(&target))
             .await
             .map_err(|_| internal("The checks stopped unexpectedly."))??;
-        let mut cv = self.get_cv(&req.cv_id)?.cv;
+        let cv_id = req.cv_id.clone();
+        let mut cv = self.blocking(move |app| app.get_cv(&cv_id)).await?.cv;
         let _ = validate::for_save(&mut cv);
         let base = cv.resolve(None);
         let payload = build_cv_payload(
@@ -157,10 +160,14 @@ impl App {
         };
         let content = serde_json::to_string(&session)
             .map_err(|_| internal("The review could not be saved."))?;
+        let cv_id = req.cv_id.clone();
         session.created_at = self
-            .store
-            .review_session_put(&req.cv_id, &content)
-            .map_err(store_error)?;
+            .blocking(move |app| {
+                app.store
+                    .review_session_put(&cv_id, &content)
+                    .map_err(store_error)
+            })
+            .await?;
         ctx.progress(AiStage::Review, 100);
         Ok(session)
     }
