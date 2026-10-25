@@ -49,6 +49,7 @@ pub fn pending_tailor(v: &Variant) -> usize {
 pub fn result_message(r: &TailorResult) -> String {
     let mut text = match r.suggestions {
         0 => t().tailor_nothing.to_owned(),
+        1 => t().tailor_done_one.to_owned(),
         n => fill(t().tailor_done, &[("n", &n.to_string())]),
     };
     if r.fits == Some(false) {
@@ -282,7 +283,10 @@ pub fn TailorPanel(
             {move || {
                 let n = variant.with(|v| v.as_ref().map_or(0, |v| pending_tailor(&v.variant)));
                 (n > 0 && !tailoring.get()).then(|| view! {
-                    <p class="hint">{fill(t().tailor_pending, &[("n", &n.to_string())])}</p>
+                    <p class="hint">{match n {
+                        1 => t().tailor_pending_one.to_owned(),
+                        n => fill(t().tailor_pending, &[("n", &n.to_string())]),
+                    }}</p>
                 })
             }}
         </div>
@@ -312,6 +316,7 @@ mod tests {
     #[test]
     fn messages_count_suggestions_and_say_when_it_cannot_fit() {
         assert_eq!(result_message(&result(0, None)), t().tailor_nothing);
+        assert_eq!(result_message(&result(1, None)), t().tailor_done_one);
         assert!(result_message(&result(3, None)).contains('3'));
         let over = result_message(&result(3, Some(false)));
         assert!(over.contains('3') && over.contains('2'), "{over}");
