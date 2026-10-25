@@ -32,8 +32,8 @@ where
         .and_then(|r| r);
     let ms = started.elapsed().as_millis();
     match &result {
-        Ok(_) => tracing::debug!(command, ms, "ok"),
-        Err(e) if e.code == ErrorCode::Cancelled => tracing::debug!(command, ms, "cancelled"),
+        Ok(_) => tracing::info!(command, ms, "ok"),
+        Err(e) if e.code == ErrorCode::Cancelled => tracing::info!(command, ms, "cancelled"),
         Err(e) => tracing::warn!(command, ms, code = e.code.as_str(), "failed"),
     }
     result
