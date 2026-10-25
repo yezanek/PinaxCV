@@ -310,6 +310,10 @@ pub fn VariantBar(
             return;
         }
         let Ok(id) = Id::parse(&id) else { return };
+        // Drop the old variant while the new one loads, so an edit made in
+        // the meantime can't land on it.
+        variant.set(None);
+        changed.run(());
         spawn_local(async move {
             // Drop references to base content deleted since the variant was
             // last open (ADR-064). Resolving ignores them anyway, so a failure

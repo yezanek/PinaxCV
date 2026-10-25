@@ -11,6 +11,7 @@ use cv_core::lint::SUMMARY_MAX_CHARS;
 use cv_core::{Cv, Diagnostic, Id, StoredCv, StoredVariant};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
+use wasm_bindgen::JsCast;
 
 use crate::advice::AiReviewPanel;
 use crate::checks::{ChecksTab, EMAIL_FIELD, FULL_NAME_FIELD, SUMMARY_FIELD, Spot, focus_spot};
@@ -368,6 +369,16 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
         changed();
     };
 
+    // Blurs the focused field so its `change` handler commits what was typed
+    // (variant text areas only save on change) before a shortcut acts.
+    let commit_focused = || {
+        if let Some(el) = document().active_element()
+            && let Ok(el) = el.dyn_into::<web_sys::HtmlElement>()
+        {
+            el.blur().ok();
+        }
+    };
+
     // Keyboard shortcuts (spec section 12.1). Undo and redo replace the
     // browser's per-field undo, which would not match the CV model.
     let keys = window_event_listener(leptos::ev::keydown, move |ev| {
@@ -380,7 +391,10 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
             Shortcut::Undo => step(true),
             Shortcut::Redo => step(false),
             Shortcut::Save => save_now(),
-            Shortcut::Export => flush_then(AfterSave::Export(true)),
+            Shortcut::Export => {
+                commit_focused();
+                flush_then(AfterSave::Export(true));
+            }
         }
     });
     on_cleanup(move || keys.remove());

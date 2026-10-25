@@ -771,7 +771,7 @@ pub static EN: Strings = Strings {
     variant_default_name: "Variant {n}",
     duplicate_variant: "Duplicate variant",
     variant_copy_name: "{name} (copy)",
-    showing_variant: "Showing variant \u{201c}{name}\u{201d}. Text edits below change the base CV; choose here what this variant shows.",
+    showing_variant: "Showing variant \u{201c}{name}\u{201d}. The form below edits the base CV; what you change in this panel applies only to this variant.",
     variant_name: "Variant name",
     delete_variant: "Delete variant",
     delete_variant_confirm: "Delete this variant? The base CV is not changed.",
