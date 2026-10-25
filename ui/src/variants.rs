@@ -589,6 +589,7 @@ pub fn VariantBar(
             <div class="variant-actions">
                 <label>{t().variant_name}" "
                     <input prop:value=move || variant.with(|v| v.as_ref().map(|v| v.variant.name.clone()).unwrap_or_default())
+                        prop:disabled=move || fitting.get()
                         on:change=move |ev| rename.run(event_target_value(&ev)) />
                 </label>
                 <button prop:disabled=move || busy.get() || duplicating.get() on:click=move |_| duplicate.run(())>{t().duplicate_variant}</button>
