@@ -146,7 +146,11 @@ pub async fn ai_review<R: Runtime>(
     req: AiReview,
 ) -> Reply<JobId> {
     let app = Arc::clone(app.inner());
-    crate::jobs::start(&handle, |events| app.ai_review(events, req))
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::jobs::start(&handle, |events| app.ai_review(events, req))
+    })
+    .await
+    .map_err(|_| ApiError::new(ErrorCode::Internal, "The operation stopped unexpectedly."))?
 }
 
 #[tauri::command]
