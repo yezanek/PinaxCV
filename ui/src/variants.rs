@@ -314,7 +314,9 @@ pub fn VariantBar(
             // Drop references to base content deleted since the variant was
             // last open (ADR-064). Resolving ignores them anyway, so a failure
             // here is shown but does not stop the variant opening.
-            if let Err(e) = call::<_, PruneResult>("prune_variant", &IdArg { id: &id }).await {
+            if let Err(e) = call::<_, PruneResult>("prune_variant", &IdArg { id: &id }).await
+                && selection.try_get_untracked() == Some(n)
+            {
                 error.set(Some(error_message(&e)));
             }
             if selection.try_get_untracked() != Some(n) {
@@ -368,10 +370,15 @@ pub fn VariantBar(
     };
 
     // Copies the selected variant, which is saved (the button is disabled
-    // while saves run), and selects the copy.
+    // while saves run), and selects the copy. One copy at a time, so a
+    // double click makes one copy.
+    let duplicating = RwSignal::new(false);
     let duplicate = Callback::new({
         let reload = reload.clone();
         move |()| {
+            if duplicating.get_untracked() {
+                return;
+            }
             let Some((id, name)) = variant.with_untracked(|v| {
                 v.as_ref()
                     .map(|v| (v.variant.id.clone(), v.variant.name.clone()))
@@ -386,9 +393,13 @@ pub fn VariantBar(
             let n = selection.get_untracked() + 1;
             selection.set(n);
             confirming.set(None);
+            duplicating.set(true);
             spawn_local(async move {
                 let result =
                     call::<_, StoredVariant>("duplicate_variant", &ReqArg { req: &req }).await;
+                if duplicating.try_set(false).is_some() {
+                    return;
+                }
                 match result {
                     Ok(v) => {
                         reload();
@@ -573,7 +584,7 @@ pub fn VariantBar(
                     <input prop:value=move || variant.with(|v| v.as_ref().map(|v| v.variant.name.clone()).unwrap_or_default())
                         on:change=move |ev| rename.run(event_target_value(&ev)) />
                 </label>
-                <button prop:disabled=move || busy.get() on:click=move |_| duplicate.run(())>{t().duplicate_variant}</button>
+                <button prop:disabled=move || busy.get() || duplicating.get() on:click=move |_| duplicate.run(())>{t().duplicate_variant}</button>
                 <Show when=move || confirming.with(Option::is_none)
                     fallback=move || view! {
                         <span>{t().delete_variant_confirm}</span>
