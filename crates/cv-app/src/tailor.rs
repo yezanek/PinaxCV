@@ -18,21 +18,34 @@ use cv_core::{
     Id, IdSource, ResolvedCv, ResolvedSection, Suggestion, SuggestionAction, SuggestionKind,
     SuggestionSource, SuggestionStatus, SuggestionTarget, Variant, validate,
 };
-use cv_store::Store;
 
 use crate::{App, JobContext, JobEvents, Result, llm_error, store_error};
 
 /// The `ai_cache` table as the stages' cache. A failing read is a miss and
-/// a failing write is skipped: the provider is only asked again.
-struct StoreCache<'a>(&'a dyn Store);
+/// a failing write is skipped: the provider is only asked again. Both run on
+/// the blocking pool, like the job's other store work.
+struct StoreCache(Arc<App>);
 
-impl ResponseCache for StoreCache<'_> {
-    fn get(&self, key: &str) -> Option<String> {
-        self.0.ai_cache_get(key).ok().flatten()
+#[async_trait::async_trait]
+impl ResponseCache for StoreCache {
+    async fn get(&self, key: &str) -> Option<String> {
+        let key = key.to_owned();
+        self.0
+            .blocking(move |app| Ok(app.store.ai_cache_get(&key).ok().flatten()))
+            .await
+            .ok()
+            .flatten()
     }
 
-    fn put(&self, key: &str, kind: &str, response: &str) {
-        let _ = self.0.ai_cache_put(key, kind, response);
+    async fn put(&self, key: &str, kind: &str, response: &str) {
+        let (key, kind, response) = (key.to_owned(), kind.to_owned(), response.to_owned());
+        let _ = self
+            .0
+            .blocking(move |app| {
+                let _ = app.store.ai_cache_put(&key, &kind, &response);
+                Ok(())
+            })
+            .await;
     }
 }
 
@@ -83,9 +96,10 @@ impl App {
             .await?;
         let model = status.model.clone();
         let job = stored.variant.job.clone();
+        let cache = StoreCache(Arc::clone(self));
         let stage = StageContext {
             llm: llm.as_ref(),
-            cache: &StoreCache(self.store.as_ref()),
+            cache: &cache,
             model: &model,
             cancel: ctx.cancel.clone(),
         };
