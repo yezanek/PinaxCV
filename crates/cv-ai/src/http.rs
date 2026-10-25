@@ -181,10 +181,14 @@ fn wait(delay: Duration, cancel: &CancellationToken) -> bool {
     cancel.is_cancelled()
 }
 
-/// The host of `url`, for names shown to the user.
+/// The host of `url`, for names shown to the user. Any user name or
+/// password in the URL is left out.
 pub fn host(url: &str) -> &str {
     let rest = url.split_once("://").map_or(url, |(_, rest)| rest);
-    rest.split(['/', '?', '#']).next().unwrap_or(rest)
+    let authority = rest.split(['/', '?', '#']).next().unwrap_or(rest);
+    authority
+        .rsplit_once('@')
+        .map_or(authority, |(_, host)| host)
 }
 
 #[cfg(test)]
@@ -324,6 +328,8 @@ mod tests {
         );
         assert_eq!(host("http://localhost:11434/v1"), "localhost:11434");
         assert_eq!(host("example.org"), "example.org");
+        assert_eq!(host("https://u:p@example.org/v1"), "example.org");
+        assert_eq!(host("http://token@localhost:8080"), "localhost:8080");
     }
 
     #[test]

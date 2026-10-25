@@ -273,7 +273,7 @@ impl App {
             .api_key
             .as_deref()
             .map(str::trim)
-            .filter(|k| !k.is_empty())
+            .filter(|k| config.provider != AiProvider::None && !k.is_empty())
         {
             let mut memory = self
                 .ai
@@ -421,6 +421,15 @@ impl App {
     /// Sends a request holding no CV data and checks a JSON answer comes back.
     /// Works before consent, since nothing personal is sent.
     pub async fn ai_test_connection(&self) -> Result<()> {
+        let (llm, request) = self.ai_test_request()?;
+        llm.generate_json(request).await.map_err(llm_error)?;
+        Ok(())
+    }
+
+    /// The provider and request for [`App::ai_test_connection`]. It reads the
+    /// settings and the keychain, which can block, so the shell runs it on
+    /// the blocking pool and only sends the request on the async runtime.
+    pub fn ai_test_request(&self) -> Result<(Arc<dyn Llm>, LlmRequest)> {
         let status = self.ai_status()?;
         if !status.configured {
             return Err(ApiError::new(
@@ -453,8 +462,7 @@ impl App {
             "CONNECTION_TEST",
         );
         request.max_output_tokens = 64;
-        llm.generate_json(request).await.map_err(llm_error)?;
-        Ok(())
+        Ok((llm, request))
     }
 }
 
