@@ -91,36 +91,6 @@ fn needs_trim(v: &str) -> Option<String> {
 }
 
 /// The skills and languages sections, in CV order.
-#[component]
-pub fn ListSections(cv: RwSignal<Option<Cv>>, edit: Edit) -> impl IntoView {
-    let sections = move || {
-        cv.with(|c| {
-            c.as_ref()
-                .map(|c| {
-                    c.sections
-                        .iter()
-                        .filter_map(|s| match s {
-                            Section::Skills(x) => Some((x.id.clone(), true)),
-                            Section::Languages(x) => Some((x.id.clone(), false)),
-                            _ => None,
-                        })
-                        .collect::<Vec<_>>()
-                })
-                .unwrap_or_default()
-        })
-    };
-    view! {
-        <For each=sections key=|(id, _)| id.clone() let:section>
-            {if section.1 {
-                view! { <SkillsEditor cv=cv edit=edit id=section.0 /> }.into_any()
-            } else {
-                view! { <LanguagesEditor cv=cv edit=edit id=section.0 /> }.into_any()
-            }}
-        </For>
-    }
-}
-
-/// Up, down and remove buttons for a whole section.
 fn section_buttons(edit: Edit, id: Id) -> impl IntoView {
     let mv = {
         let id = id.clone();
@@ -157,7 +127,7 @@ fn section_buttons(edit: Edit, id: Id) -> impl IntoView {
 }
 
 #[component]
-fn SkillsEditor(cv: RwSignal<Option<Cv>>, edit: Edit, id: Id) -> impl IntoView {
+pub fn SkillsEditor(cv: RwSignal<Option<Cv>>, edit: Edit, id: Id) -> impl IntoView {
     let sid = id.clone();
     let groups = move || {
         cv.with(|c| {
@@ -304,7 +274,7 @@ fn GroupEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> imp
 }
 
 #[component]
-fn LanguagesEditor(cv: RwSignal<Option<Cv>>, edit: Edit, id: Id) -> impl IntoView {
+pub fn LanguagesEditor(cv: RwSignal<Option<Cv>>, edit: Edit, id: Id) -> impl IntoView {
     let sid = id.clone();
     let items = move || {
         cv.with(|c| {
