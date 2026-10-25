@@ -185,13 +185,37 @@ fn serve_once(body: &'static str) -> String {
     let url = format!("http://{}/v1", listener.local_addr().expect("addr"));
     std::thread::spawn(move || {
         let (mut stream, _) = listener.accept().expect("accept");
+        // Read the whole request first: closing a socket with unread
+        // bytes resets the connection on Windows before the reply lands.
+        let mut req = Vec::new();
         let mut buf = [0u8; 8192];
-        let _ = stream.read(&mut buf);
+        while let Ok(n) = stream.read(&mut buf) {
+            if n == 0 {
+                break;
+            }
+            req.extend_from_slice(&buf[..n]);
+            let text = String::from_utf8_lossy(&req);
+            if let Some(end) = text.find("\r\n\r\n") {
+                let len = text[..end]
+                    .lines()
+                    .find_map(|l| {
+                        let (k, v) = l.split_once(':')?;
+                        k.eq_ignore_ascii_case("content-length")
+                            .then(|| v.trim().parse::<usize>().ok())?
+                    })
+                    .unwrap_or(0);
+                if req.len() >= end + 4 + len {
+                    break;
+                }
+            }
+        }
         let reply = format!(
             "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
             body.len()
         );
         let _ = stream.write_all(reply.as_bytes());
+        let _ = stream.flush();
+        let _ = stream.shutdown(std::net::Shutdown::Write);
     });
     url
 }
