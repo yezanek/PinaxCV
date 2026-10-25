@@ -10,7 +10,7 @@ use serde_json::{Map, Value};
 use unicode_normalization::UnicodeNormalization;
 
 use crate::europass_map::parse_date;
-use crate::import::ImportError;
+use crate::import::{ImportError, MAX_INPUT};
 use crate::partial::{CvPartial, ImportResult, ImportWarning};
 
 /// Items kept per list (entries in a section, bullets in an entry, skills in
@@ -47,6 +47,9 @@ pub fn import_json_resume(
     bytes: &[u8],
     fresh: &mut dyn FnMut() -> Id,
 ) -> Result<ImportResult, ImportError> {
+    if bytes.len() > MAX_INPUT {
+        return Err(ImportError::TooLarge);
+    }
     let bytes = bytes.strip_prefix(b"\xEF\xBB\xBF").unwrap_or(bytes);
     let root: Value = serde_json::from_slice(bytes)
         .map_err(|_| ImportError::Malformed("The JSON file could not be read.".into()))?;
@@ -159,7 +162,7 @@ impl Mapper<'_> {
                 url,
             });
         }
-        for profile in objects(b.get("profiles")).take(MAX_ITEMS) {
+        for profile in self.cap(objects(b.get("profiles")), "profiles") {
             let Some(url) = line(profile, "url") else {
                 continue;
             };
@@ -174,7 +177,20 @@ impl Mapper<'_> {
         }
     }
 
+    /// The first [`MAX_ITEMS`] of `items`, with a warning when some are left
+    /// out.
+    fn cap<T>(&mut self, items: impl Iterator<Item = T>, what: &str) -> Vec<T> {
+        let mut all: Vec<T> = items.collect();
+        if all.len() > MAX_ITEMS {
+            self.warn(format!("Only the first {MAX_ITEMS} {what} were imported."));
+            all.truncate(MAX_ITEMS);
+        }
+        all
+    }
+
     /// Maps each object in `root[key]` with `f`, at most [`MAX_ITEMS`].
+    /// Entries with neither a title nor an organization are skipped with a
+    /// warning.
     fn entries(
         &mut self,
         root: &Map<String, Value>,
@@ -188,10 +204,18 @@ impl Mapper<'_> {
                 "Only the first {MAX_ITEMS} {what} entries were imported."
             ));
         }
-        all.into_iter()
-            .take(MAX_ITEMS)
-            .map(|o| f(self, o))
-            .collect()
+        let mut out = Vec::new();
+        for o in all.into_iter().take(MAX_ITEMS) {
+            let entry = f(self, o);
+            if entry.title.is_empty() && entry.org.is_empty() {
+                self.warn(format!(
+                    "Skipped an entry in \"{key}\": it has no title or organization."
+                ));
+                continue;
+            }
+            out.push(entry);
+        }
+        out
     }
 
     fn work(&mut self, o: &Map<String, Value>) -> Entry {
@@ -323,9 +347,9 @@ impl Mapper<'_> {
     fn skills(&mut self, root: &Map<String, Value>) -> Option<Section> {
         let mut groups = Vec::new();
         let mut loose = Vec::new();
-        for o in objects(root.get("skills")).take(MAX_ITEMS) {
+        for o in self.cap(objects(root.get("skills")), "skills") {
             let name = line(o, "name");
-            let keywords: Vec<String> = strings(o.get("keywords")).take(MAX_ITEMS).collect();
+            let keywords = self.cap(strings(o.get("keywords")), "keywords of a skill");
             if keywords.is_empty() {
                 // A skill without keywords is a skill, not a group label.
                 loose.extend(name);
@@ -368,8 +392,9 @@ impl Mapper<'_> {
     }
 
     fn languages(&mut self, root: &Map<String, Value>) -> Option<Section> {
-        let items: Vec<LanguageItem> = objects(root.get("languages"))
-            .take(MAX_ITEMS)
+        let items: Vec<LanguageItem> = self
+            .cap(objects(root.get("languages")), "languages")
+            .into_iter()
             .filter_map(|o| {
                 let name = line(o, "language")?;
                 Some(LanguageItem {
@@ -416,12 +441,18 @@ fn text(o: &Map<String, Value>, key: &str) -> Option<String> {
     clean(o.get(key)?.as_str()?, true)
 }
 
-/// NFC, without control characters, with runs of spaces collapsed, at most
+/// NFC, with whitespace controls as spaces (line breaks kept with
+/// `keep_lines`), other control characters dropped, runs of spaces collapsed, at most
 /// [`MAX_TEXT`] characters. `None` when nothing is left.
 fn clean(s: &str, keep_lines: bool) -> Option<String> {
     let nfc: String = s
         .nfc()
-        .filter(|c| !c.is_control() || (keep_lines && *c == '\n'))
+        .filter_map(|c| match c {
+            '\n' if keep_lines => Some('\n'),
+            c if c.is_whitespace() => Some(' '),
+            c if c.is_control() => None,
+            c => Some(c),
+        })
         .take(MAX_TEXT)
         .collect();
     let out = if keep_lines {
@@ -494,7 +525,7 @@ mod tests {
     fn wrong_types_are_skipped_not_fatal() {
         let r = import(
             r#"{"basics": {"name": 7, "email": ["x"]}, "work": "none", "skills": [1, null, {"name": ["x"]}],
-                "education": [{"institution": {"a": 1}, "startDate": 2020}]}"#,
+                "education": [{"institution": {"a": 1}, "area": "Physics", "startDate": 2020}]}"#,
         )
         .expect("imports");
         assert_eq!(r.cv_partial.full_name, None);
@@ -507,11 +538,65 @@ mod tests {
         assert_eq!(clean("e\u{301}", false).as_deref(), Some("\u{e9}"));
         assert_eq!(clean("one\n\n two ", true).as_deref(), Some("one\n\ntwo"));
         assert_eq!(clean(" \u{7} ", false), None);
+        assert_eq!(clean("a\tb\nc", false).as_deref(), Some("a b c"));
+        assert_eq!(clean("a\tb\r\nc", true).as_deref(), Some("a b\nc"));
         let long = "x".repeat(MAX_TEXT + 5);
         assert_eq!(
             clean(&long, false).map(|s| s.chars().count()),
             Some(MAX_TEXT)
         );
+    }
+
+    #[test]
+    fn entries_without_title_or_org_are_skipped_with_a_warning() {
+        let r = import(r#"{"work": [{"summary": "x"}, {"name": "Acme"}]}"#).expect("imports");
+        let Section::Experience(x) = &r.cv_partial.sections[0] else {
+            panic!("experience");
+        };
+        assert_eq!(x.entries.len(), 1);
+        assert!(
+            r.warnings
+                .iter()
+                .any(|w| w.message.contains("no title or organization"))
+        );
+    }
+
+    #[test]
+    fn input_over_the_size_cap_is_too_large() {
+        let mut big = br#"{"basics": {"summary": ""#.to_vec();
+        big.resize(MAX_INPUT + 1, b'x');
+        assert!(matches!(
+            import_json_resume(&big, &mut ids()),
+            Err(ImportError::TooLarge)
+        ));
+    }
+
+    #[test]
+    fn every_list_cap_warns() {
+        let n = MAX_ITEMS + 1;
+        let profiles: Vec<String> = (0..n)
+            .map(|i| format!(r#"{{"url": "https://e.com/{i}"}}"#))
+            .collect();
+        let langs: Vec<String> = (0..n)
+            .map(|i| format!(r#"{{"language": "L{i}"}}"#))
+            .collect();
+        let words: Vec<String> = (0..n).map(|i| format!(r#""k{i}""#)).collect();
+        let json = format!(
+            r#"{{"basics": {{"profiles": [{}]}}, "languages": [{}], "skills": [{{"name": "G", "keywords": [{}]}}]}}"#,
+            profiles.join(","),
+            langs.join(","),
+            words.join(",")
+        );
+        let r = import(&json).expect("imports");
+        for what in ["profiles", "languages", "keywords of a skill"] {
+            assert!(
+                r.warnings
+                    .iter()
+                    .any(|w| w.message.contains(&format!("first {MAX_ITEMS} {what}"))),
+                "{what}"
+            );
+        }
+        assert_eq!(r.cv_partial.links.len(), MAX_ITEMS);
     }
 
     #[test]
