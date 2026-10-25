@@ -158,6 +158,24 @@ fn AppSection(
             }
         });
     };
+    let licences: RwSignal<Option<String>> = RwSignal::new(None);
+    let show_licences = move |_| {
+        if licences.with_untracked(Option::is_some) {
+            licences.set(None);
+            return;
+        }
+        error.set(None);
+        spawn_local(async move {
+            match call::<_, String>("third_party_licenses", &NoArgs {}).await {
+                Ok(text) => {
+                    let _ = licences.try_set(Some(text));
+                }
+                Err(e) => {
+                    let _ = error.try_set(Some(error_message(&e)));
+                }
+            }
+        });
+    };
     let open_folder = move |_| {
         error.set(None);
         spawn_local(async move {
@@ -248,6 +266,14 @@ fn AppSection(
             <p>{fill(t().about_license, &[("license", &st.license)])}</p>
         })}
         <p>{s.about_fonts}</p>
+        <p class="actions">
+            <button aria-expanded=move || licences.with(Option::is_some).to_string() on:click=show_licences>
+                {move || if licences.with(Option::is_some) { t().about_licences_hide } else { t().about_licences_show }}
+            </button>
+        </p>
+        {move || licences.get().map(|text| view! {
+            <textarea class="licences" rows="16" readonly=true aria-label=t().about_licences_label prop:value=text></textarea>
+        })}
         <p class="hint">{s.about_privacy}</p>
         <p class="error" role="alert">{move || error.get()}</p>
     }

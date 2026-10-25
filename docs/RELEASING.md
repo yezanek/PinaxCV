@@ -23,6 +23,8 @@ Artifacts:
 - HTML standalone/export tests
 - clean-install smoke tests
 - backup/restore test
+- `python3 scripts/third_party_licenses.py --check` (every shipped licence is compatible with Apache-2.0; run without `--check` after a dependency change)
+- `PRIVACY.md` still matches what the app stores and sends
 - updater test
 - manual pass in a Windows 11 evaluation VM (before 1.0 and each major release)
 

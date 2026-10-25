@@ -505,6 +505,13 @@ pub async fn delete_all_data(app: Shared<'_>) -> Reply<()> {
     run(app, App::delete_all_data).await
 }
 
+/// The licences of the fonts and crates the app ships
+/// (`THIRD_PARTY_LICENSES.md`, generated from `Cargo.lock`).
+#[tauri::command]
+pub fn third_party_licenses() -> &'static str {
+    include_str!("../../THIRD_PARTY_LICENSES.md")
+}
+
 /// Opens the data folder in the system's file manager.
 #[tauri::command]
 pub async fn open_data_dir(app: Shared<'_>) -> Reply<()> {

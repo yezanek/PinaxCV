@@ -53,6 +53,11 @@ jobs:
       - name: Dependency boundaries
         shell: bash
         run: scripts/check-boundaries.sh
+      # Every shipped crate must stay compatible with Apache-2.0, and the
+      # licence list must match Cargo.lock (ADR-082).
+      - name: Third-party licences
+        if: runner.os == 'Linux'
+        run: python3 scripts/third_party_licenses.py --check
 
   # End-to-end smoke test through tauri-driver (spec section 14, ADR-057).
   e2e:

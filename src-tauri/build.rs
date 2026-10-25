@@ -47,6 +47,7 @@ const COMMANDS: &[&str] = &[
     "restore_db",
     "clear_ai_cache",
     "delete_all_data",
+    "third_party_licenses",
 ];
 
 fn main() {
