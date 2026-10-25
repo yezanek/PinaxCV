@@ -70,6 +70,15 @@ fn details(cv: &CvSummary) -> String {
     parts.join(" · ")
 }
 
+/// A deleted CV that can still be restored from its toast.
+#[derive(Clone)]
+struct Deleted {
+    key: u64,
+    id: Id,
+    title: String,
+    restoring: bool,
+}
+
 #[component]
 pub fn CvList(open: RwSignal<Option<Id>>) -> impl IntoView {
     let cvs: RwSignal<Vec<CvSummary>> = RwSignal::new(Vec::new());
@@ -77,18 +86,29 @@ pub fn CvList(open: RwSignal<Option<Id>>) -> impl IntoView {
     let title = RwSignal::new(String::new());
     // Guards against a double click creating two CVs.
     let creating = RwSignal::new(false);
-    // The last deleted CV, while its Undo toast shows, and a counter so an
-    // older toast's timer does not hide a newer one.
-    let deleted: RwSignal<Option<(Id, String)>> = RwSignal::new(None);
-    let toasts = RwSignal::new(0u64);
+    // Deleted CVs whose Undo toast still shows, each with its own key.
+    let deleted: RwSignal<Vec<Deleted>> = RwSignal::new(Vec::new());
+    let toasts = StoredValue::new(0u64);
+    // Only the latest list request may set the list.
+    let loads = StoredValue::new(0u64);
     // The open import, while the wizard shows; `choosing` while the file
     // dialog is open.
     let importing: RwSignal<Option<ImportPreview>> = RwSignal::new(None);
     let choosing = RwSignal::new(false);
 
     let reload = move || {
+        let Some(n) = loads.try_update_value(|n| {
+            *n += 1;
+            *n
+        }) else {
+            return;
+        };
         spawn_local(async move {
-            match call::<_, Vec<CvSummary>>("list_cvs", &NoArgs {}).await {
+            let result = call::<_, Vec<CvSummary>>("list_cvs", &NoArgs {}).await;
+            if loads.try_get_value() != Some(n) {
+                return;
+            }
+            match result {
                 Ok(list) => {
                     let _ = cvs.try_set(list);
                 }
@@ -97,6 +117,15 @@ pub fn CvList(open: RwSignal<Option<Id>>) -> impl IntoView {
                 }
             }
         });
+    };
+    // Hides a toast after the undo time, unless its restore is running.
+    let expire = move |key: u64| {
+        set_timeout(
+            move || {
+                let _ = deleted.try_update(|d| d.retain(|x| x.key != key || x.restoring));
+            },
+            UNDO_TIME,
+        );
     };
     reload();
 
@@ -140,18 +169,22 @@ pub fn CvList(open: RwSignal<Option<Id>>) -> impl IntoView {
             let result: Result<(), ApiError> = call("delete_cv", &IdArg { id: &id }).await;
             match result {
                 Ok(()) => {
-                    let n = toasts.get_untracked() + 1;
-                    toasts.set(n);
-                    deleted.set(Some((id, title)));
+                    let Some(key) = toasts.try_update_value(|n| {
+                        *n += 1;
+                        *n
+                    }) else {
+                        return;
+                    };
+                    let _ = deleted.try_update(|d| {
+                        d.push(Deleted {
+                            key,
+                            id,
+                            title,
+                            restoring: false,
+                        })
+                    });
                     reload();
-                    set_timeout(
-                        move || {
-                            if toasts.try_get_untracked() == Some(n) {
-                                deleted.set(None);
-                            }
-                        },
-                        UNDO_TIME,
-                    );
+                    expire(key);
                 }
                 Err(e) => {
                     let _ = error.try_set(Some(error_message(&e)));
@@ -160,17 +193,35 @@ pub fn CvList(open: RwSignal<Option<Id>>) -> impl IntoView {
         });
     };
 
-    let undo_delete = move |_| {
-        let Some((id, _)) = deleted.get_untracked() else {
+    // Restores one deleted CV. Its toast stays until the restore succeeds,
+    // so a failed one can be tried again.
+    let undo_delete = move |key: u64| {
+        let mut id = None;
+        deleted.update(|d| {
+            if let Some(x) = d.iter_mut().find(|x| x.key == key && !x.restoring) {
+                x.restoring = true;
+                id = Some(x.id.clone());
+            }
+        });
+        let Some(id) = id else {
             return;
         };
-        deleted.set(None);
+        error.set(None);
         spawn_local(async move {
             let result: Result<(), ApiError> = call("restore_cv", &IdArg { id: &id }).await;
             match result {
-                Ok(()) => reload(),
+                Ok(()) => {
+                    let _ = deleted.try_update(|d| d.retain(|x| x.key != key));
+                    reload();
+                }
                 Err(e) => {
+                    let _ = deleted.try_update(|d| {
+                        if let Some(x) = d.iter_mut().find(|x| x.key == key) {
+                            x.restoring = false;
+                        }
+                    });
                     let _ = error.try_set(Some(error_message(&e)));
+                    expire(key);
                 }
             }
         });
@@ -235,12 +286,14 @@ pub fn CvList(open: RwSignal<Option<Id>>) -> impl IntoView {
                     </For>
                 </ul>
             </main>
-            <Show when=move || deleted.with(Option::is_some)>
-                <div class="toast" role="status">
-                    <span>{move || deleted.with(|d| d.as_ref().map(|(_, title)| fill(s.deleted_cv, &[("title", title)])))}</span>
-                    <button on:click=undo_delete>{s.undo}</button>
-                </div>
-            </Show>
+            <div class="toasts" role="status">
+                <For each=move || deleted.get() key=|d| (d.key, d.restoring) let:d>
+                    <div class="toast">
+                        <span>{fill(s.deleted_cv, &[("title", &d.title)])}</span>
+                        <button prop:disabled=d.restoring on:click=move |_| undo_delete(d.key)>{s.undo}</button>
+                    </div>
+                </For>
+            </div>
         }
         .into_any()
     };
