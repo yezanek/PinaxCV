@@ -372,11 +372,6 @@ impl App {
         Ok(())
     }
 
-    /// The model name in the settings, part of every cache key.
-    pub(crate) fn ai_model(&self) -> Result<String> {
-        Ok(self.ai_status()?.model)
-    }
-
     /// Builds the provider from the settings and the saved key, or clears it
     /// when AI is not configured.
     fn rebuild_llm(&self) -> Result<()> {
