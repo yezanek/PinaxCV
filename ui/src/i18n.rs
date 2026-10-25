@@ -310,6 +310,7 @@ pub struct Strings {
     pub stage_review: &'static str,
     pub stage_working: &'static str,
     /// `{n}`.
+    pub tailor_done_one: &'static str,
     pub tailor_done: &'static str,
     pub tailor_nothing: &'static str,
     pub tailor_cancelled: &'static str,
@@ -675,6 +676,7 @@ pub static EN: Strings = Strings {
     stage_gaps: "Looking for what the job asks and your CV does not show…",
     stage_review: "Reviewing your CV…",
     stage_working: "Working…",
+    tailor_done_one: "1 suggestion is ready for review. Nothing changes until you accept it.",
     tailor_done: "{n} suggestions are ready for review. Nothing changes until you accept them.",
     tailor_nothing: "Tailoring found nothing to change.",
     tailor_cancelled: "Tailoring was cancelled.",
