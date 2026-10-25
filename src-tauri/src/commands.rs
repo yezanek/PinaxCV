@@ -4,11 +4,12 @@
 use std::sync::Arc;
 
 use cv_api::{
-    AppSettings, CvDefaults, AiConfig, AiImport, AiReview, AiStatus, AiTailor, ApiError, DuplicateCv, DuplicateVariant,
-    ErrorCode, ExportHtmlRequest, ExportPdfRequest, ExportResult, FitOutcome, FitVariant,
-    ImportCommit, ImportMatch, ImportMatchRequest, ImportPreview, ImportText, ImportTextSource,
-    JobId, NewCv, NewVariant, PreviewRequest, PreviewResponse, PruneResult, ReviewDecide,
-    ReviewDecided, ReviewSession, SaveCv, SaveVariant, Target, TemplateManifest,
+    AiConfig, AiImport, AiReview, AiStatus, AiTailor, ApiError, AppSettings, CvDefaults,
+    DuplicateCv, DuplicateVariant, ErrorCode, ExportHtmlRequest, ExportPdfRequest, ExportResult,
+    FitOutcome, FitVariant, ImportCommit, ImportMatch, ImportMatchRequest, ImportPreview,
+    ImportText, ImportTextSource, JobId, NewCv, NewVariant, PreviewRequest, PreviewResponse,
+    PruneResult, ReviewDecide, ReviewDecided, ReviewSession, SaveCv, SaveVariant, Target,
+    TemplateManifest,
 };
 use cv_app::App;
 use cv_core::{AtsReport, CvSummary, Id, LintIssue, StoredCv, StoredVariant, VariantSummary};
