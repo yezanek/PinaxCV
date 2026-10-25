@@ -23,8 +23,9 @@ use crate::review::{summary_suggestion, year_now};
 use crate::{App, JobContext, JobEvents, Result, llm_error, store_error};
 
 /// The `ai_cache` table as the stages' cache. A failing read is a miss and
-/// a failing write is skipped: the provider is only asked again.
-pub(crate) struct StoreCache<'a>(pub(crate) &'a dyn Store);
+/// a failing write is skipped: the provider is only asked again. Both run on
+/// the blocking pool, like the job's other store work.
+pub(crate) struct StoreCache(pub(crate) Arc<App>);
 
 #[async_trait::async_trait]
 impl ResponseCache for StoreCache {
