@@ -34,6 +34,10 @@ pub const MAX_TEXT: usize = 10_000;
 const LONG_PARAGRAPH: usize = 300;
 /// File names listed in the "not used" warning.
 const LISTED_UNUSED: usize = 10;
+/// Characters of a file name shown in a warning.
+const NAME_IN_WARNING: usize = 100;
+/// Rows searched for the header; LinkedIn's notes preamble is a few lines.
+const HEADER_SEARCH: usize = 20;
 
 /// The CSVs the importer reads.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -127,19 +131,24 @@ fn read_csvs(bytes: &[u8]) -> Result<Csvs, ImportError> {
     let mut unused = Vec::new();
     let mut total = 0u64;
     for i in 0..zip.len() {
-        let mut file = zip
-            .by_index(i)
-            .map_err(|_| malformed("A file inside the ZIP could not be read."))?;
-        let name = file
-            .name()
-            .map_err(|_| malformed("The ZIP file has a file name that could not be read."))?
-            .into_owned();
+        // Names are checked without decompressing, so a file that is never
+        // read can't fail the import with a codec this build doesn't have.
+        let (name, is_dir) = {
+            let file = zip
+                .by_index_raw(i)
+                .map_err(|_| malformed("A file inside the ZIP could not be read."))?;
+            let name = file
+                .name()
+                .map_err(|_| malformed("The ZIP file has a file name that could not be read."))?
+                .into_owned();
+            (name, file.is_dir())
+        };
         if !safe_path(&name) {
             return Err(malformed(
                 "The ZIP file contains a file with an unsafe path, so it was not opened.",
             ));
         }
-        if file.is_dir() {
+        if is_dir {
             continue;
         }
         let base = name.rsplit(['/', '\\']).next().unwrap_or_default();
@@ -148,12 +157,15 @@ fn read_csvs(bytes: &[u8]) -> Result<Csvs, ImportError> {
             .find(|(f, _)| base.eq_ignore_ascii_case(f))
             .map(|(_, k)| *k)
         else {
-            unused.push(base.to_owned());
+            unused.push(name_for_warning(base));
             continue;
         };
         if tables.contains_key(&kind) {
             continue;
         }
+        let mut file = zip
+            .by_index(i)
+            .map_err(|_| malformed("A file inside the ZIP could not be read."))?;
         let mut data = Vec::new();
         (&mut file)
             .take(MAX_CSV + 1)
@@ -176,6 +188,13 @@ fn read_csvs(bytes: &[u8]) -> Result<Csvs, ImportError> {
     Ok(Csvs { tables, unused })
 }
 
+/// A file name from the archive, cleaned and shortened for a warning.
+fn name_for_warning(name: &str) -> String {
+    clean(name, false)
+        .map(|n| n.chars().take(NAME_IN_WARNING).collect())
+        .unwrap_or_else(|| "(unnamed file)".into())
+}
+
 /// Relative, without `..`, drive letters or NUL.
 fn safe_path(name: &str) -> bool {
     !name.is_empty()
@@ -188,46 +207,92 @@ fn safe_path(name: &str) -> bool {
 #[derive(Default)]
 struct Table {
     rows: Vec<HashMap<String, String>>,
+    /// Rows past [`MAX_ROWS`] were dropped.
+    truncated: bool,
+    /// Reading stopped at a row the CSV parser could not read.
+    unreadable: bool,
+    /// The file had rows, but none of them looked like a header.
+    no_header: bool,
 }
 
 impl Table {
-    /// The header row is the first row with a column this kind expects;
-    /// LinkedIn puts a notes preamble before it in some files.
+    /// The header is the row, among the first [`HEADER_SEARCH`], with the
+    /// most columns this kind expects, the earliest on a tie. LinkedIn puts
+    /// a notes preamble before it in some files, and a preamble line that
+    /// happens to match one column must not win over the real header.
     fn parse(data: &[u8], kind: Kind) -> Self {
         let data = data.strip_prefix(b"\xEF\xBB\xBF").unwrap_or(data);
         let mut reader = csv::ReaderBuilder::new()
             .has_headers(false)
             .flexible(true)
             .from_reader(data);
-        let mut header: Option<Vec<String>> = None;
-        let mut rows = Vec::new();
+        let mut table = Self::default();
+        let mut records: Vec<Vec<String>> = Vec::new();
+        let mut hit_cap = false;
         for record in reader.byte_records() {
             let Ok(record) = record else {
+                table.unreadable = true;
                 break;
             };
-            let cells: Vec<String> = record
-                .iter()
-                .map(|c| String::from_utf8_lossy(c).into_owned())
-                .collect();
-            match &header {
-                None => {
-                    let names: Vec<String> = cells
-                        .iter()
-                        .map(|c| c.trim().trim_start_matches('\u{feff}').to_lowercase())
-                        .collect();
-                    if names.iter().any(|n| known_column(kind, n)) {
-                        header = Some(names);
-                    }
-                }
-                Some(names) => {
-                    if rows.len() == MAX_ROWS {
-                        break;
-                    }
-                    rows.push(names.iter().cloned().zip(cells).collect());
-                }
+            if records.len() == HEADER_SEARCH + MAX_ROWS {
+                hit_cap = true;
+                break;
             }
+            records.push(
+                record
+                    .iter()
+                    .map(|c| String::from_utf8_lossy(c).into_owned())
+                    .collect(),
+            );
         }
-        Self { rows }
+        let header_name = |c: &String| c.trim().trim_start_matches('\u{feff}').to_lowercase();
+        let best = records
+            .iter()
+            .take(HEADER_SEARCH)
+            .enumerate()
+            .map(|(i, cells)| {
+                let known = cells
+                    .iter()
+                    .filter(|c| known_column(kind, &header_name(c)))
+                    .count();
+                (known, i)
+            })
+            .filter(|(known, _)| *known > 0)
+            .max_by_key(|(known, i)| (*known, std::cmp::Reverse(*i)));
+        let Some((_, at)) = best else {
+            table.no_header = !records.is_empty();
+            return table;
+        };
+        let mut records = records.into_iter().skip(at);
+        let names: Vec<String> = records
+            .next()
+            .unwrap_or_default()
+            .iter()
+            .map(header_name)
+            .collect();
+        let data: Vec<Vec<String>> = records.collect();
+        table.truncated = hit_cap || data.len() > MAX_ROWS;
+        table.rows = data
+            .into_iter()
+            .take(MAX_ROWS)
+            .map(|cells| names.iter().cloned().zip(cells).collect())
+            .collect();
+        table
+    }
+}
+
+/// The file name shown in warnings for each kind.
+fn file_name(kind: Kind) -> &'static str {
+    match kind {
+        Kind::Profile => "Profile.csv",
+        Kind::Positions => "Positions.csv",
+        Kind::Education => "Education.csv",
+        Kind::Skills => "Skills.csv",
+        Kind::Languages => "Languages.csv",
+        Kind::Certifications => "Certifications.csv",
+        Kind::Projects => "Projects.csv",
+        Kind::Emails => "Email Addresses.csv",
+        Kind::Phones => "PhoneNumbers.csv",
     }
 }
 
@@ -307,12 +372,18 @@ fn get_text(row: &HashMap<String, String>, column: &str) -> Option<String> {
     row.get(column).and_then(|v| clean(v, true))
 }
 
-/// NFC, without control characters, with runs of spaces collapsed, at most
+/// NFC, with whitespace (other than kept line breaks) turned into spaces,
+/// without other control characters, with runs of spaces collapsed, at most
 /// [`MAX_TEXT`] characters. `None` when nothing is left.
 fn clean(s: &str, keep_lines: bool) -> Option<String> {
     let nfc: String = s
         .nfc()
-        .filter(|c| !c.is_control() || (keep_lines && *c == '\n'))
+        .filter_map(|c| match c {
+            '\n' if keep_lines => Some('\n'),
+            c if c.is_whitespace() => Some(' '),
+            c if c.is_control() => None,
+            c => Some(c),
+        })
         .take(MAX_TEXT)
         .collect();
     let out = if keep_lines {
@@ -423,11 +494,28 @@ impl Mapper<'_> {
         self.warnings.push(ImportWarning::new(message));
     }
 
+    /// The rows of one CSV, warning once for anything that was skipped.
     fn rows(&mut self, kind: Kind) -> Vec<HashMap<String, String>> {
-        self.tables
-            .remove(&kind)
-            .map(|t| t.rows)
-            .unwrap_or_default()
+        let Some(table) = self.tables.remove(&kind) else {
+            return Vec::new();
+        };
+        let file = file_name(kind);
+        if table.no_header {
+            self.warn(format!(
+                "{file} was skipped because its column headers were not found."
+            ));
+        }
+        if table.unreadable {
+            self.warn(format!(
+                "Part of {file} could not be read, so the rows after it were skipped."
+            ));
+        }
+        if table.truncated {
+            self.warn(format!(
+                "Only the first {MAX_ROWS} rows of {file} were imported."
+            ));
+        }
+        table.rows
     }
 
     fn map(&mut self) -> ImportResult {
@@ -494,7 +582,8 @@ impl Mapper<'_> {
         }
     }
 
-    /// The primary confirmed address, else the first confirmed, else the first.
+    /// The primary confirmed address, else the first confirmed one. An
+    /// unconfirmed address may be stale, so it is never used.
     fn email(&mut self) -> Option<String> {
         let rows = self.rows(Kind::Emails);
         let pick = |want_primary: bool, want_confirmed: bool| {
@@ -504,9 +593,7 @@ impl Mapper<'_> {
                 ok.then(|| get(r, "email address")).flatten()
             })
         };
-        pick(true, true)
-            .or_else(|| pick(false, true))
-            .or_else(|| pick(false, false))
+        pick(true, true).or_else(|| pick(false, true))
     }
 
     fn date(
@@ -782,6 +869,53 @@ mod tests {
         assert_eq!(get(&t.rows[0], "finished on"), None);
         let aliased = Table::parse(b"Company,Position\nAcme,Engineer\n", Kind::Positions);
         assert_eq!(get(&aliased.rows[0], "title").as_deref(), Some("Engineer"));
+    }
+
+    #[test]
+    fn the_header_with_the_most_known_columns_wins() {
+        let t = Table::parse(b"Name\nName,Proficiency\nFrench,Native\n", Kind::Languages);
+        assert_eq!(t.rows.len(), 1);
+        assert_eq!(get(&t.rows[0], "name").as_deref(), Some("French"));
+        assert_eq!(get(&t.rows[0], "proficiency").as_deref(), Some("Native"));
+        let skills = Table::parse(b"Name\nRust\nName\n", Kind::Skills);
+        assert_eq!(skills.rows.len(), 2);
+    }
+
+    #[test]
+    fn skipped_rows_and_missing_headers_are_flagged() {
+        let mut csv = b"Name\n".to_vec();
+        for i in 0..=MAX_ROWS {
+            csv.extend_from_slice(format!("Skill {i}\n").as_bytes());
+        }
+        let t = Table::parse(&csv, Kind::Skills);
+        assert_eq!(t.rows.len(), MAX_ROWS);
+        assert!(t.truncated);
+        let exact = Table::parse(&csv[..csv.len() - "Skill 500\n".len()], Kind::Skills);
+        assert_eq!(exact.rows.len(), MAX_ROWS);
+        assert!(!exact.truncated);
+        let none = Table::parse(b"foo,bar\n1,2\n", Kind::Profile);
+        assert!(none.no_header && none.rows.is_empty());
+        assert!(!Table::parse(b"", Kind::Profile).no_header);
+    }
+
+    #[test]
+    fn whitespace_controls_separate_words() {
+        assert_eq!(
+            clean("Site\tReliability", false).as_deref(),
+            Some("Site Reliability")
+        );
+        assert_eq!(clean("a\nb\u{7}c", false).as_deref(), Some("a bc"));
+        assert_eq!(clean("a\tb\r\nc", true).as_deref(), Some("a b\nc"));
+    }
+
+    #[test]
+    fn file_names_in_warnings_are_cleaned_and_short() {
+        assert_eq!(name_for_warning("bad\u{1b}[31mname.txt"), "bad[31mname.txt");
+        assert_eq!(
+            name_for_warning(&"x".repeat(5000)).chars().count(),
+            NAME_IN_WARNING
+        );
+        assert_eq!(name_for_warning("\u{7}"), "(unnamed file)");
     }
 
     #[test]

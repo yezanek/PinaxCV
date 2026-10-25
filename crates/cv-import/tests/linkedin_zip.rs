@@ -162,3 +162,35 @@ fn other_zips_are_unsupported() {
         Err(ImportError::UnsupportedFormat(_))
     ));
 }
+
+#[test]
+fn skipped_rows_and_files_are_reported() {
+    let mut skills = b"Name\n".to_vec();
+    for i in 0..600 {
+        skills.extend_from_slice(format!("Skill {i}\n").as_bytes());
+    }
+    let zip = zip_of(&[
+        ("Skills.csv", &skills),
+        ("Profile.csv", b"Something,Else\n1,2\n"),
+    ]);
+    let r = import_linkedin_zip(&zip, &mut ids()).expect("imports");
+    let messages: Vec<&str> = r.warnings.iter().map(|w| w.message.as_str()).collect();
+    assert!(
+        messages.contains(&"Only the first 500 rows of Skills.csv were imported."),
+        "{messages:?}"
+    );
+    assert!(
+        messages.contains(&"Profile.csv was skipped because its column headers were not found."),
+        "{messages:?}"
+    );
+}
+
+#[test]
+fn an_unconfirmed_email_is_not_used() {
+    let zip = zip_of(&[(
+        "Email Addresses.csv",
+        b"Email Address,Confirmed,Primary,Updated On\nstale@example.org,No,Yes,\n",
+    )]);
+    let r = import_linkedin_zip(&zip, &mut ids()).expect("imports");
+    assert_eq!(r.cv_partial.email, None);
+}
