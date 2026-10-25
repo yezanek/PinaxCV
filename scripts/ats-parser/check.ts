@@ -50,13 +50,22 @@ type Fixture = {
   sections: { type: string; entries?: Entry[] }[];
 };
 
-// Fixtures this parser cannot read back, and why. They are reported but do
-// not fail the check; every other fixture must parse back completely.
-const KNOWN_LIMITS: Record<string, string> = {
-  cjk: "Inter has no CJK glyphs (ADR-033), so the export itself warns",
-  long: "OpenResume ignores job titles that contain digits (\"Engineer level 6\")",
-  unicode: "OpenResume recognises job titles from an English word list only",
-  special_chars: "OpenResume's name pattern allows letters, spaces and full stops only",
+type Field = "name" | "email" | "phone" | "job" | "school";
+
+// Fields this parser cannot read back in some fixtures, and why. A miss in a
+// listed field is reported but does not fail the check; a miss in any other
+// field, or in any other fixture, does.
+const KNOWN_LIMITS: Record<string, { fields: Field[]; reason: string }> = {
+  cjk: {
+    fields: ["name", "email", "phone", "job", "school"],
+    reason: "Inter has no CJK glyphs (ADR-033), so the export itself warns",
+  },
+  long: { fields: ["job"], reason: "OpenResume ignores job titles that contain digits (\"Engineer level 6\")" },
+  unicode: { fields: ["job"], reason: "OpenResume recognises job titles from an English word list only" },
+  special_chars: {
+    fields: ["name", "job"],
+    reason: "OpenResume's name pattern allows letters, spaces and full stops only, and its job titles come from an English word list",
+  },
 };
 
 const squash = (s: string | null | undefined) => (s ?? "").replace(/\s+/g, " ").trim().toLowerCase();
@@ -75,32 +84,39 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith(".pdf")).sort()) {
     for (const line of lines) console.log(JSON.stringify(line.map((i) => [i.text, i.fontName])));
   }
   const resume = extractResumeFromSections(groupLinesIntoSections(lines));
-  const problems: string[] = [];
-  const expect = (what: string, ok: boolean, got: unknown) => {
-    if (!ok) problems.push(`${what}: got ${JSON.stringify(got)}`);
+  const problems: { field: Field; text: string }[] = [];
+  const expect = (field: Field, what: string, ok: boolean, got: unknown) => {
+    if (!ok) problems.push({ field, text: `${what}: got ${JSON.stringify(got)}` });
   };
   const b = cv.basics;
-  if (b.full_name) expect("name", squash(resume.profile.name) === squash(b.full_name), resume.profile.name);
-  if (b.email) expect("email", squash(resume.profile.email) === squash(b.email), resume.profile.email);
+  if (b.full_name) expect("name", "name", squash(resume.profile.name) === squash(b.full_name), resume.profile.name);
+  if (b.email) expect("email", "email", squash(resume.profile.email) === squash(b.email), resume.profile.email);
   // OpenResume reads US-style ten-digit numbers only.
   if (b.phone && /^1?\d{10}$/.test(digits(b.phone))) {
-    expect("phone", digits(resume.profile.phone).endsWith(digits(b.phone).slice(-10)), resume.profile.phone);
+    const ok = digits(resume.profile.phone).endsWith(digits(b.phone).slice(-10));
+    expect("phone", "phone", ok, resume.profile.phone);
   }
   const entries = (type: string) => cv.sections.filter((s) => s.type === type).flatMap((s) => s.entries ?? []);
-  const jobs = resume.workExperiences.map((w) => `${squash(w.jobTitle)} | ${squash(w.company)}`);
+  // Each field is compared on its own, so a title read as the company (or
+  // the other way round) is still a miss.
   for (const e of entries("experience")) {
-    const found = jobs.some((j) => j.includes(squash(e.title)) && j.includes(squash(e.org)));
-    expect(`job "${e.title}" at "${e.org}"`, found, jobs);
+    const found = resume.workExperiences.some(
+      (w) => squash(w.jobTitle).includes(squash(e.title)) && squash(w.company).includes(squash(e.org)),
+    );
+    const got = resume.workExperiences.map((w) => ({ title: w.jobTitle, company: w.company }));
+    expect("job", `job "${e.title}" at "${e.org}"`, found, got);
   }
-  const schools = resume.educations.map((e) => `${squash(e.school)} | ${squash(e.degree)}`);
   for (const e of entries("education")) {
-    expect(`school "${e.org}"`, schools.some((s) => s.includes(squash(e.org))), schools);
+    const found = resume.educations.some((s) => squash(s.school).includes(squash(e.org)));
+    expect("school", `school "${e.org}"`, found, resume.educations.map((s) => s.school));
   }
   const known = KNOWN_LIMITS[name];
-  const status = problems.length === 0 ? "ok  " : known ? "known" : "FAIL";
-  console.log(`${status} ${name}${problems.length && known ? ` (${known})` : ""}`);
-  for (const p of problems) console.log(`     ${p}`);
-  failures += problems.length && !known ? 1 : 0;
+  const excused = (field: Field) => known?.fields.includes(field) ?? false;
+  const unexpected = problems.filter((p) => !excused(p.field));
+  const status = problems.length === 0 ? "ok  " : unexpected.length === 0 ? "known" : "FAIL";
+  console.log(`${status} ${name}${problems.length && known ? ` (${known.reason})` : ""}`);
+  for (const p of problems) console.log(`     ${excused(p.field) ? "known: " : ""}${p.text}`);
+  failures += unexpected.length ? 1 : 0;
 }
 if (failures) {
   console.error(`${failures} fixture(s) did not parse back`);
