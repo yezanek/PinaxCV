@@ -324,12 +324,15 @@ impl App {
     }
 
     async fn extract(self: &Arc<Self>, ctx: &JobContext, req: AiImport) -> Result<ImportPreview> {
-        let llm = self.llm()?;
-        let model = self.ai_model()?;
+        let (llm, status) = self
+            .blocking(|app| Ok((app.llm()?, app.ai_status()?)))
+            .await?;
+        let model = status.model;
         let (original, sent) = self.texts.get(req.text_id)?;
+        let cache = StoreCache(Arc::clone(self));
         let stage = StageContext {
             llm: llm.as_ref(),
-            cache: &StoreCache(self.store.as_ref()),
+            cache: &cache,
             model: &model,
             cancel: ctx.cancel.clone(),
         };
