@@ -122,6 +122,17 @@ fn keys_go_to_the_keychain_and_never_to_the_database() {
 }
 
 #[test]
+fn turning_ai_off_stores_no_key() {
+    let keychain = FakeKeychain::default();
+    let app = app(Some(keychain.clone()));
+    let s = app
+        .ai_configure(config(AiProvider::None, "", Some("left-in-the-form")))
+        .expect("off");
+    assert!(!s.configured);
+    assert!(keychain.0.lock().expect("lock").is_empty());
+}
+
+#[test]
 fn without_a_keychain_keys_live_in_memory_for_the_session() {
     let app = app(None);
     let s = app
