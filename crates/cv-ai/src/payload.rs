@@ -196,17 +196,29 @@ pub fn period(p: &Period) -> Option<String> {
 }
 
 /// The city and country of a free-text location: its last two comma-separated
-/// parts, without words holding digits (street numbers, postcodes).
+/// parts, with streets dropped. A part is a street when a word after its
+/// first holds a digit ("Hauptstraße 5") or when it starts with a house
+/// number ("221B Baker Street"); a leading postcode of 4 to 6 digits is
+/// dropped and the rest kept ("10115 Berlin"). An unusual format loses the
+/// city rather than sending more.
 pub fn city_country(location: &str) -> Option<String> {
+    let digits = |w: &str| w.chars().any(|c| c.is_ascii_digit());
+    let postcode = |w: &str| (4..=6).contains(&w.len()) && w.chars().all(|c| c.is_ascii_digit());
     let parts: Vec<String> = location
         .split(',')
-        .map(|part| {
-            part.split_whitespace()
-                .filter(|w| !w.chars().any(|c| c.is_ascii_digit()))
-                .collect::<Vec<_>>()
-                .join(" ")
+        .filter_map(|part| {
+            let words: Vec<&str> = part.split_whitespace().collect();
+            let (first, rest) = words.split_first()?;
+            if rest.iter().any(|w| digits(w)) {
+                return None;
+            }
+            let kept = match (digits(first), postcode(first)) {
+                (false, _) => words.join(" "),
+                (true, true) => rest.join(" "),
+                (true, false) => return None,
+            };
+            (!kept.is_empty()).then_some(kept)
         })
-        .filter(|p| !p.is_empty())
         .collect();
     let start = parts.len().saturating_sub(2);
     Some(parts[start..].join(", ")).filter(|l| !l.is_empty())
@@ -320,6 +332,18 @@ mod tests {
         assert_eq!(
             city_country("Hauptstraße 5, 10115 Berlin, Germany").as_deref(),
             Some("Berlin, Germany")
+        );
+        assert_eq!(
+            city_country("Hauptstraße 5, 10115 Berlin").as_deref(),
+            Some("Berlin")
+        );
+        assert_eq!(
+            city_country("221B Baker Street, London").as_deref(),
+            Some("London")
+        );
+        assert_eq!(
+            city_country("12 Main St, Springfield, IL 62701").as_deref(),
+            Some("Springfield")
         );
         assert_eq!(city_country("Berlin").as_deref(), Some("Berlin"));
         assert_eq!(city_country(" , 12345 ").as_deref(), None);
