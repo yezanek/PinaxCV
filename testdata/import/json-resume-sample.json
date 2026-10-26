@@ -1,0 +1,64 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jsonresume/resume-schema/v1.0.0/schema.json",
+  "basics": {
+    "name": "Robin Example",
+    "label": "Data Engineer",
+    "email": "robin@example.net",
+    "phone": "+44 20 7946 0000",
+    "url": "https://robin.example.net/",
+    "summary": "Builds data pipelines.\n\nLikes tidy schemas.",
+    "location": { "city": "Leeds", "region": "England", "countryCode": "GB", "postalCode": "LS1" },
+    "profiles": [
+      { "network": "GitHub", "username": "robin-example", "url": "https://github.com/robin-example" },
+      { "network": "Mastodon", "username": "robin" }
+    ]
+  },
+  "work": [
+    {
+      "name": "Sample Analytics Ltd",
+      "position": "Data Engineer",
+      "location": "Leeds",
+      "url": "https://analytics.example.com",
+      "startDate": "2021-04-01",
+      "summary": "Owns the warehouse.",
+      "highlights": ["Cut nightly load time by half.", "Introduced data contracts."]
+    },
+    {
+      "company": "Old Corp",
+      "position": "Analyst",
+      "startDate": "2018-09",
+      "endDate": "2021-03"
+    }
+  ],
+  "volunteer": [
+    { "organization": "Code Club", "position": "Mentor", "startDate": "2019", "endDate": "2020" }
+  ],
+  "education": [
+    {
+      "institution": "University of Example",
+      "area": "Mathematics",
+      "studyType": "BSc",
+      "startDate": "2015-09",
+      "endDate": "2018-06",
+      "score": "First",
+      "courses": ["Statistics", "Linear algebra"]
+    }
+  ],
+  "certificates": [
+    { "name": "Cloud Data Engineer", "date": "2022-11-15", "issuer": "Example Cloud", "url": "https://certs.example.com/1" }
+  ],
+  "skills": [
+    { "name": "Languages", "level": "Advanced", "keywords": ["Python", "SQL"] },
+    { "name": "Spark" }
+  ],
+  "languages": [
+    { "language": "English", "fluency": "Native" },
+    { "language": "Spanish", "fluency": "B1" }
+  ],
+  "projects": [
+    { "name": "Open Weather Feed", "description": "A public dataset.", "highlights": ["Used by 3 councils."], "startDate": "2020-01", "endDate": "2020-12", "url": "https://weather.example.org", "entity": "Hobby" }
+  ],
+  "awards": [{ "title": "Team award" }],
+  "references": [{ "name": "Someone", "reference": "Great." }],
+  "meta": { "version": "v1.0.0", "unknownField": true }
+}

@@ -410,6 +410,13 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - The wizard replaces the CV list while it is open: summary, warnings, then "A new CV" (title, defaulting to the imported name) or "Merge into an existing CV" with the review. Matched entries default to Replace, others to Add as new, and conflicting fields to Keep mine. The end-to-end build's dialog reads `PINAXCV_E2E_IMPORT_FILE`.
 - The `SaveDialog` trait became `FileDialog` with an open method, so the shell keeps owning every path.
 
+## ADR-059 — JSON Resume importer (M4)
+
+- `import_json_resume` maps the JSON Resume schema as spec section 9.1 says. The file is read as untyped JSON, so unknown fields are ignored and values of the wrong type are skipped instead of failing the import. A JSON object without any schema key is `UnsupportedFormat`; broken JSON is `Malformed`.
+- Older keys are accepted where the schema renamed them (`company` for `work.name`). `volunteer` becomes a custom "Volunteering" section, education `courses` become bullets and `score` the description. Awards, publications, interests and references are not imported, with a warning each. References are never imported, because they hold other people's details.
+- Every text value is NFC-normalized, has tabs and other whitespace turned into spaces, is stripped of the remaining control characters (line breaks kept in summaries and descriptions) and is capped at 10,000 characters; each list keeps its first 200 items, with a warning. An entry with neither a title nor an organization is skipped, with a warning. `import_json_resume` enforces the 20 MB input cap itself; that cap and serde_json's nesting limit bound the rest, and nothing in the importer can panic on input.
+- `import_any` sends anything that starts with `{` to this importer, so the import wizard (ADR-058) picks JSON Resume up by adding the `json` extension to its dialog.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

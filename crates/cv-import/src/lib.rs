@@ -18,6 +18,8 @@ pub mod merge;
 pub use merge::{
     EntryDecision, Field, FieldConflict, MergePlan, field_conflicts, merge, suggest_matches,
 };
+pub mod json_resume;
+pub use json_resume::import_json_resume;
 pub mod import;
 pub use import::{ImportError, MAX_INPUT, import_any, import_europass};
 pub mod pdf_text;
