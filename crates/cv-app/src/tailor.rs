@@ -24,14 +24,25 @@ use crate::{App, JobContext, JobEvents, Result, llm_error, store_error};
 
 /// The `ai_cache` table as the stages' cache. A failing read is a miss and
 /// a failing write is skipped: the provider is only asked again. Both run on
-/// the blocking pool, like the job's other store work.
-pub(crate) struct StoreCache(pub(crate) Arc<App>);
+/// the blocking pool, like the job's other store work. Answers that arrive
+/// after the cache was cleared or the data deleted are not written.
+pub(crate) struct StoreCache {
+    app: Arc<App>,
+    generation: u64,
+}
+
+impl StoreCache {
+    pub(crate) fn new(app: Arc<App>) -> Self {
+        let generation = app.ai_generation();
+        Self { app, generation }
+    }
+}
 
 #[async_trait::async_trait]
 impl ResponseCache for StoreCache {
     async fn get(&self, key: &str) -> Option<String> {
         let key = key.to_owned();
-        self.0
+        self.app
             .blocking(move |app| Ok(app.store.ai_cache_get(&key).ok().flatten()))
             .await
             .ok()
@@ -40,10 +51,14 @@ impl ResponseCache for StoreCache {
 
     async fn put(&self, key: &str, kind: &str, response: &str) {
         let (key, kind, response) = (key.to_owned(), kind.to_owned(), response.to_owned());
+        let generation = self.generation;
         let _ = self
-            .0
+            .app
             .blocking(move |app| {
-                let _ = app.store.ai_cache_put(&key, &kind, &response);
+                let _writes = app.ai_writes();
+                if app.ai_generation() == generation {
+                    let _ = app.store.ai_cache_put(&key, &kind, &response);
+                }
                 Ok(())
             })
             .await;
@@ -97,7 +112,7 @@ impl App {
             .await?;
         let model = status.model.clone();
         let job = stored.variant.job.clone();
-        let cache = StoreCache(Arc::clone(self));
+        let cache = StoreCache::new(Arc::clone(self));
         let stage = StageContext {
             llm: llm.as_ref(),
             cache: &cache,

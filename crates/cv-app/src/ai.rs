@@ -3,7 +3,8 @@
 //! when there is none; they never reach the database or the logs.
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, PoisonError, RwLock};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError, RwLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use cv_ai::http::host;
@@ -72,6 +73,13 @@ pub struct AiState {
     llm: RwLock<Option<Arc<dyn Llm>>>,
     /// Used instead of the provider the settings describe (tests).
     pinned: Option<Arc<dyn Llm>>,
+    /// Held by every write of AI settings, keys or cached answers, and by
+    /// the deletions, so a write that was in flight cannot bring back what
+    /// a deletion removed.
+    writes: Mutex<()>,
+    /// Bumped by every deletion; a job's cached answer is written only when
+    /// no deletion happened since the job started.
+    generation: AtomicU64,
 }
 
 impl AiState {
@@ -81,6 +89,8 @@ impl AiState {
             memory: Mutex::default(),
             llm: RwLock::default(),
             pinned: None,
+            writes: Mutex::default(),
+            generation: AtomicU64::new(0),
         }
     }
 }
@@ -252,6 +262,7 @@ impl App {
     /// Saves the AI settings. A new key goes to the keychain, or is held in
     /// memory for this session when there is no keychain (spec section 13.1).
     pub fn ai_configure(&self, config: AiConfig) -> Result<AiStatus> {
+        let _writes = self.ai_writes();
         let model = config.model.trim();
         let base_url = config
             .base_url
@@ -302,6 +313,7 @@ impl App {
     /// Removes the saved key for the current provider, from the keychain and
     /// from memory.
     pub fn ai_forget_key(&self) -> Result<AiStatus> {
+        let _writes = self.ai_writes();
         let status = self.ai_status()?;
         let account = provider_name(status.provider);
         self.ai
@@ -320,6 +332,7 @@ impl App {
     /// Records that the user accepted the consent text for the current
     /// provider and host.
     pub fn ai_consent(&self) -> Result<AiStatus> {
+        let _writes = self.ai_writes();
         let status = self.ai_status()?;
         let Some(host) = &status.host else {
             return Err(invalid("Choose an AI provider first."));
@@ -344,19 +357,40 @@ impl App {
         self
     }
 
+    /// Serializes AI writes against the deletions (see `AiState::writes`).
+    pub(crate) fn ai_writes(&self) -> MutexGuard<'_, ()> {
+        self.ai
+            .writes
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// The deletion count, for a job to check before it caches an answer.
+    pub(crate) fn ai_generation(&self) -> u64 {
+        self.ai.generation.load(Ordering::SeqCst)
+    }
+
+    /// Called by a deletion while it holds [`App::ai_writes`].
+    pub(crate) fn bump_ai_generation(&self) {
+        self.ai.generation.fetch_add(1, Ordering::SeqCst);
+    }
+
     /// Forgets the built provider, so the next use builds it from the
     /// settings again (after a restore replaced them).
     pub(crate) fn reset_llm(&self) {
         *self.ai.llm.write().unwrap_or_else(PoisonError::into_inner) = None;
     }
 
-    /// Removes every provider's key from the keychain and from memory.
+    /// Removes every provider's key from the keychain and from memory, and
+    /// forgets the built provider. Tries every key even when one fails and
+    /// reports the first failure.
     pub(crate) fn forget_all_keys(&self) -> Result<()> {
         self.ai
             .memory
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .clear();
+        let mut failed = None;
         for provider in [
             AiProvider::Anthropic,
             AiProvider::Openai,
@@ -365,11 +399,13 @@ impl App {
         ] {
             match self.ai.secrets.delete(provider_name(provider)) {
                 Ok(()) | Err(SecretError::Unavailable) => {}
-                Err(e) => return Err(keychain_error(&e)),
+                Err(e) => {
+                    failed.get_or_insert(keychain_error(&e));
+                }
             }
         }
         self.reset_llm();
-        Ok(())
+        failed.map_or(Ok(()), Err)
     }
 
     /// Builds the provider from the settings and the saved key, or clears it
