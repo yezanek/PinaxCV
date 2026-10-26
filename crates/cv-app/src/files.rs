@@ -67,10 +67,11 @@ pub fn write_atomically(path: &Path, bytes: &[u8]) -> io::Result<()> {
     sync_parent(path)
 }
 
-/// Lets `write` create a file at a fresh temporary path next to `path`,
-/// makes it private (`0600` on Unix), then renames it over `path`, like
-/// [`write_atomically`] for writers that must create their own file (such
-/// as SQLite's `VACUUM INTO`). The temporary file is removed on failure.
+/// Creates an empty private file (`0600` on Unix) at a fresh temporary path
+/// next to `path`, lets `write` fill it by path, then renames it over `path`,
+/// like [`write_atomically`] for writers that open the file themselves (such
+/// as SQLite's `VACUUM INTO`). The file is private from the start, so its
+/// contents are never readable by others. It is removed on failure.
 pub fn create_atomically(
     path: &Path,
     write: impl FnOnce(&Path) -> io::Result<()>,
@@ -82,6 +83,7 @@ pub fn create_atomically(
     tmp_name.push(name);
     tmp_name.push(format!(".{}.pinaxcv-tmp", ulid::Ulid::generate()));
     let tmp = path.with_file_name(tmp_name);
+    drop(create_private(&tmp)?);
     let result = (|| {
         write(&tmp)?;
         let file = fs::OpenOptions::new().write(true).open(&tmp)?;
@@ -170,7 +172,17 @@ mod tests {
         let dir = tempfile::tempdir().expect("tempdir");
         let path = dir.path().join("backup.pinaxcv");
         fs::write(&path, b"old").expect("old");
-        create_atomically(&path, |tmp| fs::write(tmp, b"new")).expect("create");
+        create_atomically(&path, |tmp| {
+            // The writer gets an empty file that is already private.
+            assert_eq!(fs::metadata(tmp)?.len(), 0);
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                assert_eq!(fs::metadata(tmp)?.permissions().mode() & 0o777, 0o600);
+            }
+            fs::write(tmp, b"new")
+        })
+        .expect("create");
         assert_eq!(fs::read(&path).expect("read"), b"new");
         #[cfg(unix)]
         {

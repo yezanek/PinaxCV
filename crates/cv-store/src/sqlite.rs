@@ -185,7 +185,8 @@ fn vacuum_into(conn: &Connection, path: &Path) -> Result<()> {
     let target = path
         .to_str()
         .ok_or_else(|| StoreError::Invalid("the backup path is not valid UTF-8".into()))?;
-    if path.exists() {
+    // SQLite accepts an empty file, so callers can create it private first.
+    if std::fs::metadata(path).is_ok_and(|m| m.len() > 0) {
         return Err(StoreError::Invalid("the backup file already exists".into()));
     }
     conn.execute("VACUUM INTO ?1", params![target])
