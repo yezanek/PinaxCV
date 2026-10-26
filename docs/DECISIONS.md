@@ -393,6 +393,14 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - At startup a log over 1 MB is renamed to `pinaxcv.1.log`, replacing the older one, so at most about 2 MB is kept. If the log cannot be opened, the app runs without one.
 - Opening the log folder from the app comes with the Settings screen (`open_data_dir`, spec section 10.2).
 
+## ADR-057 — End-to-end smoke test with tauri-driver
+
+- A CI job on `ubuntu-22.04` and `windows-latest` builds the app and drives it through `tauri-driver` (WebKitWebDriver under Xvfb on Linux, `msedgedriver` matching the WebView2 runtime on Windows). The test creates a CV, types a name and email, waits for a preview page and exports a PDF, then checks the file starts with `%PDF` (spec section 14).
+- The test is Rust (`crates/e2e`) with a small W3C WebDriver client over `ureq`, so the repository stays Rust-only. `cargo test` skips it unless `PINAXCV_E2E_APP` is set.
+- WebDriver cannot drive native file dialogs, so the shell's `e2e` cargo feature replaces the save dialog with one that writes into `PINAXCV_E2E_EXPORT_DIR`. Only the e2e job enables the feature; release builds do not contain it.
+- On Windows, msedgedriver passes its debugging port through `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`, which WebView2 ignores when the app sets its own browser arguments, as wry always does. The `e2e` build appends that variable's arguments to wry's defaults in the window config.
+- The `tauri-action` build from spec section 14 belongs to the packaging milestone (M8).
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

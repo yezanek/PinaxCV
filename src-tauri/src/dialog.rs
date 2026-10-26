@@ -33,3 +33,26 @@ impl SaveDialog for TauriSaveDialog {
             .and_then(|p| p.into_path().ok())
     }
 }
+
+/// End-to-end test builds only (`--features e2e`): WebDriver cannot drive a
+/// native dialog, so exports go straight into the folder named by
+/// `PINAXCV_E2E_EXPORT_DIR`. Release builds never enable the feature.
+#[cfg(feature = "e2e")]
+pub struct E2eSaveDialog {
+    dir: PathBuf,
+}
+
+#[cfg(feature = "e2e")]
+impl E2eSaveDialog {
+    /// `None` when `PINAXCV_E2E_EXPORT_DIR` is not set.
+    pub fn from_env() -> Option<Self> {
+        std::env::var_os("PINAXCV_E2E_EXPORT_DIR").map(|dir| Self { dir: dir.into() })
+    }
+}
+
+#[cfg(feature = "e2e")]
+impl SaveDialog for E2eSaveDialog {
+    fn choose_save_path(&self, suggested_file_name: &str, _: ExportKind) -> Option<PathBuf> {
+        Some(self.dir.join(suggested_file_name))
+    }
+}

@@ -53,3 +53,74 @@ jobs:
       - name: Dependency boundaries
         shell: bash
         run: scripts/check-boundaries.sh
+
+  # End-to-end smoke test through tauri-driver (spec section 14, ADR-057).
+  e2e:
+    name: e2e ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install pinned toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - name: Install Tauri system libraries and the WebKit driver
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev librsvg2-dev libayatana-appindicator3-dev webkit2gtk-driver xvfb
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: e2e
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: trunk@0.21.14
+      - name: Install tauri-driver
+        run: cargo install tauri-driver --version 2.1.0 --locked
+      - name: Build UI (Trunk)
+        working-directory: ui
+        run: trunk build --locked
+      - name: Build the app for end-to-end tests
+        run: cargo build -p pinaxcv --features e2e --locked
+      - name: Smoke test (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          export PINAXCV_E2E_EXPORT_DIR="$RUNNER_TEMP/e2e-exports"
+          export PINAXCV_E2E_APP="$PWD/target/debug/pinaxcv"
+          mkdir -p "$PINAXCV_E2E_EXPORT_DIR"
+          xvfb-run -a sh -c 'tauri-driver & driver=$!; trap "kill $driver" EXIT
+            i=0; until curl -s -o /dev/null http://127.0.0.1:4444/status; do
+              i=$((i+1)); [ "$i" -ge 30 ] && { echo "tauri-driver did not start" >&2; exit 1; }; sleep 1
+            done
+            cargo test -p pinaxcv-e2e --locked -- --nocapture'
+      # msedgedriver must match the WebView2 runtime the app uses.
+      - name: Smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $key = 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
+          $version = (Get-ItemProperty $key).pv
+          Write-Host "WebView2 $version"
+          $drivers = Join-Path $env:RUNNER_TEMP 'edgedriver'
+          Invoke-WebRequest "https://msedgedriver.microsoft.com/$version/edgedriver_win64.zip" -OutFile "$drivers.zip"
+          Expand-Archive "$drivers.zip" -DestinationPath $drivers
+          $env:PINAXCV_E2E_EXPORT_DIR = Join-Path $env:RUNNER_TEMP 'e2e-exports'
+          New-Item -ItemType Directory -Force $env:PINAXCV_E2E_EXPORT_DIR | Out-Null
+          $env:PINAXCV_E2E_APP = Join-Path $PWD 'target\debug\pinaxcv.exe'
+          $driver = Start-Process tauri-driver -ArgumentList '--native-driver', (Join-Path $drivers 'msedgedriver.exe') -PassThru -NoNewWindow
+          try {
+            $ready = $false
+            for ($i = 0; $i -lt 30; $i++) {
+              try { Invoke-WebRequest http://127.0.0.1:4444/status -SkipHttpErrorCheck | Out-Null; $ready = $true; break }
+              catch { Start-Sleep -Seconds 1 }
+            }
+            if (-not $ready) { throw 'tauri-driver did not start' }
+            cargo test -p pinaxcv-e2e --locked -- --nocapture
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            Stop-Process -Id $driver.Id -ErrorAction SilentlyContinue
+          }
