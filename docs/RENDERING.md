@@ -23,7 +23,7 @@ The `classic` template (embedded, with Inter) takes the CV's style options: pape
 
 ## Preview
 
-The editor shows PNG pages rendered from the same Typst document and served over the `preview` URI scheme, with a strip of template diagnostics (such as missing glyphs) from the newest render.
+The editor shows PNG pages rendered from the same Typst document and served over the `preview` URI scheme (`preview://localhost`; WebView2 on Windows reaches it as `http://preview.localhost`), with a strip of template diagnostics (such as missing glyphs) from the newest render.
 
 ## HTML
 
