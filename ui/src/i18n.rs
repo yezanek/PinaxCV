@@ -403,6 +403,7 @@ pub struct Strings {
     pub review_cv_with_ai: &'static str,
     pub ai_review_progress: &'static str,
     /// `{n}`.
+    pub ai_review_done_one: &'static str,
     pub ai_review_done: &'static str,
     pub ai_review_nothing: &'static str,
     pub ai_review_cancelled: &'static str,
@@ -791,6 +792,7 @@ pub static EN: Strings = Strings {
     ai_review_hint: "A review without a job: rewrites and advice for the base CV. Accepting a rewrite changes the base CV.",
     review_cv_with_ai: "Review CV with AI",
     ai_review_progress: "Review progress",
+    ai_review_done_one: "1 suggestion is ready. Nothing changes until you accept it.",
     ai_review_done: "{n} suggestions are ready. Nothing changes until you accept them.",
     ai_review_nothing: "The review found nothing to rewrite.",
     ai_review_cancelled: "The review was cancelled.",
