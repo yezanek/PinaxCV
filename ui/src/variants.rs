@@ -1,13 +1,15 @@
-//! Variant switcher and per-variant visibility (M5, spec section 8). Edits in
-//! the form always change the base CV; this panel only changes the selected
-//! variant's overlay: what is hidden and what is collapsed.
+//! Variant switcher and per-variant visibility and order (M5, spec section
+//! 8). Edits in the form always change the base CV; this panel only changes
+//! the selected variant's overlay: what is hidden, what is collapsed, and the
+//! order of sections, entries, bullets, skill groups, skills and languages.
 
 use cv_api::{NewVariant, SaveVariant};
-use cv_core::{Cv, Entry, Id, JobTarget, Section, StoredVariant, VariantSummary};
+use cv_core::{Cv, Entry, Id, JobTarget, Section, StoredVariant, Variant, VariantSummary};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use serde::Serialize;
 
+use crate::drag::DragHandle;
 use crate::i18n::{error_message, fill, t};
 use crate::ipc::{IdArg, ReqArg, call};
 
@@ -40,6 +42,16 @@ pub fn entry_label(e: &Entry) -> String {
     }
 }
 
+/// What a row in the visibility panel stands for, which picks its move labels.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RowKind {
+    Entry,
+    Bullet,
+    Group,
+    Skill,
+    Language,
+}
+
 /// One checkbox row in the visibility panel.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Row {
@@ -50,6 +62,13 @@ pub struct Row {
     pub depth: u8,
     /// Entries can also be collapsed to one line.
     pub collapsible: bool,
+    pub kind: RowKind,
+    /// The item the row is ordered within, and its children in base order.
+    pub parent: Id,
+    pub siblings: Vec<Id>,
+    /// First or last in the variant's order, so it cannot move further.
+    pub first: bool,
+    pub last: bool,
 }
 
 /// Shortens bullet text for a checkbox label.
@@ -63,61 +82,133 @@ fn short(text: &str) -> String {
     }
 }
 
-/// The rows under a section heading: every item a variant can hide
-/// (ADR-015), in CV order.
-pub fn rows(s: &Section) -> Vec<Row> {
-    let row = |id: &Id, label: String, depth: u8, collapsible: bool| Row {
-        id: id.clone(),
-        label,
-        depth,
-        collapsible,
+/// `items` in the variant's order for `parent` (base order without one),
+/// each with its base sibling IDs and whether it is first or last.
+fn in_order<'a, T>(
+    v: Option<&Variant>,
+    parent: &Id,
+    items: &'a [T],
+    id_of: fn(&T) -> &Id,
+) -> Vec<(&'a T, Vec<Id>, bool, bool)> {
+    let base: Vec<Id> = items.iter().map(|i| id_of(i).clone()).collect();
+    let order = match v {
+        Some(v) => v.children_order(parent, &base),
+        None => base.clone(),
     };
+    let n = order.len();
+    order
+        .iter()
+        .enumerate()
+        .filter_map(|(i, id)| {
+            let item = items.iter().find(|x| id_of(x) == id)?;
+            Some((item, base.clone(), i == 0, i + 1 == n))
+        })
+        .collect()
+}
+
+/// The CV's sections in the variant's order, with base sibling IDs and
+/// whether each is first or last.
+pub fn sections_in_order<'a>(
+    cv: &'a Cv,
+    v: Option<&Variant>,
+) -> Vec<(&'a Section, Vec<Id>, bool, bool)> {
+    in_order(v, &cv.id, &cv.sections, Section::id)
+}
+
+/// An item's ID, its base sibling IDs, and whether it is first or last.
+type Placed<'a> = (&'a Id, Vec<Id>, bool, bool);
+
+/// The rows under a section heading: every item a variant can hide
+/// (ADR-015), in the variant's order.
+pub fn rows(s: &Section, v: Option<&Variant>) -> Vec<Row> {
     let mut out = Vec::new();
+    let mut push = |item: Placed, parent: &Id, label: String, kind: RowKind| {
+        let (id, siblings, first, last) = item;
+        out.push(Row {
+            id: id.clone(),
+            label,
+            depth: u8::from(matches!(kind, RowKind::Bullet | RowKind::Skill)),
+            collapsible: kind == RowKind::Entry,
+            kind,
+            parent: parent.clone(),
+            siblings,
+            first,
+            last,
+        });
+    };
+    let entries =
+        |out: &mut dyn FnMut(Placed, &Id, String, RowKind), section: &Id, list: &[Entry]| {
+            for (e, sib, first, last) in in_order(v, section, list, |e| &e.id) {
+                out(
+                    (&e.id, sib, first, last),
+                    section,
+                    entry_label(e),
+                    RowKind::Entry,
+                );
+                for (b, sib, first, last) in in_order(v, &e.id, &e.bullets, |b| &b.id) {
+                    out(
+                        (&b.id, sib, first, last),
+                        &e.id,
+                        short(&b.text),
+                        RowKind::Bullet,
+                    );
+                }
+            }
+        };
     match s {
         Section::Experience(x)
         | Section::Education(x)
         | Section::Projects(x)
-        | Section::Certifications(x) => {
-            for e in &x.entries {
-                out.push(row(&e.id, entry_label(e), 0, true));
-                out.extend(
-                    e.bullets
-                        .iter()
-                        .map(|b| row(&b.id, short(&b.text), 1, false)),
-                );
-            }
-        }
-        Section::Custom(c) => {
-            for e in &c.entries {
-                out.push(row(&e.id, entry_label(e), 0, true));
-                out.extend(
-                    e.bullets
-                        .iter()
-                        .map(|b| row(&b.id, short(&b.text), 1, false)),
-                );
-            }
-        }
+        | Section::Certifications(x) => entries(&mut push, &x.id, &x.entries),
+        Section::Custom(c) => entries(&mut push, &c.id, &c.entries),
         Section::Skills(k) => {
-            for g in &k.groups {
+            for (g, sib, first, last) in in_order(v, &k.id, &k.groups, |g| &g.id) {
                 let label = g
                     .label
                     .as_deref()
                     .map(str::trim)
                     .filter(|l| !l.is_empty())
                     .unwrap_or(t().unlabelled_group);
-                out.push(row(&g.id, label.into(), 0, false));
-                out.extend(
-                    g.skills
-                        .iter()
-                        .map(|k| row(&k.id, k.name.clone(), 1, false)),
+                push(
+                    (&g.id, sib, first, last),
+                    &k.id,
+                    label.into(),
+                    RowKind::Group,
                 );
+                for (k, sib, first, last) in in_order(v, &g.id, &g.skills, |k| &k.id) {
+                    push(
+                        (&k.id, sib, first, last),
+                        &g.id,
+                        k.name.clone(),
+                        RowKind::Skill,
+                    );
+                }
             }
         }
         Section::Languages(l) => {
-            out.extend(l.items.iter().map(|i| row(&i.id, i.name.clone(), 0, false)));
+            for (i, sib, first, last) in in_order(v, &l.id, &l.items, |i| &i.id) {
+                push(
+                    (&i.id, sib, first, last),
+                    &l.id,
+                    i.name.clone(),
+                    RowKind::Language,
+                );
+            }
         }
     }
     out
+}
+
+/// The up and down button labels for a row.
+fn move_labels(kind: RowKind) -> (&'static str, &'static str) {
+    let s = t();
+    match kind {
+        RowKind::Entry => (s.move_entry_up, s.move_entry_down),
+        RowKind::Bullet => (s.move_bullet_up, s.move_bullet_down),
+        RowKind::Group => (s.move_group_up, s.move_group_down),
+        RowKind::Skill => (s.move_skill_up, s.move_skill_down),
+        RowKind::Language => (s.move_language_up, s.move_language_down),
+    }
 }
 
 #[component]
@@ -134,6 +225,7 @@ pub fn VariantBar(
     settled: Callback<bool>,
 ) -> impl IntoView {
     let list: RwSignal<Vec<VariantSummary>> = RwSignal::new(Vec::new());
+    let cv_id_for_order = StoredValue::new(cv_id.clone());
     let reload = {
         let cv_id = cv_id.clone();
         move || {
@@ -317,6 +409,19 @@ pub fn VariantBar(
     let collapsed = move |id: &Id| {
         variant.with(|v| v.as_ref().is_some_and(|v| v.variant.collapsed.contains(id)))
     };
+    // Moves `id` among `siblings` (base order) of `parent`, one step or onto
+    // a drop target, in this variant only.
+    let reorder = move |parent: Id, siblings: Vec<Id>, id: Id, to: Result<bool, Id>| {
+        edit(Box::new(move |v| {
+            let current = v.children_order(&parent, &siblings);
+            match to {
+                Ok(up) => v.move_child(&parent, &current, &id, up),
+                Err(target) => v.move_child_to(&parent, &current, &id, &target),
+            };
+        }))
+    };
+    // The order lists alone, so hiding or collapsing does not rebuild the panel.
+    let order = Memo::new(move |_| variant.with(|v| v.as_ref().map(|v| v.variant.order.clone())));
     let toggle = move |id: Id, collapse: bool| {
         edit(Box::new(move |v| {
             if collapse {
@@ -371,32 +476,71 @@ pub fn VariantBar(
             </div>
             <fieldset class="variant-visibility">
                 <legend>{t().shown_in_variant}</legend>
-                {move || cv.with(|c| c.as_ref().map(|c| c.sections.iter().map(|s| {
+                {move || {
+                    // Only the order matters here; the rest of the overlay is read
+                    // by each checkbox.
+                    let order = order.get();
+                    let overlay = order.map(|order| Variant { order, ..Variant::empty(cv_id_for_order.get_value(), cv_id_for_order.get_value(), "") });
+                    cv.with(|c| c.as_ref().map(|c| sections_in_order(c, overlay.as_ref()).into_iter().map(|(s, siblings, first, last)| {
                     let sid = s.id().clone();
                     let sid2 = sid.clone();
-                    let rows = rows(s).into_iter().map(|r| {
-                        let (a, b, c2, d) = (r.id.clone(), r.id.clone(), r.id.clone(), r.id);
+                    let cv_list = c.id.to_string();
+                    let (list_attr, id_attr, handle_id) = (cv_list.clone(), sid.to_string(), sid.clone());
+                    let (up_ids, down_ids, drop_ids) = (
+                        (c.id.clone(), siblings.clone(), sid.clone()),
+                        (c.id.clone(), siblings.clone(), sid.clone()),
+                        (c.id.clone(), siblings),
+                    );
+                    let section_dropped = Callback::new(move |(dragged, target): (Id, Id)| {
+                        reorder(drop_ids.0.clone(), drop_ids.1.clone(), dragged, Err(target));
+                    });
+                    let rows = rows(s, overlay.as_ref()).into_iter().map(|r| {
+                        let (a, b, c2, d) = (r.id.clone(), r.id.clone(), r.id.clone(), r.id.clone());
                         let nested = r.depth > 0;
                         let one_line = r.collapsible.then(|| view! {
                             <label class="collapse"><input type="checkbox" prop:checked=move || collapsed(&c2)
                                 on:change=move |_| toggle(d.clone(), true) />{t().one_line}</label>
                         });
+                        let (up_label, down_label) = move_labels(r.kind);
+                        let up = (r.parent.clone(), r.siblings.clone(), r.id.clone());
+                        let down = up.clone();
+                        let drop = (r.parent.clone(), r.siblings.clone());
+                        let dropped = Callback::new(move |(dragged, target): (Id, Id)| {
+                            reorder(drop.0.clone(), drop.1.clone(), dragged, Err(target));
+                        });
                         view! {
-                            <li class:nested=nested>
+                            <li class:nested=nested data-drag-list=r.parent.to_string() data-drag-id=r.id.to_string()>
+                                <DragHandle list=r.parent.to_string() id=r.id.clone() dropped=dropped />
                                 <label><input type="checkbox" prop:checked=move || shown(&a)
                                     on:change=move |_| toggle(b.clone(), false) />{r.label}</label>
                                 {one_line}
+                                <span class="order">
+                                    <button aria-label=up_label prop:disabled=r.first
+                                        on:click=move |_| reorder(up.0.clone(), up.1.clone(), up.2.clone(), Ok(true))>"↑"</button>
+                                    <button aria-label=down_label prop:disabled=r.last
+                                        on:click=move |_| reorder(down.0.clone(), down.1.clone(), down.2.clone(), Ok(false))>"↓"</button>
+                                </span>
                             </li>
                         }
                     }).collect_view();
                     view! {
-                        <div class="variant-section">
-                            <label><input type="checkbox" prop:checked=move || shown(&sid)
-                                on:change=move |_| toggle(sid2.clone(), false) /><strong>{section_label(s)}</strong></label>
+                        <div class="variant-section" data-drag-list=list_attr data-drag-id=id_attr>
+                            <div class="variant-section-head">
+                                <DragHandle list=cv_list id=handle_id dropped=section_dropped />
+                                <label><input type="checkbox" prop:checked=move || shown(&sid)
+                                    on:change=move |_| toggle(sid2.clone(), false) /><strong>{section_label(s)}</strong></label>
+                                <span class="order">
+                                    <button aria-label=t().move_section_up prop:disabled=first
+                                        on:click=move |_| reorder(up_ids.0.clone(), up_ids.1.clone(), up_ids.2.clone(), Ok(true))>"↑"</button>
+                                    <button aria-label=t().move_section_down prop:disabled=last
+                                        on:click=move |_| reorder(down_ids.0.clone(), down_ids.1.clone(), down_ids.2.clone(), Ok(false))>"↓"</button>
+                                </span>
+                            </div>
                             <ul>{rows}</ul>
                         </div>
                     }
-                }).collect_view()))}
+                }).collect_view()))
+                }}
             </fieldset>
         </Show>
     }
@@ -427,7 +571,7 @@ mod tests {
         let cv: Cv =
             serde_json::from_str(include_str!("../../testdata/cvs/typical.json")).expect("cv");
         for s in &cv.sections {
-            let r = rows(s);
+            let r = rows(s, None);
             match s {
                 Section::Experience(x) => {
                     let e = &x.entries[0];
@@ -450,6 +594,36 @@ mod tests {
                 _ => {}
             }
         }
+    }
+
+    #[test]
+    fn rows_and_sections_follow_the_variant_order() {
+        let cv: Cv =
+            serde_json::from_str(include_str!("../../testdata/cvs/typical.json")).expect("cv");
+        let mut v = Variant::empty(cv.id.clone(), cv.id.clone(), "v");
+        let base: Vec<Id> = cv.sections.iter().map(|s| s.id().clone()).collect();
+        let last = base.last().expect("sections").clone();
+        assert!(v.move_child_to(&cv.id, &base, &last, &base[0]));
+        let ordered = sections_in_order(&cv, Some(&v));
+        assert_eq!(ordered[0].0.id(), &last);
+        assert!(ordered[0].2 && !ordered[0].3);
+        assert!(ordered.last().expect("last").3);
+        assert_eq!(ordered[0].1, base);
+
+        let Section::Experience(x) = &cv.sections[0] else {
+            panic!("experience first")
+        };
+        let e = &x.entries[0];
+        let bullets: Vec<Id> = e.bullets.iter().map(|b| b.id.clone()).collect();
+        assert!(bullets.len() > 1);
+        assert!(v.move_child(&e.id, &bullets, &bullets[1], true));
+        let r = rows(&cv.sections[0], Some(&v));
+        assert_eq!(r[1].id, bullets[1]);
+        assert_eq!(r[1].parent, e.id);
+        assert_eq!(r[1].siblings, bullets);
+        assert!(r[1].first && !r[1].last);
+        assert_eq!(r[1].kind, RowKind::Bullet);
+        assert_eq!(r[0].kind, RowKind::Entry);
     }
 
     #[test]

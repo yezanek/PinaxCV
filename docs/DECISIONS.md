@@ -332,7 +332,7 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 
 ## ADR-048 — Variant screen in the editor (M5)
 
-- A "Version" selector above the form picks the base CV or a variant. Text edits always change the base CV; the variant panel only changes what the selected variant hides or collapses.
+- A "Version" selector above the form picks the base CV or a variant. Text edits always change the base CV; the variant panel only changes what the selected variant hides or collapses, and the order it shows them in (ADR-062).
 - The panel lists every item a variant can hide (ADR-015): sections, entries and their bullets, skill groups and their skills, and language items. Only entries can be collapsed to one line.
 - Overlay edits save one at a time. An edit made while a save is in flight is sent next with the revision that save returned. The selector, "New variant" and "Delete" are disabled while a save runs, so the queue only holds the selected variant.
 - Export and "← CVs" wait for both the CV save and the variant save queue, because export reads the variant from storage. If a variant save fails, the export or leave is dropped and the error is shown.
@@ -433,6 +433,13 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Fixtures the parser cannot fully read for reasons outside the template are listed in the harness with the reason and the fields it excuses: CJK (no glyphs in Inter, ADR-033; all fields), job titles with digits or outside its English word list (jobs only), and a fixture with quotes, an ampersand and Markdown-like title text (name, and jobs for the same word-list reason). A miss in an excused field is reported but does not fail the job; any other miss fails CI. Job title and organisation, and the school, are each compared with the parser's own field.
 - The first run showed that the `classic` entry heading ("**Title**, Org" then "Period | Location") was read as one run, so the parser lost the title and the school. Entries now print the title in bold with the period right-aligned on the same line, then the organisation and location on the next line. Each is a separate text run with clear space around it. This is still one column in reading order (ATS rules 1 and 2), and the golden ATS suite snapshots were updated.
 - PDFs are already tagged. Exports now also declare PDF/UA-1 when Typst can meet it, and fall back to the same tagged PDF without the claim when it cannot, for example when glyphs are missing.
+
+## ADR-062 — Reordering inside a variant (M5)
+
+- The variant panel lists sections, entries, bullets, skill groups, skills and language items in the selected variant's order, each with ↑/↓ buttons and a drag handle (ADR-053). Moving changes only the variant's `order` map; the base CV keeps its order.
+- A move stores the parent's full child order (the variant's list first, then the base items it does not name, in base order), so later base additions appear at the end and items deleted from the base are dropped.
+- The panel re-renders when the order changes, not when an item is hidden or collapsed.
+- IPC arguments are serialised in JSON-compatible form: maps become plain objects. Before, a variant's `order` and `text_overrides` were sent as JavaScript `Map`s, which reach the backend as `{}`.
 
 ## Open decisions
 

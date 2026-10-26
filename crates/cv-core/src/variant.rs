@@ -98,6 +98,45 @@ impl Variant {
         self.text_overrides.remove(id).is_some()
     }
 
+    /// The order this variant shows `base` (the children of `parent` in base
+    /// order) in: the variant's list for `parent` first, skipping unknown and
+    /// repeated IDs, then the rest in base order. Resolving uses the same rule.
+    pub fn children_order(&self, parent: &Id, base: &[Id]) -> Vec<Id> {
+        let mut out: Vec<Id> = Vec::with_capacity(base.len());
+        for wanted in self.order.get(parent).into_iter().flatten() {
+            if base.contains(wanted) && !out.contains(wanted) {
+                out.push(wanted.clone());
+            }
+        }
+        out.extend(
+            base.iter()
+                .filter(|b| !out.contains(b))
+                .cloned()
+                .collect::<Vec<_>>(),
+        );
+        out
+    }
+
+    /// Moves child `id` of `parent` to where `target` is now, as a drag does.
+    /// `current` is the order the variant shows now. Returns false when either
+    /// is missing or they are the same.
+    pub fn move_child_to(&mut self, parent: &Id, current: &[Id], id: &Id, target: &Id) -> bool {
+        let (Some(i), Some(j)) = (
+            current.iter().position(|c| c == id),
+            current.iter().position(|c| c == target),
+        ) else {
+            return false;
+        };
+        if i == j {
+            return false;
+        }
+        let mut order = current.to_vec();
+        let moved = order.remove(i);
+        order.insert(j, moved);
+        self.order.insert(parent.clone(), order);
+        true
+    }
+
     /// Moves child `id` of `parent` one step up or down. `current` is the
     /// order the variant shows now (base order with this variant's order
     /// applied); the result is stored as the variant's full order for
@@ -132,6 +171,27 @@ fn toggle(set: &mut BTreeSet<Id>, id: &Id) -> bool {
 mod tests {
     use super::*;
     use crate::test_ids::id;
+
+    #[test]
+    fn children_order_lists_ordered_children_first() {
+        let mut v = Variant::empty(id(1), id(2), "Acme");
+        let base = [id(10), id(11), id(12)];
+        assert_eq!(v.children_order(&id(5), &base), base);
+        v.order.insert(id(5), vec![id(12), id(99), id(12), id(10)]);
+        assert_eq!(v.children_order(&id(5), &base), [id(12), id(10), id(11)]);
+    }
+
+    #[test]
+    fn move_child_to_places_the_item_at_the_target() {
+        let mut v = Variant::empty(id(1), id(2), "Acme");
+        let current = [id(10), id(11), id(12)];
+        assert!(v.move_child_to(&id(5), &current, &id(10), &id(12)));
+        assert_eq!(v.order[&id(5)], [id(11), id(12), id(10)]);
+        assert!(v.move_child_to(&id(5), &v.order[&id(5)].clone(), &id(10), &id(11)));
+        assert_eq!(v.order[&id(5)], [id(10), id(11), id(12)]);
+        assert!(!v.move_child_to(&id(5), &current, &id(10), &id(10)));
+        assert!(!v.move_child_to(&id(5), &current, &id(10), &id(99)));
+    }
 
     #[test]
     fn empty_variant_has_no_overlay() {

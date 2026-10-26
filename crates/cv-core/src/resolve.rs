@@ -505,6 +505,8 @@ mod tests {
         let r = cv.resolve(Some(&v));
         let section_ids: Vec<_> = r.sections.iter().map(|s| s.id().clone()).collect();
         assert_eq!(section_ids, [id(13), id(3), id(6)]);
+        let base: Vec<Id> = cv.sections.iter().map(|s| s.id().clone()).collect();
+        assert_eq!(v.children_order(&id(1), &base), section_ids, "same rule");
         let ResolvedSection::Experience(exp) = &r.sections[1] else {
             panic!("experience")
         };

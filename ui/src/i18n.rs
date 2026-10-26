@@ -185,6 +185,8 @@ pub struct Strings {
     pub add_language: &'static str,
     pub move_language_up: &'static str,
     pub move_language_down: &'static str,
+    pub move_skill_up: &'static str,
+    pub move_skill_down: &'static str,
     pub remove_language: &'static str,
 
     // Variants
@@ -376,6 +378,8 @@ pub static EN: Strings = Strings {
     add_language: "+ Language",
     move_language_up: "Move language up",
     move_language_down: "Move language down",
+    move_skill_up: "Move skill up",
+    move_skill_down: "Move skill down",
     remove_language: "Remove language",
 
     version: "Version",
