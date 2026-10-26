@@ -32,6 +32,14 @@ FONTS = [
     ("Inter", "crates/cv-render/fonts/LICENSE.txt", "OFL-1.1", "https://github.com/rsms/inter"),
 ]
 
+# Crates that ship no licence file: the text from their upstream repository,
+# kept in licenses/. Used only when the crate has no file of its own.
+UPSTREAM_TEXTS = {
+    "alloc-stdlib": "licenses/alloc-stdlib-BSD-3-Clause.txt",
+    "roman-numerals-rs": "licenses/roman-numerals-rs-0BSD.txt",
+    "selectors": "licenses/selectors-MPL-2.0.txt",
+}
+
 LICENSE_FILE = re.compile(r"^(LICEN[CS]E|COPYING|NOTICE)", re.I)
 COPYRIGHT = re.compile(r"^\s*(copyright\s*(\(c\)|©|\d{4})|\(c\)\s*\d{4}|©)", re.I)
 
@@ -66,26 +74,78 @@ def shipped(meta):
 
 
 def alternatives(expr):
-    """An SPDX expression as a list of AND-groups, any one of which suffices."""
-    expr = expr.replace("/", " OR ").replace("(", " ").replace(")", " ")
-    out = []
-    for alt in re.split(r"\s+OR\s+", expr.strip()):
-        parts = [p.strip() for p in re.split(r"\s+AND\s+", alt) if p.strip()]
-        out.append(parts)
-    return out
+    """An SPDX expression as a list of AND-groups, any one of which suffices.
+
+    AND binds tighter than OR and parentheses group, as SPDX defines, so
+    `GPL-3.0-only AND (MIT OR Apache-2.0)` gives two groups that both need
+    GPL-3.0-only. `WITH` stays part of its licence; `/` is the old OR."""
+    tokens = re.findall(r"\(|\)|[^\s()]+", expr.replace("/", " OR "))
+    pos = 0
+
+    def peek():
+        return tokens[pos] if pos < len(tokens) else None
+
+    def take():
+        nonlocal pos
+        pos += 1
+        return tokens[pos - 1]
+
+    def term():
+        if peek() == "(":
+            take()
+            groups = either()
+            if peek() != ")":
+                raise ValueError(f"unbalanced parentheses in licence {expr!r}")
+            take()
+            return groups
+        if peek() in (None, ")", "AND", "OR", "WITH"):
+            raise ValueError(f"malformed licence {expr!r}")
+        name = take()
+        if peek() == "WITH":
+            take()
+            if peek() in (None, "(", ")", "AND", "OR", "WITH"):
+                raise ValueError(f"malformed licence {expr!r}")
+            name += " WITH " + take()
+        return [[name]]
+
+    def both():
+        groups = term()
+        while peek() == "AND":
+            take()
+            right = term()
+            groups = [a + b for a in groups for b in right]
+        return groups
+
+    def either():
+        groups = both()
+        while peek() == "OR":
+            take()
+            groups += both()
+        return groups
+
+    if not tokens:
+        return []
+    groups = either()
+    if pos != len(tokens):
+        raise ValueError(f"malformed licence {expr!r}")
+    return groups
 
 
 def chosen(expr):
     """The licences PinaxCV uses a crate under: Apache-2.0 or MIT where the
     crate offers them, otherwise the first allowed choice. None if no
     choice is allowed."""
-    groups = [g for g in alternatives(expr) if all(p in ALLOWED for p in g)]
+    try:
+        options = alternatives(expr)
+    except ValueError:
+        return None
+    groups = [g for g in options if all(p in ALLOWED for p in g)]
     preferred = [g for g in groups if set(g) <= {"Apache-2.0", "MIT"}]
     return (preferred or groups or [None])[0]
 
 
 def notices(pkg):
-    """Copyright lines from the package's licence files, without repeats."""
+    """Every copyright line from the package's licence files, without repeats."""
     lines = []
     for f in licence_files(pkg):
         try:
@@ -97,7 +157,7 @@ def notices(pkg):
             if COPYRIGHT.match(line) and "<" not in line[:20] and "[yyyy]" not in line and "{" not in line:
                 if line not in lines:
                     lines.append(line)
-    return lines[:6]
+    return lines
 
 
 def licence_files(pkg):
@@ -105,6 +165,8 @@ def licence_files(pkg):
     files = sorted(f for f in root.iterdir() if f.is_file() and LICENSE_FILE.match(f.name))
     if pkg.get("license_file"):
         files.append(root / pkg["license_file"])
+    if not files and pkg["name"] in UPSTREAM_TEXTS:
+        files.append(ROOT / UPSTREAM_TEXTS[pkg["name"]])
     return files
 
 
@@ -167,18 +229,28 @@ def render(pkgs):
         out += ["", f"### {licence} ({name})", "", "```text", (ROOT / path).read_text(encoding="utf-8").strip(), "```"]
     # Other licences ask for their text to ship too: each crate's own files.
     texts = []
+    missing = []
     for p in pkgs:
         if set(chosen(p.get("license") or "")) <= {"Apache-2.0", "MIT"}:
             continue
+        found = False
         for f in licence_files(p):
             if re.search(r"APACHE|MIT", f.name, re.I):
                 continue
-            text = f.read_text(encoding="utf-8", errors="replace").strip()
-            if text and text not in texts:
+            try:
+                text = f.read_text(encoding="utf-8", errors="replace").strip()
+            except OSError:
+                continue
+            if not text:
+                continue
+            found = True
+            if text not in texts:
                 texts.append(text)
                 licence = " AND ".join(chosen(p["license"]))
                 out += ["", f"### {licence} (`{p['name']}`)", "", "```text", text, "```"]
-    return "\n".join(out) + "\n"
+        if not found:
+            missing.append(p)
+    return "\n".join(out) + "\n", missing
 
 
 def main():
@@ -188,7 +260,12 @@ def main():
         for p in bad:
             print(f"not compatible with Apache-2.0 or unknown: {p['name']} {p['version']}: {p.get('license')}", file=sys.stderr)
         sys.exit(1)
-    text = render(pkgs)
+    text, missing = render(pkgs)
+    if missing:
+        for p in missing:
+            licence = " AND ".join(chosen(p["license"]))
+            print(f"no {licence} licence text found for {p['name']} {p['version']}", file=sys.stderr)
+        sys.exit(1)
     if "--check" in sys.argv[1:]:
         if not OUT.is_file() or OUT.read_text(encoding="utf-8") != text:
             print("THIRD_PARTY_LICENSES.md is out of date: run python3 scripts/third_party_licenses.py", file=sys.stderr)
