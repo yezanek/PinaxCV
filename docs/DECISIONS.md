@@ -372,6 +372,14 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Pointer events are used instead of HTML5 drag and drop, because Tauri's file-drop handling turns HTML5 drag and drop off in the Windows WebView, and instead of SortableJS, so there is no JavaScript to vendor.
 - Dragging near the top or bottom of the form scrolls it. The Move up/Move down buttons stay as the keyboard alternative, and the handle is hidden from assistive technology.
 
+## ADR-054 — Content tab: add section menu, custom sections, collapsing, locked, summary counter (M3)
+
+- One "Add section" menu below the sections replaces the per-kind add buttons. It offers Experience, Education, Projects, Skills, Languages, Certifications and Custom (spec section 12.3), and each new section starts with one empty item.
+- Custom sections are edited like entry sections, with their title edited in the section heading.
+- Each section has a collapse toggle. Collapsing only hides the section's contents in the form; it does not change the CV or the preview.
+- Each entry has a "Locked" checkbox. Its tooltip, also given to screen readers, says that locking protects the entry's facts from AI suggestions (spec sections 4.4 and 12.3).
+- The summary shows a character counter against the lint limit (`SUMMARY_MAX_CHARS`, 600). It turns red past the limit, and the lint check still reports it.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

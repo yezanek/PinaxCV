@@ -2,19 +2,24 @@
 //! add, remove and reorder sections, entries and bullets, and edit their text.
 //! Lists are keyed by ID, so typing never rebuilds the input in focus.
 
-use cv_core::{Bullet, Cv, Entry, EntrySection, Id, PartialDate, Period, Section};
+use cv_core::{
+    Bullet, CustomSection, Cv, Entry, EntrySection, Id, LanguagesSection, PartialDate, Period,
+    Section, SkillsSection,
+};
 use leptos::prelude::*;
 
 use crate::dates;
 use crate::drag::{DragHandle, move_to};
 use crate::i18n::t;
 use crate::ids::new_id;
+use crate::lists::{LanguagesEditor, SkillsEditor, new_group, new_language};
 use crate::order::shift;
 
 /// Applies an edit to the CV and schedules preview and autosave.
 pub type Edit = Callback<Box<dyn FnOnce(&mut Cv)>>;
 
-fn entry_section_mut<'a>(cv: &'a mut Cv, id: &Id) -> Option<&'a mut EntrySection> {
+/// The entries of an entry section or a custom section.
+fn entries_mut<'a>(cv: &'a mut Cv, id: &Id) -> Option<&'a mut Vec<Entry>> {
     cv.sections.iter_mut().find_map(|s| match s {
         Section::Experience(x)
         | Section::Education(x)
@@ -22,43 +27,65 @@ fn entry_section_mut<'a>(cv: &'a mut Cv, id: &Id) -> Option<&'a mut EntrySection
         | Section::Certifications(x)
             if &x.id == id =>
         {
-            Some(x)
+            Some(&mut x.entries)
         }
+        Section::Custom(x) if &x.id == id => Some(&mut x.entries),
         _ => None,
     })
 }
 
-fn entry_mut<'a>(cv: &'a mut Cv, section: &Id, entry: &Id) -> Option<&'a mut Entry> {
-    entry_section_mut(cv, section)?
-        .entries
-        .iter_mut()
-        .find(|e| &e.id == entry)
-}
-
-fn entry_ref<'a>(cv: &'a Cv, section: &Id, entry: &Id) -> Option<&'a Entry> {
+fn entries_ref<'a>(cv: &'a Cv, id: &Id) -> Option<&'a [Entry]> {
     cv.sections.iter().find_map(|s| match s {
         Section::Experience(x)
         | Section::Education(x)
         | Section::Projects(x)
         | Section::Certifications(x)
-            if &x.id == section =>
+            if &x.id == id =>
         {
-            x.entries.iter().find(|e| &e.id == entry)
+            Some(x.entries.as_slice())
         }
+        Section::Custom(x) if &x.id == id => Some(x.entries.as_slice()),
         _ => None,
     })
 }
 
-/// IDs and kind labels of the entry sections, in order.
-fn entry_sections(cv: &Cv) -> Vec<(Id, &'static str)> {
+fn entry_mut<'a>(cv: &'a mut Cv, section: &Id, entry: &Id) -> Option<&'a mut Entry> {
+    entries_mut(cv, section)?
+        .iter_mut()
+        .find(|e| &e.id == entry)
+}
+
+fn entry_ref<'a>(cv: &'a Cv, section: &Id, entry: &Id) -> Option<&'a Entry> {
+    entries_ref(cv, section)?.iter().find(|e| &e.id == entry)
+}
+
+/// The editor a section needs: entries (with a kind label; custom sections
+/// have none, their title is edited in place), skills or languages.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum SectionForm {
+    Entries(Option<&'static str>),
+    Skills,
+    Languages,
+}
+
+/// Every section with its editor, in CV order, so the form follows
+/// creation and reordering across kinds.
+fn section_forms(cv: &Cv) -> Vec<(Id, SectionForm)> {
     cv.sections
         .iter()
-        .filter_map(|s| match s {
-            Section::Experience(x) => Some((x.id.clone(), t().work_experience)),
-            Section::Education(x) => Some((x.id.clone(), t().education)),
-            Section::Projects(x) => Some((x.id.clone(), t().projects)),
-            Section::Certifications(x) => Some((x.id.clone(), t().certifications)),
-            _ => None,
+        .map(|s| match s {
+            Section::Experience(x) => (
+                x.id.clone(),
+                SectionForm::Entries(Some(t().work_experience)),
+            ),
+            Section::Education(x) => (x.id.clone(), SectionForm::Entries(Some(t().education))),
+            Section::Projects(x) => (x.id.clone(), SectionForm::Entries(Some(t().projects))),
+            Section::Certifications(x) => {
+                (x.id.clone(), SectionForm::Entries(Some(t().certifications)))
+            }
+            Section::Custom(x) => (x.id.clone(), SectionForm::Entries(None)),
+            Section::Skills(x) => (x.id.clone(), SectionForm::Skills),
+            Section::Languages(x) => (x.id.clone(), SectionForm::Languages),
         })
         .collect()
 }
@@ -87,35 +114,129 @@ fn opt(s: String) -> Option<String> {
     (!s.trim().is_empty()).then_some(s)
 }
 
+/// The editors of every section, in the order the CV lists them.
 #[component]
-pub fn EntrySections(cv: RwSignal<Option<Cv>>, edit: Edit) -> impl IntoView {
-    let add_section = move |make: fn(EntrySection) -> Section| {
-        let (Some(section_id), Some(entry_id)) = (new_id(), new_id()) else {
-            return;
-        };
-        edit.run(Box::new(move |c| {
-            c.sections.push(make(EntrySection {
-                id: section_id,
-                title_override: None,
-                entries: vec![new_entry(entry_id)],
-            }));
-        }));
-    };
+pub fn Sections(cv: RwSignal<Option<Cv>>, edit: Edit) -> impl IntoView {
     view! {
         <For
-            each=move || cv.with(|c| c.as_ref().map(entry_sections).unwrap_or_default())
+            each=move || cv.with(|c| c.as_ref().map(section_forms).unwrap_or_default())
             key=|(id, _)| id.clone()
             let:section
         >
-            <SectionEditor cv=cv edit=edit id=section.0 label=section.1 />
+            {match section.1 {
+                SectionForm::Entries(label) => {
+                    view! { <SectionEditor cv=cv edit=edit id=section.0 label=label /> }.into_any()
+                }
+                SectionForm::Skills => view! { <SkillsEditor cv=cv edit=edit id=section.0 /> }.into_any(),
+                SectionForm::Languages => {
+                    view! { <LanguagesEditor cv=cv edit=edit id=section.0 /> }.into_any()
+                }
+            }}
         </For>
-        <p>
-            <button on:click=move |_| add_section(Section::Experience)>{t().add_work_experience}</button>
-            " "
-            <button on:click=move |_| add_section(Section::Education)>{t().add_education}</button>
-            " "
-            <button on:click=move |_| add_section(Section::Projects)>{t().add_projects}</button>
-        </p>
+    }
+}
+
+/// The kinds of section the Add section menu offers (spec section 12.3).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NewSection {
+    Experience,
+    Education,
+    Projects,
+    Skills,
+    Languages,
+    Certifications,
+    Custom,
+}
+
+impl NewSection {
+    pub const ALL: [NewSection; 7] = [
+        Self::Experience,
+        Self::Education,
+        Self::Projects,
+        Self::Skills,
+        Self::Languages,
+        Self::Certifications,
+        Self::Custom,
+    ];
+
+    fn label(self) -> &'static str {
+        let s = t();
+        match self {
+            Self::Experience => s.work_experience,
+            Self::Education => s.education,
+            Self::Projects => s.projects,
+            Self::Skills => s.skills,
+            Self::Languages => s.languages,
+            Self::Certifications => s.certifications,
+            Self::Custom => s.custom_section,
+        }
+    }
+
+    /// A new section of this kind with one empty item, from two fresh IDs.
+    pub fn build(self, section: Id, item: Id) -> Section {
+        let entries = |id| EntrySection {
+            id,
+            title_override: None,
+            entries: vec![new_entry(item.clone())],
+        };
+        match self {
+            Self::Experience => Section::Experience(entries(section)),
+            Self::Education => Section::Education(entries(section)),
+            Self::Projects => Section::Projects(entries(section)),
+            Self::Certifications => Section::Certifications(entries(section)),
+            Self::Custom => Section::Custom(CustomSection {
+                id: section,
+                title: String::new(),
+                entries: vec![new_entry(item)],
+            }),
+            Self::Skills => Section::Skills(SkillsSection {
+                id: section,
+                title_override: None,
+                groups: vec![new_group(item)],
+            }),
+            Self::Languages => Section::Languages(LanguagesSection {
+                id: section,
+                title_override: None,
+                items: vec![new_language(item)],
+            }),
+        }
+    }
+}
+
+/// The Add section menu: picking a kind appends that section.
+#[component]
+pub fn AddSection(edit: Edit) -> impl IntoView {
+    let options = NewSection::ALL
+        .iter()
+        .enumerate()
+        .map(|(i, k)| view! { <option value=i.to_string()>{k.label()}</option> })
+        .collect_view();
+    view! {
+        <label class="add-section">{t().add_section}
+            <select on:change=move |ev| {
+                let el = event_target::<web_sys::HtmlSelectElement>(&ev);
+                let picked = el.value().parse::<usize>().ok().and_then(|i| NewSection::ALL.get(i).copied());
+                el.set_value("");
+                let (Some(kind), Some(section), Some(item)) = (picked, new_id(), new_id()) else {
+                    return;
+                };
+                edit.run(Box::new(move |c| c.sections.push(kind.build(section, item))));
+            }>
+                <option value="" selected>{t().add_section_choose}</option>
+                {options}
+            </select>
+        </label>
+    }
+}
+
+/// The button in a section's heading that hides or shows its contents.
+pub fn collapse_toggle(collapsed: RwSignal<bool>) -> impl IntoView {
+    view! {
+        <button class="collapse-toggle" aria-expanded=move || (!collapsed.get()).to_string()
+            aria-label=move || if collapsed.get() { t().expand_section } else { t().collapse_section }
+            on:click=move |_| collapsed.update(|c| *c = !*c)>
+            {move || if collapsed.get() { "▸" } else { "▾" }}
+        </button>
     }
 }
 
@@ -124,27 +245,43 @@ fn SectionEditor(
     cv: RwSignal<Option<Cv>>,
     edit: Edit,
     id: Id,
-    label: &'static str,
+    /// `None` for a custom section, whose title is edited in the heading.
+    label: Option<&'static str>,
 ) -> impl IntoView {
     let sid = id.clone();
     let entries = move || {
         cv.with(|c| {
             c.as_ref()
-                .and_then(|c| {
-                    c.sections.iter().find_map(|s| match s {
-                        Section::Experience(x)
-                        | Section::Education(x)
-                        | Section::Projects(x)
-                        | Section::Certifications(x)
-                            if x.id == sid =>
-                        {
-                            Some(x.entries.iter().map(|e| e.id.clone()).collect::<Vec<_>>())
-                        }
-                        _ => None,
-                    })
-                })
+                .and_then(|c| entries_ref(c, &sid))
+                .map(|x| x.iter().map(|e| e.id.clone()).collect::<Vec<_>>())
                 .unwrap_or_default()
         })
+    };
+    let collapsed = RwSignal::new(false);
+    let heading = match label {
+        Some(label) => label.into_any(),
+        None => {
+            let (read, write) = (id.clone(), id.clone());
+            view! {
+                <input class="custom-title" aria-label=t().custom_title placeholder=t().custom_title
+                    prop:value=move || cv.with(|c| c.as_ref().and_then(|c| c.sections.iter().find_map(|s| match s {
+                        Section::Custom(x) if x.id == read => Some(x.title.clone()),
+                        _ => None,
+                    })).unwrap_or_default())
+                    on:input=move |ev| {
+                        let v = event_target_value(&ev);
+                        let id = write.clone();
+                        edit.run(Box::new(move |c| {
+                            for s in &mut c.sections {
+                                if let Section::Custom(x) = s && x.id == id {
+                                    x.title = v.clone();
+                                }
+                            }
+                        }));
+                    } />
+            }
+            .into_any()
+        }
     };
     let add = {
         let id = id.clone();
@@ -154,8 +291,8 @@ fn SectionEditor(
             };
             let id = id.clone();
             edit.run(Box::new(move |c| {
-                if let Some(s) = entry_section_mut(c, &id) {
-                    s.entries.push(new_entry(entry_id));
+                if let Some(x) = entries_mut(c, &id) {
+                    x.push(new_entry(entry_id));
                 }
             }));
         }
@@ -189,18 +326,20 @@ fn SectionEditor(
     });
     view! {
         <fieldset class="section" data-drag-list="sections" data-drag-id=id.to_string()>
-            <legend>{label}</legend>
+            <legend>{collapse_toggle(collapsed)}{heading}</legend>
             <div class="order">
                 <DragHandle list="sections".to_owned() id=id.clone() dropped=drop_section />
                 <button aria-label=t().move_section_up on:click=section_up>"↑"</button>
                 <button aria-label=t().move_section_down on:click=section_down>"↓"</button>
             </div>
-            <For each=entries key=|e| e.clone() let:entry>
-                <EntryEditor cv=cv edit=edit section=section_id.clone() id=entry />
-            </For>
-            <button on:click=add>{t().add_entry}</button>
-            " "
-            <button on:click=remove_section>{t().remove_section}</button>
+            <div hidden=move || collapsed.get()>
+                <For each=entries key=|e| e.clone() let:entry>
+                    <EntryEditor cv=cv edit=edit section=section_id.clone() id=entry />
+                </For>
+                <button on:click=add>{t().add_entry}</button>
+                " "
+                <button on:click=remove_section>{t().remove_section}</button>
+            </div>
         </fieldset>
     }
 }
@@ -267,8 +406,8 @@ fn EntryEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> imp
         move |_| {
             let (s, e) = (s.clone(), e.clone());
             edit.run(Box::new(move |c| {
-                if let Some(x) = entry_section_mut(c, &s) {
-                    x.entries.retain(|en| en.id != e);
+                if let Some(x) = entries_mut(c, &s) {
+                    x.retain(|en| en.id != e);
                 }
             }));
         }
@@ -278,8 +417,8 @@ fn EntryEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> imp
         move |up: bool| {
             let (s, e) = (s.clone(), e.clone());
             edit.run(Box::new(move |c| {
-                if let Some(x) = entry_section_mut(c, &s) {
-                    shift(&mut x.entries, |en| en.id == e, up);
+                if let Some(x) = entries_mut(c, &s) {
+                    shift(x, |en| en.id == e, up);
                 }
             }));
         }
@@ -333,6 +472,22 @@ fn EntryEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> imp
             </label>
         }
     };
+    let locked = {
+        let (s1, e1, s2, e2) = (section.clone(), id.clone(), section.clone(), id.clone());
+        view! {
+            <label class="check" title=t().locked_hint>
+                <input type="checkbox"
+                    prop:checked=move || cv.with(|c| c.as_ref().and_then(|c| entry_ref(c, &s1, &e1)).is_some_and(|e| e.locked))
+                    on:change=move |ev| {
+                        let on = event_target_checked(&ev);
+                        let (s, e) = (s2.clone(), e2.clone());
+                        edit.run(Box::new(move |c| if let Some(x) = entry_mut(c, &s, &e) { x.locked = on }));
+                    } />
+                " "{t().locked}
+                <span class="hint">{t().locked_hint}</span>
+            </label>
+        }
+    };
     let description = {
         let (s1, e1, s2, e2) = (section.clone(), id.clone(), section.clone(), id.clone());
         view! {
@@ -353,8 +508,8 @@ fn EntryEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> imp
         Callback::new(move |(a, b): (Id, Id)| {
             let s = s.clone();
             edit.run(Box::new(move |c| {
-                if let Some(x) = entry_section_mut(c, &s) {
-                    move_to(&mut x.entries, |e| e.id == a, |e| e.id == b);
+                if let Some(x) = entries_mut(c, &s) {
+                    move_to(x, |e| e.id == a, |e| e.id == b);
                 }
             }));
         })
@@ -371,6 +526,7 @@ fn EntryEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> imp
                 {date(t().end, |p| p.end, |p, d| p.end = d)}
             </div>
             {current}
+            {locked}
             {description}
             {text(t().link, |e| e.url.clone().unwrap_or_default(), |e, v| e.url = opt(v))}
             <For each=bullets key=|b| b.clone() let:bullet>
@@ -459,5 +615,72 @@ fn BulletEditor(
             <button aria-label=t().move_bullet_down on:click=bullet_down>"↓"</button>
             <button aria-label=t().remove_bullet on:click=remove>"×"</button>
         </div>
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn id(n: u8) -> Id {
+        Id::parse(&format!("01HZX3M8Q4V7K2N9P5R6T0W1{n:02}")).expect("id")
+    }
+
+    #[test]
+    fn every_menu_kind_builds_its_section_with_one_item() {
+        for kind in NewSection::ALL {
+            let s = kind.build(id(1), id(2));
+            assert_eq!(s.id(), &id(1));
+            let items = match (&s, kind) {
+                (Section::Experience(x), NewSection::Experience)
+                | (Section::Education(x), NewSection::Education)
+                | (Section::Projects(x), NewSection::Projects)
+                | (Section::Certifications(x), NewSection::Certifications) => {
+                    x.entries.iter().map(|e| e.id.clone()).collect::<Vec<_>>()
+                }
+                (Section::Custom(x), NewSection::Custom) => {
+                    x.entries.iter().map(|e| e.id.clone()).collect()
+                }
+                (Section::Skills(x), NewSection::Skills) => {
+                    x.groups.iter().map(|g| g.id.clone()).collect()
+                }
+                (Section::Languages(x), NewSection::Languages) => {
+                    x.items.iter().map(|i| i.id.clone()).collect()
+                }
+                _ => panic!("{kind:?} built the wrong section"),
+            };
+            assert_eq!(items, [id(2)]);
+        }
+    }
+
+    #[test]
+    fn custom_sections_are_listed_and_edited_like_entry_sections() {
+        let mut cv: Cv =
+            serde_json::from_str(include_str!("../../testdata/cvs/typical.json")).expect("cv");
+        cv.sections.push(NewSection::Custom.build(id(1), id(2)));
+        assert_eq!(
+            section_forms(&cv).last(),
+            Some(&(id(1), SectionForm::Entries(None)))
+        );
+        entry_mut(&mut cv, &id(1), &id(2)).expect("entry").title = "Talk".into();
+        assert_eq!(
+            entry_ref(&cv, &id(1), &id(2)).map(|e| e.title.as_str()),
+            Some("Talk")
+        );
+    }
+
+    #[test]
+    fn the_form_follows_section_order_across_kinds() {
+        let mut cv: Cv =
+            serde_json::from_str(include_str!("../../testdata/cvs/typical.json")).expect("cv");
+        cv.sections.push(NewSection::Custom.build(id(1), id(2)));
+        cv.sections.push(NewSection::Skills.build(id(3), id(4)));
+        let forms = section_forms(&cv);
+        let ids: Vec<&Id> = forms.iter().map(|(id, _)| id).collect();
+        let order: Vec<&Id> = cv.sections.iter().map(Section::id).collect();
+        assert_eq!(ids, order);
+        assert_eq!(forms[forms.len() - 1].1, SectionForm::Skills);
+        cv.sections.rotate_right(1);
+        assert_eq!(section_forms(&cv)[0].1, SectionForm::Skills);
     }
 }
