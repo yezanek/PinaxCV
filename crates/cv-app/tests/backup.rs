@@ -171,3 +171,57 @@ fn delete_all_data_removes_cvs_settings_cache_and_keys() {
     new_cv(&app, "Fresh start");
     assert_eq!(titles(&app), ["Fresh start"]);
 }
+
+/// A keychain whose first deletion fails.
+#[derive(Clone, Default)]
+struct StuckKeychain {
+    keys: Keychain,
+    failed: Arc<Mutex<bool>>,
+}
+
+impl SecretStore for StuckKeychain {
+    fn get(&self, account: &str) -> Result<Option<String>, SecretError> {
+        self.keys.get(account)
+    }
+
+    fn set(&self, account: &str, secret: &str) -> Result<(), SecretError> {
+        self.keys.set(account, secret)
+    }
+
+    fn delete(&self, account: &str) -> Result<(), SecretError> {
+        let mut failed = self.failed.lock().expect("lock");
+        if !*failed {
+            *failed = true;
+            return Err(SecretError::Failed("locked".into()));
+        }
+        self.keys.delete(account)
+    }
+}
+
+#[test]
+fn a_failing_key_deletion_still_removes_the_others() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let keychain = StuckKeychain::default();
+    let app =
+        app(&dir.path().join("pinaxcv.db"), None, None).with_secrets(Box::new(keychain.clone()));
+    for (provider, key) in [(AiProvider::Openai, "sk-a"), (AiProvider::Gemini, "sk-b")] {
+        app.ai_configure(AiConfig {
+            provider,
+            model: "some-model".into(),
+            base_url: None,
+            api_key: Some(key.into()),
+            send_name: false,
+            send_location: true,
+        })
+        .expect("configure");
+    }
+    new_cv(&app, "Mine");
+
+    let err = app.delete_all_data().expect_err("one key stayed");
+    assert_eq!(err.code, ErrorCode::Keychain);
+    assert!(titles(&app).is_empty(), "the data is deleted anyway");
+    assert!(
+        keychain.keys.0.lock().expect("lock").is_empty(),
+        "every other key is removed"
+    );
+}

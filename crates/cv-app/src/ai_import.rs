@@ -329,7 +329,7 @@ impl App {
             .await?;
         let model = status.model;
         let (original, sent) = self.texts.get(req.text_id)?;
-        let cache = StoreCache(Arc::clone(self));
+        let cache = StoreCache::new(Arc::clone(self));
         let stage = StageContext {
             llm: llm.as_ref(),
             cache: &cache,
