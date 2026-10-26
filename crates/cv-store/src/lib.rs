@@ -107,8 +107,6 @@ pub trait Store: Send + Sync {
     fn ai_cache_put(&self, key: &str, kind: &str, response: &str) -> Result<()>;
     fn ai_cache_clear(&self) -> Result<()>;
 
-    /// The latest AI review of a CV made without a variant (spec section
-    /// 11.11): opaque JSON and when it was saved.
     /// The CV's profile photo, if it has one and the CV is not deleted.
     fn photo_get(&self, cv_id: &Id) -> Result<Option<StoredPhoto>>;
     /// Sets or replaces the CV's photo; [`StoreError::NotFound`] for a
@@ -117,6 +115,8 @@ pub trait Store: Send + Sync {
     /// Removes the CV's photo, if any.
     fn photo_delete(&self, cv_id: &Id) -> Result<()>;
 
+    /// The latest AI review of a CV made without a variant (spec section
+    /// 11.11): opaque JSON and when it was saved.
     fn review_session_get(&self, cv_id: &Id) -> Result<Option<(String, Timestamp)>>;
     /// Replaces the review session of a live CV; returns its timestamp.
     fn review_session_put(&self, cv_id: &Id, content: &str) -> Result<Timestamp>;

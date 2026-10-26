@@ -300,8 +300,9 @@ mod tests {
     /// `<script>`, `<img>`, `<iframe>`, `<object>`, `<embed>`, `<source>`,
     /// `<video>` and `<audio>`; any `src`, `srcset`, `poster` or `data`
     /// attribute; and `@import` or non-`data:` `url(` inside `<style>` or a
-    /// `style` attribute. Text between tags is never inspected, and
-    /// `<a href>` is navigation and allowed.
+    /// `style` attribute. An `<img>` whose `src` is a `data:` URI (the
+    /// photo) loads nothing and is allowed. Text between tags is never
+    /// inspected, and `<a href>` is navigation and allowed.
     fn external_resources(doc: &str) -> Vec<String> {
         const LOADING_TAGS: [&str; 9] = [
             "link", "script", "img", "iframe", "object", "embed", "source", "video", "audio",
@@ -315,14 +316,21 @@ mod tests {
             let tag = &rest[..close];
             rest = &rest[close + 1..];
             let (name, attrs) = parse_tag(tag);
-            if LOADING_TAGS.contains(&name.as_str()) {
+            let embedded = |attr: &str, value: &str| {
+                name == "img" && attr == "src" && value.to_ascii_lowercase().starts_with("data:")
+            };
+            let embedded_image = attrs.iter().any(|(a, v)| embedded(a, v));
+            if LOADING_TAGS.contains(&name.as_str()) && !embedded_image {
                 found.push(format!("<{name}>"));
             }
-            for (attr, value) in attrs {
+            for (attr, value) in &attrs {
+                if embedded(attr, value) {
+                    continue;
+                }
                 if LOADING_ATTRS.contains(&attr.as_str()) {
                     found.push(format!("{attr}={value}"));
                 } else if attr == "style" {
-                    found.extend(css_resources(&value));
+                    found.extend(css_resources(value));
                 }
             }
             if name == "style" {
@@ -510,6 +518,18 @@ mod tests {
         let img = "<img class=\"photo\" src=\"data:image/jpeg;base64,/9j/2Q==\" alt=\"\">\n";
         assert!(doc.contains(img), "{doc}");
         assert_eq!(doc.replace(img, ""), plain, "the photo adds nothing else");
+        assert_eq!(external_resources(&doc), Vec::<String>::new());
+        // A remote image is still caught, and so is a srcset beside a data: src.
+        assert_eq!(
+            external_resources("<img src=\"https://x.test/a.png\">"),
+            ["<img>", "src=https://x.test/a.png"]
+        );
+        assert_eq!(
+            external_resources(
+                "<img src=\"data:image/png;base64,AA\" srcset=\"https://x.test/b.png 2x\">"
+            ),
+            ["srcset=https://x.test/b.png 2x"]
+        );
     }
 
     #[test]

@@ -123,17 +123,23 @@ impl Cropping {
         self.clamp();
     }
 
-    /// The crop to send, in whole photo pixels.
+    /// The crop to send, in whole photo pixels. Each value is rounded on
+    /// its own, so the origin is pulled back where the rounding would push
+    /// the crop one pixel past the photo's edge.
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     fn crop(&self) -> PhotoCrop {
         let (w, h) = self.size();
-        let x = (self.cx - w / 2.0).max(0.0);
-        let y = (self.cy - h / 2.0).max(0.0);
+        let width = (w.round() as u32).min(self.source.width);
+        let height = (h.round() as u32).min(self.source.height);
+        let x = ((self.cx - w / 2.0).max(0.0).round() as u32)
+            .min(self.source.width.saturating_sub(width));
+        let y = ((self.cy - h / 2.0).max(0.0).round() as u32)
+            .min(self.source.height.saturating_sub(height));
         PhotoCrop {
-            x: x.round() as u32,
-            y: y.round() as u32,
-            width: w.round() as u32,
-            height: h.round() as u32,
+            x,
+            y,
+            width,
+            height,
             shape: self.shape,
         }
     }
@@ -460,6 +466,24 @@ mod tests {
         let mut small = Cropping::new(source(80, 120), PhotoShape::Square);
         small.set_zoom(1_000.0);
         assert_eq!(small.crop().width, 32);
+    }
+
+    #[test]
+    fn rounding_keeps_the_crop_inside_the_photo() {
+        // A 451.5-pixel-wide frame against the right edge would round to
+        // x 349 and width 452, one pixel past an 800-pixel photo.
+        let mut c = Cropping::new(source(800, 602), PhotoShape::Portrait);
+        c.drag(-10_000.0, 0.0);
+        let crop = c.crop();
+        assert!(crop.x + crop.width <= 800, "{crop:?}");
+        assert!(crop.y + crop.height <= 602, "{crop:?}");
+        // A 300.5-pixel square in the bottom-right corner, both edges.
+        let mut c = Cropping::new(source(801, 601), PhotoShape::Square);
+        c.set_zoom(2.0);
+        c.drag(-10_000.0, -10_000.0);
+        let crop = c.crop();
+        assert!(crop.x + crop.width <= 801, "{crop:?}");
+        assert!(crop.y + crop.height <= 601, "{crop:?}");
     }
 
     #[test]

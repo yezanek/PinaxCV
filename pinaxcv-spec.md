@@ -530,14 +530,14 @@ Absent optional fields are JSON `null` (Typst `none`), never empty strings, so t
 
 Hard rules (document them in `docs/ATS_RULES.md` and enforce with tests):
 
-1. **Single column.** No `grid`/`columns` that place content side by side. Dates go on the same line as title using right-aligned text via a fixed-width-safe approach: prefer `title, org` on the first line and `period · location` on the second line. Do **not** use `h(1fr)` with dates if extraction tests show dates are detached; keep the layout that passes the tests.
+1. **Single column.** No `grid`/`columns` that place content side by side. The one exception is the optional profile photo (ADR-083), which may sit beside the contact block because it is a PDF artifact with no text, so extraction and reading order are unchanged (golden test). Dates go on the same line as title using right-aligned text via a fixed-width-safe approach: prefer `title, org` on the first line and `period · location` on the second line. Do **not** use `h(1fr)` with dates if extraction tests show dates are detached; keep the layout that passes the tests.
 2. **Reading order = source order.** No `place`, `float`, `move`, or absolutely positioned elements for content.
 3. **Standard headings**, in the order: contact block, Summary, Work Experience, Education, Skills, Languages, Certifications, Projects, custom. (Order is per `cv.sections`; the standard names are the defaults.)
 4. **Contact block is body text, at the top of page 1**, with text labels or plain separators, no icons. The template places email and phone within the first five extracted lines; the ATS check (section 7.2) fails only beyond eight, which leaves room for a headline. URLs printed in full (linkified only for `https:`/`mailto:`).
 5. **No headers/footers containing contact info.** A plain-text "Page 1 of 2" footer is included only if the extraction tests prove it does not interleave with body text; otherwise there is no footer.
 6. **Ligatures off:** `#set text(ligatures: false)` (and set `features` off for `liga`, `clig` if supported). Kerning stays on.
 7. **Real lists:** use `list`/`-` for bullets, using a standard bullet glyph present in the font.
-8. **No images, no backgrounds, no skill bars/ratings**, no decorative glyphs. Accent color only for heading rules/text.
+8. **No images, no backgrounds, no skill bars/ratings**, no decorative glyphs. Accent color only for heading rules/text. The only exception is the user's own profile photo, off by default and switched on per CV or variant (ADR-083), drawn as an artifact.
 9. **Text is real text**, never outlined shapes.
 10. Font: Inter (body), sizes from options. Language set from `locale` (`#set text(lang: ...)`). Headings are printed as written (title case), not upper-cased.
 11. Handle empty/missing fields without leaving stray separators or blank headings. Empty sections are not emitted.
