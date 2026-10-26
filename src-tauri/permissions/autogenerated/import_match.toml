@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-import-match"
+description = "Enables the import_match command without any pre-configured scope."
+commands.allow = ["import_match"]
+
+[[permission]]
+identifier = "deny-import-match"
+description = "Denies the import_match command without any pre-configured scope."
+commands.deny = ["import_match"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-import-parse"
+description = "Enables the import_parse command without any pre-configured scope."
+commands.allow = ["import_parse"]
+
+[[permission]]
+identifier = "deny-import-parse"
+description = "Denies the import_parse command without any pre-configured scope."
+commands.deny = ["import_parse"]

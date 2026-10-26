@@ -33,6 +33,7 @@ unwrap_used = "warn"
 cv-core = { path = "crates/cv-core" }
 cv-api = { path = "crates/cv-api" }
 cv-app = { path = "crates/cv-app" }
+cv-import = { path = "crates/cv-import" }
 cv-render = { path = "crates/cv-render" }
 cv-store = { path = "crates/cv-store" }
 async-trait = "0.1.92"

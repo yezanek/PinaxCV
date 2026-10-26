@@ -23,6 +23,9 @@ const COMMANDS: &[&str] = &[
     "ats_check",
     "lint",
     "list_templates",
+    "import_parse",
+    "import_match",
+    "import_commit",
 ];
 
 fn main() {

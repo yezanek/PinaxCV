@@ -5,11 +5,13 @@
 //! wraps each call in `spawn_blocking` and adapts it to a command; a future
 //! HTTP server could call the same services. File dialogs are a trait the
 //! shell implements, so the UI never passes a file path (ADR-036).
+//! Imports (spec section 9.5) are in `import.rs`.
 #![forbid(unsafe_code)]
 
 mod errors;
 mod files;
 mod ids;
+mod import;
 mod preview;
 
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -30,8 +32,9 @@ use cv_render::{ExportOptions, Exporter, HtmlExporter, PdfExporter, Renderer, at
 use cv_store::Store;
 
 pub use errors::{render_error, store_error};
-pub use files::{ExportKind, SaveDialog, write_atomically};
+pub use files::{ExportKind, FileDialog, write_atomically};
 pub use ids::UlidIds;
+pub use import::{IMPORT_EXTENSIONS, ImportCache};
 pub use preview::PreviewCache;
 
 /// Pixels per point for preview pages (ADR-025).
@@ -44,8 +47,9 @@ pub struct App {
     store: Box<dyn Store>,
     renderer: Renderer,
     ids: Mutex<Box<dyn IdSource + Send>>,
-    dialog: Box<dyn SaveDialog>,
+    dialog: Box<dyn FileDialog>,
     previews: PreviewCache,
+    imports: ImportCache,
     next_preview: AtomicU64,
     preview_base: String,
 }
@@ -55,7 +59,7 @@ impl App {
     /// for example `preview://localhost` (ADR-025).
     pub fn new(
         store: Box<dyn Store>,
-        dialog: Box<dyn SaveDialog>,
+        dialog: Box<dyn FileDialog>,
         ids: Box<dyn IdSource + Send>,
         preview_base: impl Into<String>,
     ) -> Self {
@@ -65,6 +69,7 @@ impl App {
             ids: Mutex::new(ids),
             dialog,
             previews: PreviewCache::default(),
+            imports: ImportCache::default(),
             next_preview: AtomicU64::new(0),
             preview_base: preview_base.into(),
         }

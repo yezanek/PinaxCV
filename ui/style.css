@@ -1,5 +1,5 @@
-:root { color-scheme: light dark; --border: #ccc; --muted: #666; --accent: #2b5cab; }
-@media (prefers-color-scheme: dark) { :root { --border: #444; --muted: #aaa; --accent: #7ea6f0; } }
+:root { color-scheme: light dark; --border: #ccc; --muted: #666; --accent: #2b5cab; --warning: #8a5a00; }
+@media (prefers-color-scheme: dark) { :root { --border: #444; --muted: #aaa; --accent: #7ea6f0; --warning: #e0b050; } }
 * { box-sizing: border-box; }
 body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 14px; }
 header.bar { display: flex; gap: 0.75rem; align-items: center; padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); }
@@ -85,3 +85,9 @@ fieldset.section legend input.custom-title { display: inline-block; width: 16rem
 .diagnostics ul { margin: 0.4rem 0 0; padding-left: 1.2rem; }
 .diagnostics .severity-error strong { color: #c0392b; }
 .preview img.actual { max-width: none; }
+main.import .form { border-right: none; padding: 0; overflow: visible; }
+main.import ul.import-summary, main.import ul.warnings { margin: 0 0 1rem; padding-left: 1.2rem; }
+main.import ul.warnings li { color: var(--warning); }
+main.import ul.import-entries { list-style: none; padding: 0; margin: 0 0 1rem; }
+main.import ul.import-entries label { color: inherit; }
+main.import ul.import-summary li, main.import ul.warnings li { border: none; padding: 0.1rem 0; }

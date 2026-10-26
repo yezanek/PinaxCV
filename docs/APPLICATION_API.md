@@ -21,7 +21,7 @@ Representative operations:
 - `run_lint`
 - `run_ats_check`
 - `list_templates`
-- `import_cv`
+- `import_parse`, `import_match` and `import_commit` (the import wizard, ADR-058)
 - `generate_tailoring_suggestions`
 - `accept_suggestion`
 - `reject_suggestion`

@@ -11,6 +11,7 @@ mod entries;
 mod history;
 mod i18n;
 mod ids;
+mod import;
 mod ipc;
 mod list;
 mod lists;

@@ -11,6 +11,7 @@ publish.workspace = true
 [dependencies]
 cv-api.workspace = true
 cv-core.workspace = true
+cv-import.workspace = true
 cv-render.workspace = true
 cv-store.workspace = true
 serde_json.workspace = true

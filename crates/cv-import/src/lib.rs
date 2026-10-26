@@ -19,7 +19,7 @@ pub use merge::{
     EntryDecision, Field, FieldConflict, MergePlan, field_conflicts, merge, suggest_matches,
 };
 pub mod import;
-pub use import::{ImportError, import_any, import_europass};
+pub use import::{ImportError, MAX_INPUT, import_any, import_europass};
 pub mod pdf_text;
 pub use pdf_text::{Heading, NotReadable, page_text, split_sections};
 pub mod pdf_map;

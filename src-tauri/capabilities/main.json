@@ -25,6 +25,9 @@
     "allow-export-html",
     "allow-ats-check",
     "allow-lint",
-    "allow-list-templates"
+    "allow-list-templates",
+    "allow-import-parse",
+    "allow-import-match",
+    "allow-import-commit"
   ]
 }
