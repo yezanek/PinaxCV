@@ -1,5 +1,6 @@
 //! Spec section 17, M7 acceptance: no contact details appear in any request
-//! of any stage except `IMPORT_EXTRACT`. Every stage's prompt is built from
+//! of any stage; `IMPORT_EXTRACT` sends the name and street but no email,
+//! phone or links (ADR-076). Every stage's prompt is built from
 //! a CV whose free text also hides contact details, sent through a
 //! recording `Llm`, and the captured requests are searched.
 
@@ -164,4 +165,17 @@ fn the_redactor_is_what_the_payload_uses() {
     let r = Redactor::new(&cv.basics, PayloadOptions::default());
     let payload = build_cv_payload(&cv.resolve(None), PayloadOptions::default());
     assert_eq!(payload.summary, cv.summary.as_deref().map(|s| r.text(s)));
+}
+
+#[test]
+fn phone_numbers_in_pairs_of_digits_are_redacted() {
+    let r = Redactor::patterns();
+    for phone in ["06 12 34 56 78", "+33 1 23 45 67 89", "01.23.45.67.89"] {
+        let sent = r.text(&format!("Call {phone} after 6"));
+        assert!(!sent.contains(phone), "{phone} was sent");
+        assert!(sent.contains(cv_ai::payload::REDACTED));
+    }
+    // Months and years stay.
+    let dates = "01/2019 - 03/2021, 2019 - 2021";
+    assert_eq!(r.text(dates), dates);
 }
