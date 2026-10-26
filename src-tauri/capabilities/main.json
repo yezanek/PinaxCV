@@ -24,6 +24,7 @@
     "allow-export-pdf",
     "allow-export-html",
     "allow-ats-check",
-    "allow-lint"
+    "allow-lint",
+    "allow-list-templates"
   ]
 }

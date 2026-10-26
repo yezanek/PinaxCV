@@ -6,7 +6,7 @@ use std::sync::Arc;
 use cv_api::{
     ApiError, DuplicateCv, DuplicateVariant, ErrorCode, ExportHtmlRequest, ExportPdfRequest,
     ExportResult, NewCv, NewVariant, PreviewRequest, PreviewResponse, PruneResult, SaveCv,
-    SaveVariant, Target,
+    SaveVariant, Target, TemplateManifest,
 };
 use cv_app::App;
 use cv_core::{AtsReport, CvSummary, Id, LintIssue, StoredCv, StoredVariant, VariantSummary};
@@ -122,6 +122,11 @@ pub async fn lint(app: Shared<'_>, target: Target) -> Reply<Vec<LintIssue>> {
     run(app, move |a| a.lint(&target)).await
 }
 
+#[tauri::command]
+pub async fn list_templates(app: Shared<'_>) -> Reply<Vec<TemplateManifest>> {
+    run(app, |a| a.list_templates()).await
+}
+
 #[cfg(test)]
 mod tests {
     //! Drives the commands through Tauri's IPC with the mock runtime, using
@@ -167,6 +172,7 @@ mod tests {
                 super::preview,
                 super::export_pdf,
                 super::lint,
+                super::list_templates,
             ])
             .build(mock_context(noop_assets()))
             .expect("app");
@@ -273,5 +279,13 @@ mod tests {
         let cancelled = invoke(&w, "export_pdf", json!({ "req": { "target": target } }))
             .expect_err("cancelled");
         assert_eq!(cancelled["code"], json!(cv_api::ErrorCode::Cancelled));
+    }
+
+    #[test]
+    fn list_templates_returns_the_classic_manifest() {
+        let w = window();
+        let list = invoke(&w, "list_templates", json!({})).expect("templates");
+        assert_eq!(list[0]["id"], "classic");
+        assert_eq!(list[0]["options"]["font_size_pt"]["min"], 9.0);
     }
 }

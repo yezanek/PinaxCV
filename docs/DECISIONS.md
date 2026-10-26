@@ -354,6 +354,12 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - `error_message` maps `ErrorCode` to text (spec section 15). Codes that are complete on their own (`NotFound`, `Conflict`, `Cancelled`, `Keychain`, `AiNotConfigured`, `AiConsentRequired`, `AiCancelled`) get a fixed i18n string. For the others the backend message is the specific, actionable part (which field failed validation, what was wrong with an imported file), so the UI shows it as sent. The match has no wildcard, so a new code has to choose.
 - A unit test scans the other UI source files and fails on string literals that look like user-facing text.
 
+## ADR-051 — Style tab (M3)
+
+- The editor's left pane has two tabs, Content and Style (spec section 12.2). Switching only hides the other tab, so fields keep their state. The Variants and Checks tabs come with their own work.
+- `list_templates` returns the embedded `manifest.json` files as `TemplateManifest` (spec section 10.2). The sliders take their ranges from the CV's template manifest. A test keeps the `classic` manifest's ranges equal to `TemplateOptions`' clamping ranges, which the backend still applies on save.
+- Paper size and date style are radio groups. Locale is a select with English only (ADR-011). The accent is a colour input with a "Use black" button that sets it back to `None`, because a colour input cannot show "no colour".
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

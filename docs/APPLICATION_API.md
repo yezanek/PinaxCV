@@ -20,6 +20,7 @@ Representative operations:
 - `export_html`
 - `run_lint`
 - `run_ats_check`
+- `list_templates`
 - `import_cv`
 - `generate_tailoring_suggestions`
 - `accept_suggestion`

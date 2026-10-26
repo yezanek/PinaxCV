@@ -44,3 +44,16 @@ fieldset.section > .order { display: flex; justify-content: flex-end; gap: 0.3re
 .variant-visibility li { display: flex; gap: 1rem; }
 .variant-visibility li.nested { padding-left: 1.2rem; font-size: 0.95em; }
 .variant-actions { display: flex; gap: 0.5rem; align-items: end; margin-bottom: 0.5rem; flex-wrap: wrap; }
+
+.tabs { display: flex; gap: 0.25rem; margin: -0.25rem 0 0.75rem; border-bottom: 1px solid var(--border); }
+.tabs button { border: 1px solid transparent; border-bottom: none; background: none; }
+.tabs button[aria-selected="true"] { border-color: var(--border); font-weight: 600; margin-bottom: -1px; background: Canvas; }
+fieldset.segmented { border: none; padding: 0; margin: 0 0 0.75rem; display: flex; flex-wrap: wrap; gap: 0.75rem; }
+fieldset.segmented legend { color: var(--muted); padding: 0; margin-bottom: 0.2rem; width: 100%; }
+fieldset.segmented label { display: flex; gap: 0.3rem; align-items: center; margin: 0; color: inherit; }
+.form fieldset.segmented input { width: auto; display: inline; margin: 0; }
+.form label.slider output { color: inherit; }
+.form select { display: block; margin-top: 0.2rem; font: inherit; padding: 0.3rem; }
+.accent { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+.accent label.check { margin: 0; }
+.form .accent input[type="color"] { width: 2.5rem; height: 2rem; padding: 0.1rem; }

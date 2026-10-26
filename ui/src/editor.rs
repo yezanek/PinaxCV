@@ -15,6 +15,7 @@ use crate::entries::EntrySections;
 use crate::i18n::{error_message, fill, t};
 use crate::ipc::{IdArg, ReqArg, call};
 use crate::lists::ListSections;
+use crate::style::StyleTab;
 use crate::variants::VariantBar;
 
 /// Preview debounce from spec section 16.
@@ -297,6 +298,8 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
         }
     };
 
+    // The Style tab only hides the Content tab, so inputs keep their state.
+    let style_tab = RwSignal::new(false);
     let export_pdf = move |_| flush_then(AfterSave::Export(true));
     let export_html = move |_| flush_then(AfterSave::Export(false));
     let leave = move |_| flush_then(AfterSave::Leave);
@@ -310,8 +313,18 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
             <button on:click=export_html>{t().export_html}</button>
         </header>
         <div class="editor">
-            <section class="form" aria-label=t().content>
+            <section class="form">
+                <div class="tabs" role="tablist">
+                    <button id="tab-content" role="tab" aria-controls="panel-content" aria-selected=move || (!style_tab.get()).to_string()
+                        on:click=move |_| style_tab.set(false)>{t().content}</button>
+                    <button id="tab-style" role="tab" aria-controls="panel-style" aria-selected=move || style_tab.get().to_string()
+                        on:click=move |_| style_tab.set(true)>{t().style}</button>
+                </div>
                 <p class="error">{move || error.get()}</p>
+                <div id="panel-style" role="tabpanel" aria-labelledby="tab-style" hidden=move || !style_tab.get()>
+                    <StyleTab cv=cv edit=edit error=error />
+                </div>
+                <div id="panel-content" role="tabpanel" aria-labelledby="tab-content" hidden=move || style_tab.get()>
                 <VariantBar cv_id=id.clone() cv=cv variant=variant error=error changed=variant_changed
                     busy=variant_busy settled=variant_settled />
                 {field(t().cv_title, |c| c.title.clone(), |c, v| c.title = v)}
@@ -329,6 +342,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                 </label>
                 <EntrySections cv=cv edit=edit />
                 <ListSections cv=cv edit=edit />
+                </div>
             </section>
             <section class="preview" class:stale=move || rendering.get() aria-label=t().preview
                 aria-busy=move || rendering.get().to_string()>

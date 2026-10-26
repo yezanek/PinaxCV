@@ -47,6 +47,28 @@ pub struct Strings {
     pub location: &'static str,
     pub summary: &'static str,
 
+    // Style tab
+    pub style: &'static str,
+    pub template: &'static str,
+    pub paper: &'static str,
+    pub paper_a4: &'static str,
+    pub paper_letter: &'static str,
+    pub cv_language: &'static str,
+    pub english: &'static str,
+    pub date_style: &'static str,
+    pub date_month_name: &'static str,
+    pub date_numeric: &'static str,
+    pub date_year_only: &'static str,
+    pub font_size: &'static str,
+    pub line_spacing: &'static str,
+    pub margins: &'static str,
+    /// Units after a slider's value, with their leading space.
+    pub unit_pt: &'static str,
+    pub unit_mm: &'static str,
+    pub accent: &'static str,
+    pub accent_none: &'static str,
+    pub accent_reset: &'static str,
+
     // Section kinds
     pub experience: &'static str,
     pub work_experience: &'static str,
@@ -170,6 +192,26 @@ pub static EN: Strings = Strings {
     phone: "Phone",
     location: "Location",
     summary: "Summary",
+
+    style: "Style",
+    template: "Template",
+    paper: "Paper size",
+    paper_a4: "A4",
+    paper_letter: "US Letter",
+    cv_language: "CV language (headings and dates)",
+    english: "English",
+    date_style: "Date style",
+    date_month_name: "Mar 2021",
+    date_numeric: "03/2021",
+    date_year_only: "2021",
+    font_size: "Font size",
+    line_spacing: "Line spacing",
+    margins: "Margins",
+    unit_pt: " pt",
+    unit_mm: " mm",
+    accent: "Accent colour for headings and rules",
+    accent_none: "None (black)",
+    accent_reset: "Use black",
 
     experience: "Experience",
     work_experience: "Work experience",
@@ -411,6 +453,7 @@ mod tests {
         ("lists.rs", include_str!("lists.rs")),
         ("main.rs", include_str!("main.rs")),
         ("order.rs", include_str!("order.rs")),
+        ("style.rs", include_str!("style.rs")),
         ("variants.rs", include_str!("variants.rs")),
     ];
 
