@@ -14,7 +14,7 @@ PinaxCV is a local-first desktop application written in Rust (Tauri 2 + Leptos, 
 - **Variants** tailor a CV to a job without changing the base: hide, collapse or reorder anything, edit text per variant, and fit to 1 or 2 pages with cuts you review.
 - **Checks**: lint findings that jump to the field, and an ATS check that reads the PDF back the way a parser would.
 - **Import** a Europass CV (PDF or XML), a JSON Resume, a LinkedIn data export (ZIP), a LinkedIn "Save to PDF" or any other text PDF, then review the result and merge it into a new or an existing CV.
-- **Optional AI** with Anthropic, OpenAI, Gemini or any OpenAI-compatible server (Ollama included). You enter the model and key, consent once per provider, and approve every suggestion: job parsing, relevance, selection, rewrites with fact checks, summary, gap questions, a review without a job, and reading pasted text into a CV. Contact details are taken out before anything is sent.
+- **Optional AI** with Anthropic, OpenAI, Gemini or any OpenAI-compatible server (Ollama included). You enter the model and key, consent once per provider, and approve every suggestion: job parsing, relevance, selection, rewrites with fact checks, summary, gap questions, a review without a job, and reading pasted text into a CV. Contact details are taken out before anything is sent; for pasted text you see the exact text first, with email addresses, URLs and phone numbers removed and the name kept (ADR-076).
 - **Your data**: back up and restore everything, clear the AI cache, or delete all data from Settings.
 
 ## Product strategy

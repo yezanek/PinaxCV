@@ -858,7 +858,7 @@ Implementations:
 - `OpenAiCompatibleLlm`: any OpenAI-compatible Chat Completions endpoint at a user-configured base URL (local servers such as Ollama, or hosted services). JSON-schema support varies, so request JSON output, validate it, and tolerate failure (retry once with a "your last output was invalid: <error>" message, then surface an error).
 - `FakeLlm` for tests: returns values from a queue or from files keyed by `schema_name`.
 
-Common behavior: `ureq` with rustls on a blocking thread (ADR-068), 60 s per-request timeout (configurable), max 2 retries with backoff on 429/5xx, no redirects, no logging of request or response bodies (log only stage, model, token counts, duration). After parsing, validate against the Rust output type with `serde`; on failure retry once with the error message; then return `LlmError::InvalidOutput`.
+Common behavior: `ureq` with rustls on a blocking thread (ADR-068), 60 s per-request timeout (configurable), max 2 retries with backoff on network errors and 408/429/5xx, no redirects, no logging of request or response bodies (log only stage, model, token counts, duration). After parsing, validate against the Rust output type with `serde`; on failure retry once with the error message; then return `LlmError::InvalidOutput`.
 
 ### 11.3 Redaction and payload builder
 

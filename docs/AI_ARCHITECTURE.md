@@ -44,4 +44,4 @@ Prompts are `const` strings with a `PROMPT_VERSION`, filled by a minimal placeho
 
 ## Testing
 
-`FakeLlm` pipeline tests and a recording `Llm` that asserts no contact details leave in any stage except `IMPORT_EXTRACT`. Evals over six (CV, job) fixtures in `testdata/evals/` (`crates/cv-ai/tests/evals.rs`) replay recorded responses in CI and run live by hand before releases; see `testdata/evals/README.md` and ADR-077. The committed recordings are hand-written until a live run replaces them (#115).
+`FakeLlm` pipeline tests and a recording `Llm` that asserts no contact details leave in any stage except `IMPORT_EXTRACT`. Evals over six (CV, job) fixtures in `testdata/evals/` (`crates/cv-ai/tests/evals.rs`) replay recorded responses in CI and run live by hand before releases; see `testdata/evals/README.md` and ADR-077. The committed recordings are hand-written until a passing live run with `PINAXCV_EVAL_RECORD=1` replaces them (#115).

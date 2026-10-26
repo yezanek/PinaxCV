@@ -2,7 +2,7 @@
 
 The application API describes PinaxCV operations independently of UI transport.
 
-Operations, as the Tauri commands that `src-tauri` exposes over `cv-app` (registered in `src-tauri/build.rs` and the main capability):
+Operations, as the Tauri commands that `src-tauri` exposes over `cv-app` (registered in `src-tauri/src/main.rs`; `src-tauri/build.rs` generates their permissions for the main capability):
 
 - **CVs:** `list_cvs`, `get_cv`, `create_cv`, `save_cv` (revision-checked), `duplicate_cv`, `delete_cv` (soft delete) and `restore_cv` (undo).
 - **Variants:** `list_variants`, `get_variant`, `create_variant`, `save_variant`, `delete_variant`, `duplicate_variant`, `prune_variant` (when a variant is opened, ADR-064) and `fit_variant` (fit-to-length cuts as pending suggestions, ADR-065).

@@ -84,9 +84,11 @@ no request.
   your API keys from the keychain. Files you saved elsewhere (exports and
   backups) and the log file are not touched; delete them yourself if you
   want.
-- Uninstalling PinaxCV does not always remove the data folder. Delete it
-  yourself (Settings → Your data → "Open folder") to remove everything, and
-  on macOS and Windows also the log folder named above.
+- Uninstalling PinaxCV does not always remove the data folder, and never
+  removes the API keys in your keychain. Run "Delete all data…" before you
+  uninstall (it also removes the keys), or delete the data folder yourself
+  (Settings → Your data → "Open folder") and the PinaxCV entries in your
+  keychain. On macOS and Windows also delete the log folder named above.
 
 ## Questions
 
