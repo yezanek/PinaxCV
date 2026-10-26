@@ -401,3 +401,58 @@ fn tailoring_needs_consent_and_a_job_description() {
     assert_eq!(start(&s), Err(ErrorCode::Validation));
     assert!(s.llm.seen().is_empty());
 }
+
+#[tokio::test]
+async fn opt_in_reorder_puts_the_clearly_more_relevant_role_first() {
+    const EXPERIENCE: &str = "01J02000000000000000000010";
+    let mut scores = relevance();
+    scores["entries"][0]["score"] = 50.into();
+    scores["entries"][1]["score"] = 85.into();
+    let llm = FakeLlm::new()
+        .reply("JobRequirements", requirements())
+        .reply("RelevanceResult", scores);
+    let s = setup(llm, "We need SQL.", true);
+    let options = TailorOptions {
+        reorder_entries_by_relevance: true,
+        ..TailorOptions::default()
+    };
+    let (_, outcome) = run(&s, options).await;
+    let mut variant = outcome.expect("tailored").variant.variant;
+    let reorder = variant
+        .suggestions
+        .iter()
+        .find(|s| s.target == SuggestionTarget::Section { id: id(EXPERIENCE) })
+        .expect("a reorder suggestion")
+        .clone();
+    assert_eq!(reorder.kind, SuggestionKind::Reorder);
+    assert_eq!(reorder.status, SuggestionStatus::Pending);
+    assert_eq!(
+        reorder.action,
+        Some(SuggestionAction::Reorder {
+            order: vec![id(OLDER), id(RECENT)]
+        })
+    );
+    // Nothing moves until it is accepted.
+    assert!(!variant.order.contains_key(&id(EXPERIENCE)));
+    assert!(variant.accept_suggestion(&reorder.id));
+    assert_eq!(variant.order[&id(EXPERIENCE)], [id(OLDER), id(RECENT)]);
+}
+
+#[tokio::test]
+async fn experience_keeps_newest_first_unless_asked() {
+    let mut scores = relevance();
+    scores["entries"][0]["score"] = 50.into();
+    scores["entries"][1]["score"] = 85.into();
+    let llm = FakeLlm::new()
+        .reply("JobRequirements", requirements())
+        .reply("RelevanceResult", scores);
+    let s = setup(llm, "We need SQL.", true);
+    let (_, outcome) = run(&s, TailorOptions::default()).await;
+    let variant = outcome.expect("tailored").variant.variant;
+    assert!(
+        !variant
+            .suggestions
+            .iter()
+            .any(|s| s.kind == SuggestionKind::Reorder)
+    );
+}

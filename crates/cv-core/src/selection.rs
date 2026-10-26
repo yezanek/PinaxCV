@@ -125,7 +125,7 @@ pub fn plan_selection(
         }
         if is_experience && options.reorder_entries_by_relevance {
             let current: Vec<Id> = entries.iter().map(|e| e.id.clone()).collect();
-            if let Some(order) = by_score(&current, &scores.entries) {
+            if let Some(order) = by_clear_lead(&current, &scores.entries) {
                 out.push(suggestion(
                     ids,
                     SuggestionKind::Reorder,
@@ -133,7 +133,7 @@ pub fn plan_selection(
                         id: section.id().clone(),
                     },
                     Some(SuggestionAction::Reorder { order }),
-                    "Most relevant experience first".into(),
+                    "Most relevant experience first, instead of newest first".into(),
                 ));
             }
         }
@@ -183,6 +183,33 @@ fn bullets(
         s.before = before;
         out.push(s);
     }
+}
+
+/// An Experience entry moves ahead of an earlier one only when it scores
+/// at least this much more: close scores keep newest first.
+pub const REORDER_MIN_LEAD: u8 = 10;
+
+/// `current` with each entry moved ahead of the entries before it that it
+/// outscores by at least [`REORDER_MIN_LEAD`]; unscored entries stay where
+/// they are. `None` when nothing moves.
+fn by_clear_lead(current: &[Id], scores: &BTreeMap<Id, u8>) -> Option<Vec<Id>> {
+    let mut order = current.to_vec();
+    // Each swap removes one pair that is out of order by the lead and
+    // reorders no other pair, so this ends.
+    let mut moved = true;
+    while moved {
+        moved = false;
+        for i in 1..order.len() {
+            let (Some(&a), Some(&b)) = (scores.get(&order[i - 1]), scores.get(&order[i])) else {
+                continue;
+            };
+            if b.saturating_sub(a) >= REORDER_MIN_LEAD {
+                order.swap(i - 1, i);
+                moved = true;
+            }
+        }
+    }
+    (order != current).then_some(order)
 }
 
 /// `current` sorted by score, highest first, ties and unscored items in
@@ -439,6 +466,32 @@ mod tests {
                             order: vec![id(2), id(3), id(1)]
                         }))
         );
+    }
+
+    #[test]
+    fn close_scores_keep_newest_first() {
+        let options = TailorOptions {
+            reorder_entries_by_relevance: true,
+            ..TailorOptions::default()
+        };
+        let order = |entries: &[(u32, u8)]| {
+            plan(&scores(entries, &[], &[]), &options)
+                .into_iter()
+                .find(|s| s.kind == SuggestionKind::Reorder)
+                .and_then(|s| s.action)
+        };
+        // 2 leads 1 by 5 only: no suggestion.
+        assert_eq!(order(&[(1, 80), (2, 85), (3, 70)]), None);
+        // 3 leads both by at least 10 and moves to the top; 1 and 2 are
+        // close and keep their order.
+        assert_eq!(
+            order(&[(1, 60), (2, 65), (3, 90)]),
+            Some(SuggestionAction::Reorder {
+                order: vec![id(3), id(1), id(2)]
+            })
+        );
+        // Unscored entries stay in place.
+        assert_eq!(order(&[(1, 30), (3, 90)]), None);
     }
 
     #[test]
