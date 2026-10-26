@@ -96,6 +96,7 @@ fn main() {
             commands::ai_consent,
             commands::ai_test_connection,
             commands::ai_cancel,
+            commands::ai_tailor,
             commands::preview,
             commands::export_pdf,
             commands::export_html,

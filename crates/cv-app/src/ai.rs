@@ -70,6 +70,8 @@ pub struct AiState {
     secrets: Box<dyn SecretStore>,
     memory: Mutex<HashMap<&'static str, String>>,
     llm: RwLock<Option<Arc<dyn Llm>>>,
+    /// Used instead of the provider the settings describe (tests).
+    pinned: Option<Arc<dyn Llm>>,
 }
 
 impl AiState {
@@ -78,7 +80,17 @@ impl AiState {
             secrets,
             memory: Mutex::default(),
             llm: RwLock::default(),
+            pinned: None,
         }
+    }
+}
+
+impl AiState {
+    /// Swaps the keychain, keeping a pinned provider.
+    pub(crate) fn set_secrets(&mut self, secrets: Box<dyn SecretStore>) {
+        let pinned = self.pinned.take();
+        *self = Self::new(secrets);
+        self.pinned = pinned;
     }
 }
 
@@ -324,11 +336,29 @@ impl App {
         self.ai_status()
     }
 
+    /// Uses `llm` instead of the provider the settings describe. The settings
+    /// still decide whether AI is configured and consented to. For tests and
+    /// for embedding with a provider of one's own.
+    pub fn with_llm(mut self, llm: Arc<dyn Llm>) -> Self {
+        self.ai.pinned = Some(llm);
+        self
+    }
+
+    /// The model name in the settings, part of every cache key.
+    #[allow(dead_code)] // Tailoring reads it from one status; later stages use this.
+    pub(crate) fn ai_model(&self) -> Result<String> {
+        Ok(self.ai_status()?.model)
+    }
+
     /// Builds the provider from the settings and the saved key, or clears it
     /// when AI is not configured.
     fn rebuild_llm(&self) -> Result<()> {
         let status = self.ai_status()?;
-        let llm: Option<Arc<dyn Llm>> = if status.configured {
+        let llm: Option<Arc<dyn Llm>> = if !status.configured {
+            None
+        } else if let Some(pinned) = &self.ai.pinned {
+            Some(Arc::clone(pinned))
+        } else {
             let (key, _) = self.api_key(status.provider);
             let key = key.unwrap_or_default();
             let built: std::result::Result<Arc<dyn Llm>, LlmError> = match status.provider {
@@ -346,8 +376,6 @@ impl App {
                 .map(|l| Arc::new(l) as _),
             };
             built.ok()
-        } else {
-            None
         };
         *self.ai.llm.write().unwrap_or_else(PoisonError::into_inner) = llm;
         Ok(())

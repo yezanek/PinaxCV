@@ -27,6 +27,7 @@
     "allow-ai-consent",
     "allow-ai-test-connection",
     "allow-ai-cancel",
+    "allow-ai-tailor",
     "allow-preview",
     "allow-export-pdf",
     "allow-export-html",

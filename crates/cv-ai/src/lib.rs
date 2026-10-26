@@ -13,10 +13,13 @@ pub mod http;
 pub mod payload;
 pub mod prompts;
 pub mod providers;
+pub mod schema;
+pub mod stages;
 
 pub use cache::{MemoryCache, ResponseCache, cache_key, generate_cached};
 pub use payload::{CvPayload, PayloadOptions, build_cv_payload};
 pub use prompts::{Kind, Prompt, PromptError};
+pub use stages::{Relevance, StageContext, parse_job, score_relevance};
 
 pub use fake::FakeLlm;
 pub use providers::{AnthropicLlm, GeminiLlm, OpenAiCompatibleLlm, OpenAiLlm};

@@ -21,6 +21,7 @@ mod order;
 mod preview;
 mod settings;
 mod style;
+mod tailor;
 mod variants;
 
 #[component]

@@ -12,6 +12,45 @@ use crate::i18n::{fill, t};
 extern "C" {
     #[wasm_bindgen(catch, js_namespace = ["window", "__TAURI__", "core"], js_name = invoke)]
     async fn tauri_invoke(cmd: &str, args: JsValue) -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(catch, js_namespace = ["window", "__TAURI__", "event"], js_name = listen)]
+    async fn tauri_listen(event: &str, handler: &js_sys::Function) -> Result<JsValue, JsValue>;
+}
+
+/// A subscription to a backend event (`ai://progress` and the like).
+/// Dropping it unsubscribes.
+pub struct Listener {
+    unlisten: Option<js_sys::Function>,
+    _handler: Closure<dyn FnMut(JsValue)>,
+}
+
+impl Drop for Listener {
+    fn drop(&mut self) {
+        if let Some(f) = &self.unlisten {
+            let _ = f.call0(&JsValue::NULL);
+        }
+    }
+}
+
+/// Calls `f` with the payload of every `event` until the returned
+/// [`Listener`] is dropped. Payloads that do not decode as `T` are skipped.
+pub async fn listen<T: DeserializeOwned + 'static>(
+    event: &str,
+    mut f: impl FnMut(T) + 'static,
+) -> Result<Listener, ApiError> {
+    let handler = Closure::<dyn FnMut(JsValue)>::new(move |ev: JsValue| {
+        let payload = js_sys::Reflect::get(&ev, &JsValue::from_str("payload")).unwrap_or_default();
+        if let Ok(p) = serde_wasm_bindgen::from_value(payload) {
+            f(p);
+        }
+    });
+    let unlisten = tauri_listen(event, handler.as_ref().unchecked_ref())
+        .await
+        .map_err(|_| ApiError::new(ErrorCode::Internal, t().app_not_answering))?;
+    Ok(Listener {
+        unlisten: unlisten.dyn_into().ok(),
+        _handler: handler,
+    })
 }
 
 /// Invokes `cmd` with `args` (a struct whose fields are the command's
