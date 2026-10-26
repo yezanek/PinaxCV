@@ -177,7 +177,8 @@ impl Fixture {
         let cv: Cv = serde_json::from_str(&read(&dir.join("cv.json"))).expect("cv.json");
         let expect = match std::fs::read_to_string(dir.join("expect.json")) {
             Ok(s) => serde_json::from_str(&s).expect("expect.json"),
-            Err(_) => Expect::default(),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Expect::default(),
+            Err(e) => panic!("expect.json: {e}"),
         };
         Self {
             name,
@@ -422,6 +423,22 @@ fn language_changes(cv: &CvPayload, answers: &Recording) -> Vec<String> {
     out
 }
 
+/// Whether `q` opens with a question word or an auxiliary verb, so that it
+/// asks rather than states ("Led a migration that cut deploys by 40%?" is
+/// a claim with a question mark). English and German openers.
+fn opens_question(q: &str) -> bool {
+    const OPENERS: &[&str] = &[
+        "do", "does", "did", "have", "has", "had", "are", "is", "was", "were", "can", "could",
+        "would", "will", "should", "which", "what", "how", "when", "where", "who", "whose", "why",
+        "haben", "hast", "hat", "hatten", "sind", "bist", "ist", "waren", "war", "kannst",
+        "können", "konnten", "welche", "welcher", "welches", "was", "wie", "wann", "wo", "wer",
+        "warum", "gibt",
+    ];
+    q.split(|c: char| !c.is_alphanumeric())
+        .find(|w| !w.is_empty())
+        .is_some_and(|w| OPENERS.contains(&w.to_lowercase().as_str()))
+}
+
 /// A gap is a question to the user, never a claim to paste into the CV.
 fn gap_problem(g: &GapQuestion) -> Option<String> {
     static FIRST_PERSON: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|| {
@@ -436,6 +453,11 @@ fn gap_problem(g: &GapQuestion) -> Option<String> {
     } else if !q.ends_with('?') {
         Some(format!(
             "gap for {} is not a question: {q:?}",
+            g.requirement_id
+        ))
+    } else if !opens_question(q) {
+        Some(format!(
+            "gap question for {} reads like a CV claim: {q:?}",
             g.requirement_id
         ))
     } else {
@@ -505,6 +527,8 @@ async fn the_checks_catch_bad_answers() {
             .into();
     let gaps = &mut recording.get_mut("GapResult").expect("F")[0];
     gaps["gaps"][0]["question"] = "I have run services on Kubernetes for two years.".into();
+    gaps["gaps"][1]["question"] =
+        "Led a Kubernetes migration that cut deploy time by 40% in 2023?".into();
 
     let replay = Replay {
         replies: Mutex::new(recording.into_iter().map(|(k, v)| (k, v.into())).collect()),
@@ -519,6 +543,7 @@ async fn the_checks_catch_bad_answers() {
         "unknown skill ID",
         "is in deu but the bullet is in eng",
         "speaks in the first person",
+        "reads like a CV claim",
         "the relevant entry scored Some(88) and the irrelevant one Some(80)",
     ] {
         assert!(
@@ -565,8 +590,11 @@ async fn live_evals() {
             runs.insert(job, run(llm.as_ref(), &model, &text, &fixture.cv).await);
         }
         report(name, &runs);
-        failures.extend(check(&fixture, &runs));
-        if record {
+        let fixture_failures = check(&fixture, &runs);
+        // A failed run never replaces recordings that pass.
+        let passed = fixture_failures.is_empty();
+        failures.extend(fixture_failures);
+        if record && passed {
             let recordings: BTreeMap<&String, &Recording> =
                 runs.iter().map(|(job, r)| (job, &r.answers)).collect();
             let json = serde_json::to_string_pretty(&recordings).expect("json");
