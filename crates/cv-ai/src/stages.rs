@@ -301,49 +301,70 @@ pub async fn rewrite_bullets(
             let id_refs: Vec<&str> = ids.iter().map(String::as_str).collect();
             let prompt = prompts::rewrite(requirements, entry, &id_refs).map_err(prompt_error)?;
             let result: RewriteResult = ctx.generate(prompt, "RewriteResult").await?;
-            let mut done = BTreeSet::new();
-            for r in result.rewrites {
-                let Some((id, before)) = batch
-                    .iter()
-                    .find(|(id, _)| id.as_str() == r.bullet_id)
-                    .cloned()
-                else {
-                    continue;
-                };
-                if !done.insert(id.clone()) {
-                    continue;
-                }
-                let mut context = verify::Context {
-                    entry: vec![entry.title.as_str(), entry.org.as_str()],
-                    skills: skills.clone(),
-                    job_keywords: job_keywords.clone(),
-                    terminology_declared: r.change_type == ChangeType::Terminology,
-                };
-                context.entry.extend(
-                    entry
-                        .bullets
-                        .iter()
-                        .filter(|b| b.id != r.bullet_id)
-                        .map(|b| b.text.as_str()),
-                );
-                let after = r.new_text.trim().to_owned();
-                let checked = |warnings| CheckedRewrite {
-                    bullet_id: id.clone(),
-                    before: before.to_owned(),
-                    after: after.clone(),
-                    change_type: r.change_type,
-                    reason: r.reason.trim().to_owned(),
-                    warnings,
-                };
-                match verify::verify_rewrite(before, &after, &context) {
-                    Verdict::Keep(w) => out.kept.push(checked(w)),
-                    Verdict::Drop(w) => out.discarded.push(checked(w)),
-                    Verdict::Same => {}
-                }
-            }
+            check_rewrites(
+                entry,
+                batch,
+                result.rewrites,
+                &skills,
+                &job_keywords,
+                &mut out,
+            );
         }
     }
     Ok(out)
+}
+
+/// Verifies the answers for `batch` (bullets of `entry`, by ID and text)
+/// into `out`. Answers for other bullets, and second answers for one, are
+/// ignored.
+pub(crate) fn check_rewrites(
+    entry: &crate::payload::PayloadEntry,
+    batch: &[(Id, &str)],
+    rewrites: Vec<Rewrite>,
+    skills: &[&str],
+    job_keywords: &[&str],
+    out: &mut Rewrites,
+) {
+    let mut done = BTreeSet::new();
+    for r in rewrites {
+        let Some((id, before)) = batch
+            .iter()
+            .find(|(id, _)| id.as_str() == r.bullet_id)
+            .cloned()
+        else {
+            continue;
+        };
+        if !done.insert(id.clone()) {
+            continue;
+        }
+        let mut context = verify::Context {
+            entry: vec![entry.title.as_str(), entry.org.as_str()],
+            skills: skills.to_vec(),
+            job_keywords: job_keywords.to_vec(),
+            terminology_declared: r.change_type == ChangeType::Terminology,
+        };
+        context.entry.extend(
+            entry
+                .bullets
+                .iter()
+                .filter(|b| b.id != r.bullet_id)
+                .map(|b| b.text.as_str()),
+        );
+        let after = r.new_text.trim().to_owned();
+        let checked = |warnings| CheckedRewrite {
+            bullet_id: id.clone(),
+            before: before.to_owned(),
+            after: after.clone(),
+            change_type: r.change_type,
+            reason: r.reason.trim().to_owned(),
+            warnings,
+        };
+        match verify::verify_rewrite(before, &after, &context) {
+            Verdict::Keep(w) => out.kept.push(checked(w)),
+            Verdict::Drop(w) => out.discarded.push(checked(w)),
+            Verdict::Same => {}
+        }
+    }
 }
 
 /// Rough token count: JSON characters / 4.
@@ -380,7 +401,7 @@ pub fn relevance_batches(cv: &CvPayload) -> Vec<CvPayload> {
     batches
 }
 
-fn prompt_error(e: prompts::PromptError) -> LlmError {
+pub(crate) fn prompt_error(e: prompts::PromptError) -> LlmError {
     LlmError::Provider(format!("the prompt could not be built ({e})"))
 }
 

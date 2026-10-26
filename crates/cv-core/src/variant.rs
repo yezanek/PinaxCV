@@ -6,8 +6,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    Id, JobRequirements, Suggestion, SuggestionAction, SuggestionSource, SuggestionStatus,
-    SuggestionTarget,
+    GapQuestion, Id, JobRequirements, Suggestion, SuggestionAction, SuggestionSource,
+    SuggestionStatus, SuggestionTarget,
 };
 
 /// Current version of the [`Variant`] JSON shape.
@@ -35,6 +35,10 @@ pub struct Variant {
     /// 1 or 2 pages.
     pub page_target: Option<u8>,
     pub suggestions: Vec<Suggestion>,
+    /// Questions about job requirements the CV does not show, from the
+    /// last tailoring run.
+    #[serde(default)]
+    pub gaps: Vec<GapQuestion>,
     /// Mirrors the storage revision; the store's column is authoritative.
     pub revision: u64,
 }
@@ -68,6 +72,7 @@ impl Variant {
             summary_override: None,
             page_target: None,
             suggestions: Vec::new(),
+            gaps: Vec::new(),
             revision: 0,
         }
     }
@@ -246,6 +251,34 @@ impl Variant {
         let added = fresh.len();
         self.suggestions.extend(fresh);
         added
+    }
+
+    /// Replaces the gap questions with `new`. A requirement the user
+    /// dismissed before stays dismissed.
+    pub fn replace_gaps(&mut self, mut new: Vec<GapQuestion>) {
+        for g in &mut new {
+            g.dismissed = self
+                .gaps
+                .iter()
+                .any(|old| old.dismissed && old.requirement == g.requirement);
+        }
+        self.gaps = new;
+    }
+
+    /// Dismisses the gap question for `requirement_id`. Returns whether
+    /// there was an open one.
+    pub fn dismiss_gap(&mut self, requirement_id: &str) -> bool {
+        match self
+            .gaps
+            .iter_mut()
+            .find(|g| g.requirement_id == requirement_id && !g.dismissed)
+        {
+            Some(g) => {
+                g.dismissed = true;
+                true
+            }
+            None => false,
+        }
     }
 
     /// The suggestions of `new` that `replace_pending` would keep: those with
@@ -587,6 +620,28 @@ mod tests {
         assert!(!v.accept_edited(&id(42), "Again".into()));
         assert!(!v.accept_edited(&id(43), "Text".into()));
         assert!(v.hidden.is_empty());
+    }
+
+    #[test]
+    fn dismissed_gaps_stay_dismissed_across_runs() {
+        let gap = |rid: &str, text: &str| crate::GapQuestion {
+            requirement_id: rid.into(),
+            requirement: text.into(),
+            must_have: true,
+            severity: crate::GapSeverity::Missing,
+            question: format!("Have you used {text}?"),
+            where_to_add_hint: "the skills section".into(),
+            dismissed: false,
+        };
+        let mut v = Variant::empty(id(1), id(2), "v");
+        v.replace_gaps(vec![gap("r1", "Kubernetes"), gap("r2", "Go")]);
+        assert!(v.dismiss_gap("r1"));
+        assert!(!v.dismiss_gap("r1"));
+        assert!(!v.dismiss_gap("r9"));
+        // A rerun may number requirements differently.
+        v.replace_gaps(vec![gap("r5", "Kubernetes"), gap("r6", "Rust")]);
+        assert!(v.gaps[0].dismissed);
+        assert!(!v.gaps[1].dismissed);
     }
 
     #[test]

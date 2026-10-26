@@ -68,16 +68,20 @@ textarea.override { flex-basis: 100%; width: 100%; order: 1; }
 .tailor-progress { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.4rem; }
 .tailor-progress progress { flex: 0 0 10rem; }
 .tailor-run [role="status"] { color: var(--muted); font-size: 0.9em; margin: 0.3rem 0 0; }
-.review { border: 1px solid var(--border); padding: 0.4rem 0.6rem; margin-bottom: 0.75rem; }
-.review h3 { margin: 0 0 0.3rem; font-size: 1em; }
-.review h4 { margin: 0.5rem 0 0.2rem; font-size: 0.95em; }
+.review, .gaps, .ai-review { border: 1px solid var(--border); padding: 0.4rem 0.6rem; margin-bottom: 0.75rem; }
+.ai-review { margin-top: 1.5rem; }
+.ai-review h2 { font-size: 1.2rem; margin: 0.3rem 0; }
+.ai-review .notes li { padding: 0.2rem 0; }
+.ai-review .notes .badge { margin-right: 0.4em; }
+.review h3, .gaps h3, .ai-review h3 { margin: 0 0 0.3rem; font-size: 1em; }
+.review h4, .gaps h4, .ai-review h4 { margin: 0.5rem 0 0.2rem; font-size: 0.95em; }
 .review-bulk { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
-.review ul { list-style: none; padding: 0; margin: 0; }
-.review .card { display: flex; gap: 0.4rem; align-items: start; padding: 0.3rem 0; border-top: 1px solid var(--border); }
-.review .card-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
-.review .card-text small { color: var(--muted); }
-.review .badge { align-self: start; font-size: 0.8em; border: 1px solid var(--border); border-radius: 0.6em; padding: 0 0.5em; }
-.review .badge.warn { border-color: currentColor; font-weight: 600; }
+.review ul, .gaps ul, .ai-review ul { list-style: none; padding: 0; margin: 0; }
+.review .card, .gaps .card, .ai-review .card { display: flex; gap: 0.4rem; align-items: start; padding: 0.3rem 0; border-top: 1px solid var(--border); }
+.review .card-text, .gaps .card-text, .ai-review .card-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+.review .card-text small, .gaps .card-text small, .ai-review .card-text small { color: var(--muted); }
+.review .badge, .gaps .badge, .ai-review .badge { align-self: start; font-size: 0.8em; border: 1px solid var(--border); border-radius: 0.6em; padding: 0 0.5em; }
+.review .badge.warn, .gaps .badge.warn, .ai-review .badge.warn { border-color: currentColor; font-weight: 600; }
 .variant-summary { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
 .variant-actions { display: flex; gap: 0.5rem; align-items: end; margin-bottom: 0.5rem; flex-wrap: wrap; }
 
@@ -153,13 +157,13 @@ main.import ul.import-summary li, main.import ul.warnings li { border: none; pad
 .bar .settings-button { margin-left: auto; }
 .consent { border: 1px solid var(--border); padding: 0.6rem 0.9rem; margin-top: 1rem; }
 .consent h3 { margin-top: 0; }
-.review .rewrite { margin: 0; }
-.review .rewrite del { color: var(--muted); }
-.review .rewrite ins { text-decoration: underline; text-decoration-color: var(--accent); }
-.review .badge.warn { color: var(--warning); }
-.review .badge.info { color: var(--accent); border-color: currentColor; }
-.review .card.attention { border-left: 3px solid var(--warning); padding-left: 0.3rem; }
+.review .rewrite, .gaps .rewrite, .ai-review .rewrite { margin: 0; }
+.review .rewrite del, .gaps .rewrite del, .ai-review .rewrite del { color: var(--muted); }
+.review .rewrite ins, .gaps .rewrite ins, .ai-review .rewrite ins { text-decoration: underline; text-decoration-color: var(--accent); }
+.review .badge.warn, .gaps .badge.warn, .ai-review .badge.warn { color: var(--warning); }
+.review .badge.info, .gaps .badge.info, .ai-review .badge.info { color: var(--accent); border-color: currentColor; }
+.review .card.attention, .gaps .card.attention, .ai-review .card.attention { border-left: 3px solid var(--warning); padding-left: 0.3rem; }
 .discarded ul { list-style: none; padding: 0; margin: 0.3rem 0 0; }
 .discarded li { display: flex; flex-direction: column; gap: 0.1rem; padding: 0.3rem 0; border-top: 1px solid var(--border); }
 .discarded .badge { align-self: start; font-size: 0.8em; border: 1px solid currentColor; border-radius: 0.6em; padding: 0 0.5em; color: var(--warning); }
-.review .needs-attention { align-self: start; font-size: 0.8em; font-weight: 600; color: var(--warning); }
+.review .needs-attention, .gaps .needs-attention, .ai-review .needs-attention { align-self: start; font-size: 0.8em; font-weight: 600; color: var(--warning); }

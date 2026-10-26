@@ -7,8 +7,8 @@ use std::fmt;
 
 use crate::ApiError;
 use cv_core::{
-    AtsReport, Cv, Diagnostic, Id, JobTarget, Link, Section, StoredVariant, TemplateId, Variant,
-    VerificationWarning,
+    AtsReport, Cv, Diagnostic, Id, JobTarget, Link, Section, StoredCv, StoredVariant, Suggestion,
+    TemplateId, Timestamp, Variant, VerificationWarning,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -410,10 +410,67 @@ pub struct TailorResult {
 /// A rewrite dropped by a safety check, with the findings that dropped it.
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
 pub struct DiscardedRewrite {
-    pub bullet_id: Id,
+    /// The bullet, or none for a summary.
+    pub bullet_id: Option<Id>,
     pub before: String,
     pub after: String,
     pub warnings: Vec<VerificationWarning>,
+}
+
+/// `ai_review`: review the saved base CV without a job (spec section 11.11).
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct AiReview {
+    pub cv_id: Id,
+}
+
+/// The latest AI review of a CV, the `result` of a finished `ai_review`
+/// job. Its suggestions are rewrites of the base CV (source `Review`).
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct ReviewSession {
+    pub cv_id: Id,
+    pub created_at: Timestamp,
+    pub suggestions: Vec<Suggestion>,
+    pub notes: Vec<ReviewNote>,
+    /// Rewrites the safety checks dropped, for the "discarded" details.
+    #[serde(default)]
+    pub discarded: Vec<DiscardedRewrite>,
+}
+
+/// Advice from a review that is not a rewrite.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct ReviewNote {
+    /// The entry or bullet it is about, or none for the whole CV.
+    pub target: Option<Id>,
+    pub category: ReviewNoteCategory,
+    pub message: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Copy, Debug, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ReviewNoteCategory {
+    Impact,
+    Clarity,
+    Structure,
+    Consistency,
+}
+
+/// `review_decide`: accept (optionally with edited text) or reject a
+/// pending review suggestion. Accepting changes the base CV.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct ReviewDecide {
+    pub cv_id: Id,
+    pub suggestion_id: Id,
+    pub accept: bool,
+    /// The user's edit of the proposed text ("Edit then accept").
+    #[serde(default)]
+    pub text: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct ReviewDecided {
+    pub session: ReviewSession,
+    /// The saved CV when an accepted suggestion changed it.
+    pub cv: Option<StoredCv>,
 }
 
 #[cfg(test)]

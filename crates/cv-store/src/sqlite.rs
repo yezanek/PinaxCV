@@ -851,6 +851,55 @@ impl Store for SqliteStore {
         Ok(())
     }
 
+    fn review_session_get(&self, cv_id: &Id) -> Result<Option<(String, Timestamp)>> {
+        let conn = self.lock();
+        conn.query_row(
+            "SELECT r.content, r.created_at FROM review_sessions r JOIN cvs c ON c.id = r.cv_id \
+             WHERE r.cv_id = ?1 AND c.deleted_at IS NULL",
+            params![cv_id.as_str()],
+            |r| Ok((r.get(0)?, Timestamp(r.get(1)?))),
+        )
+        .optional()
+        .map_err(backend)
+    }
+
+    fn review_session_put(&self, cv_id: &Id, content: &str) -> Result<Timestamp> {
+        let now = self.now();
+        let conn = self.lock();
+        let cv_live: bool = conn
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM cvs WHERE id = ?1 AND deleted_at IS NULL)",
+                params![cv_id.as_str()],
+                |r| r.get(0),
+            )
+            .map_err(backend)?;
+        if !cv_live {
+            return Err(StoreError::NotFound(cv_id.clone()));
+        }
+        conn.execute(
+            "INSERT INTO review_sessions (cv_id, content, created_at) VALUES (?1, ?2, ?3) \
+             ON CONFLICT(cv_id) DO UPDATE SET content = excluded.content, created_at = excluded.created_at",
+            params![cv_id.as_str(), content, now.0],
+        )
+        .map_err(backend)?;
+        Ok(now)
+    }
+
+    fn review_session_update(&self, cv_id: &Id, content: &str) -> Result<()> {
+        let conn = self.lock();
+        let changed = conn
+            .execute(
+                "UPDATE review_sessions SET content = ?2 WHERE cv_id = ?1 \
+                 AND cv_id IN (SELECT id FROM cvs WHERE deleted_at IS NULL)",
+                params![cv_id.as_str(), content],
+            )
+            .map_err(backend)?;
+        if changed == 0 {
+            return Err(StoreError::NotFound(cv_id.clone()));
+        }
+        Ok(())
+    }
+
     fn backup_to(&self, path: &Path) -> Result<()> {
         vacuum_into(&self.lock(), path)
     }

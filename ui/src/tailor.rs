@@ -33,7 +33,10 @@ pub fn stage_label(stage: AiStage) -> &'static str {
         AiStage::Selection => s.stage_selection,
         AiStage::Fit => s.stage_fit,
         AiStage::Rewrite => s.stage_rewrite,
-        AiStage::Summary | AiStage::Gaps | AiStage::Review | AiStage::Import => s.stage_working,
+        AiStage::Summary => s.stage_summary,
+        AiStage::Gaps => s.stage_gaps,
+        AiStage::Review => s.stage_review,
+        AiStage::Import => s.stage_working,
     }
 }
 
@@ -44,9 +47,15 @@ pub fn result_message(r: &TailorResult) -> String {
         1 => t().tailor_done_one.to_owned(),
         n => fill(t().tailor_done, &[("n", &n.to_string())]),
     };
-    if r.failed_stages.contains(&AiStage::Rewrite) {
-        text.push(' ');
-        text.push_str(t().rewrite_failed);
+    for (stage, why) in [
+        (AiStage::Rewrite, t().rewrite_failed),
+        (AiStage::Summary, t().summary_failed),
+        (AiStage::Gaps, t().gaps_failed),
+    ] {
+        if r.failed_stages.contains(&stage) {
+            text.push(' ');
+            text.push_str(why);
+        }
     }
     if r.fits == Some(false) {
         text.push(' ');
@@ -280,24 +289,32 @@ pub fn TailorPanel(
                 </div>
             })}
             <p role="status">{move || message.get()}</p>
-            <Show when=move || discarded.with(|d| !d.is_empty())>
-                <details class="discarded">
-                    <summary>{move || match discarded.with(Vec::len) {
-                        1 => t().discarded_one.to_owned(),
-                        n => fill(t().discarded_count, &[("n", &n.to_string())]),
-                    }}</summary>
-                    <ul>{move || discarded.get().into_iter().map(|d| view! {
-                        <li>
-                            <span>{t().discarded_before}": "{d.before}</span>
-                            <span>{t().discarded_after}": "{d.after}</span>
-                            {d.warnings.iter().map(|w| view! {
-                                <span class="badge">{fill(crate::review::badge(w.kind), &[("detail", &w.detail)])}</span>
-                            }).collect_view()}
-                        </li>
-                    }).collect_view()}</ul>
-                </details>
-            </Show>
+            <DiscardedDetails items=discarded.into() />
         </div>
+    }
+}
+
+/// "N suggestions discarded by safety checks", with what each said.
+#[component]
+pub fn DiscardedDetails(items: Signal<Vec<DiscardedRewrite>>) -> impl IntoView {
+    view! {
+        <Show when=move || items.with(|d| !d.is_empty())>
+            <details class="discarded">
+                <summary>{move || match items.with(Vec::len) {
+                    1 => t().discarded_one.to_owned(),
+                    n => fill(t().discarded_count, &[("n", &n.to_string())]),
+                }}</summary>
+                <ul>{move || items.get().into_iter().map(|d| view! {
+                    <li>
+                        <span>{t().discarded_before}": "{d.before}</span>
+                        <span>{t().discarded_after}": "{d.after}</span>
+                        {d.warnings.iter().map(|w| view! {
+                            <span class="badge">{fill(crate::review::badge(w.kind), &[("detail", &w.detail)])}</span>
+                        }).collect_view()}
+                    </li>
+                }).collect_view()}</ul>
+            </details>
+        </Show>
     }
 }
 

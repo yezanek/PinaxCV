@@ -429,3 +429,31 @@ fn store_is_shareable_across_threads() {
     }
     assert_eq!(s.list_cvs().expect("list").len(), 4);
 }
+
+#[test]
+fn review_sessions_keep_the_latest_per_live_cv() {
+    let (s, clock) = store();
+    s.create_cv(&cv(10)).expect("create");
+    assert_eq!(s.review_session_get(&id(10)).expect("get"), None);
+    s.review_session_put(&id(10), "{\"a\":1}").expect("put");
+    clock.advance(Duration::from_secs(2));
+    let at = s.review_session_put(&id(10), "{\"a\":2}").expect("replace");
+    assert_eq!(at.0, "2026-10-13T12:00:02.000Z");
+    let (content, saved) = s.review_session_get(&id(10)).expect("get").expect("some");
+    assert_eq!((content.as_str(), saved), ("{\"a\":2}", at.clone()));
+    clock.advance(Duration::from_secs(2));
+    s.review_session_update(&id(10), "{\"a\":3}")
+        .expect("update");
+    let (content, saved) = s.review_session_get(&id(10)).expect("get").expect("some");
+    assert_eq!((content.as_str(), saved), ("{\"a\":3}", at), "time kept");
+    assert!(matches!(
+        s.review_session_update(&id(20), "{}"),
+        Err(StoreError::NotFound(_))
+    ));
+    assert!(matches!(
+        s.review_session_put(&id(99), "{}"),
+        Err(StoreError::NotFound(_))
+    ));
+    s.delete_cv(&id(10)).expect("delete");
+    assert_eq!(s.review_session_get(&id(10)).expect("get"), None);
+}

@@ -201,6 +201,12 @@
           "markdownDescription": "Enables the ai_forget_key command without any pre-configured scope."
         },
         {
+          "description": "Enables the ai_review command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-ai-review",
+          "markdownDescription": "Enables the ai_review command without any pre-configured scope."
+        },
+        {
           "description": "Enables the ai_status command without any pre-configured scope.",
           "type": "string",
           "const": "allow-ai-status",
@@ -285,6 +291,12 @@
           "markdownDescription": "Enables the get_cv command without any pre-configured scope."
         },
         {
+          "description": "Enables the get_review command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-review",
+          "markdownDescription": "Enables the get_review command without any pre-configured scope."
+        },
+        {
           "description": "Enables the get_variant command without any pre-configured scope.",
           "type": "string",
           "const": "allow-get-variant",
@@ -351,6 +363,12 @@
           "markdownDescription": "Enables the restore_cv command without any pre-configured scope."
         },
         {
+          "description": "Enables the review_decide command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-review-decide",
+          "markdownDescription": "Enables the review_decide command without any pre-configured scope."
+        },
+        {
           "description": "Enables the save_cv command without any pre-configured scope.",
           "type": "string",
           "const": "allow-save-cv",
@@ -385,6 +403,12 @@
           "type": "string",
           "const": "deny-ai-forget-key",
           "markdownDescription": "Denies the ai_forget_key command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the ai_review command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-ai-review",
+          "markdownDescription": "Denies the ai_review command without any pre-configured scope."
         },
         {
           "description": "Denies the ai_status command without any pre-configured scope.",
@@ -471,6 +495,12 @@
           "markdownDescription": "Denies the get_cv command without any pre-configured scope."
         },
         {
+          "description": "Denies the get_review command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-review",
+          "markdownDescription": "Denies the get_review command without any pre-configured scope."
+        },
+        {
           "description": "Denies the get_variant command without any pre-configured scope.",
           "type": "string",
           "const": "deny-get-variant",
@@ -535,6 +565,12 @@
           "type": "string",
           "const": "deny-restore-cv",
           "markdownDescription": "Denies the restore_cv command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the review_decide command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-review-decide",
+          "markdownDescription": "Denies the review_decide command without any pre-configured scope."
         },
         {
           "description": "Denies the save_cv command without any pre-configured scope.",

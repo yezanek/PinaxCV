@@ -7,6 +7,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod advice;
 pub mod cache;
 pub mod fake;
 pub mod http;
@@ -17,6 +18,9 @@ pub mod schema;
 pub mod stages;
 pub mod verify;
 
+pub use advice::{
+    CheckedNote, CheckedSummary, NoteCategory, Review, find_gaps, review_cv, summarize,
+};
 pub use cache::{MemoryCache, ResponseCache, cache_key, generate_cached};
 pub use payload::{CvPayload, PayloadOptions, build_cv_payload};
 pub use prompts::{Kind, Prompt, PromptError};

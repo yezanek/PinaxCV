@@ -18,8 +18,8 @@ use std::path::Path;
 use std::time::Duration;
 
 use cv_core::{
-    Cv, CvSummary, Id, IdSource, SnapshotReason, SnapshotSummary, StoredCv, StoredVariant, Variant,
-    VariantSummary,
+    Cv, CvSummary, Id, IdSource, SnapshotReason, SnapshotSummary, StoredCv, StoredVariant,
+    Timestamp, Variant, VariantSummary,
 };
 
 /// Errors the store reports. Callers map them to `cv_api::ApiError`.
@@ -93,6 +93,15 @@ pub trait Store: Send + Sync {
     fn ai_cache_get(&self, key: &str) -> Result<Option<String>>;
     fn ai_cache_put(&self, key: &str, kind: &str, response: &str) -> Result<()>;
     fn ai_cache_clear(&self) -> Result<()>;
+
+    /// The latest AI review of a CV made without a variant (spec section
+    /// 11.11): opaque JSON and when it was saved.
+    fn review_session_get(&self, cv_id: &Id) -> Result<Option<(String, Timestamp)>>;
+    /// Replaces the review session of a live CV; returns its timestamp.
+    fn review_session_put(&self, cv_id: &Id, content: &str) -> Result<Timestamp>;
+    /// Changes the content of an existing review session, keeping its
+    /// timestamp (decisions on its suggestions).
+    fn review_session_update(&self, cv_id: &Id, content: &str) -> Result<()>;
 
     /// Writes a consistent copy of the database (`VACUUM INTO`). Contains no secrets.
     fn backup_to(&self, path: &Path) -> Result<()>;
