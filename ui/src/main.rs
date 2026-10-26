@@ -7,6 +7,7 @@ use leptos::prelude::*;
 mod dates;
 mod editor;
 mod entries;
+mod i18n;
 mod ids;
 mod ipc;
 mod list;

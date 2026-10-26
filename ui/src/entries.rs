@@ -6,6 +6,7 @@ use cv_core::{Bullet, Cv, Entry, EntrySection, Id, PartialDate, Period, Section}
 use leptos::prelude::*;
 
 use crate::dates;
+use crate::i18n::t;
 use crate::ids::new_id;
 use crate::order::shift;
 
@@ -52,10 +53,10 @@ fn entry_sections(cv: &Cv) -> Vec<(Id, &'static str)> {
     cv.sections
         .iter()
         .filter_map(|s| match s {
-            Section::Experience(x) => Some((x.id.clone(), "Work experience")),
-            Section::Education(x) => Some((x.id.clone(), "Education")),
-            Section::Projects(x) => Some((x.id.clone(), "Projects")),
-            Section::Certifications(x) => Some((x.id.clone(), "Certifications")),
+            Section::Experience(x) => Some((x.id.clone(), t().work_experience)),
+            Section::Education(x) => Some((x.id.clone(), t().education)),
+            Section::Projects(x) => Some((x.id.clone(), t().projects)),
+            Section::Certifications(x) => Some((x.id.clone(), t().certifications)),
             _ => None,
         })
         .collect()
@@ -108,11 +109,11 @@ pub fn EntrySections(cv: RwSignal<Option<Cv>>, edit: Edit) -> impl IntoView {
             <SectionEditor cv=cv edit=edit id=section.0 label=section.1 />
         </For>
         <p>
-            <button on:click=move |_| add_section(Section::Experience)>"+ Work experience"</button>
+            <button on:click=move |_| add_section(Section::Experience)>{t().add_work_experience}</button>
             " "
-            <button on:click=move |_| add_section(Section::Education)>"+ Education"</button>
+            <button on:click=move |_| add_section(Section::Education)>{t().add_education}</button>
             " "
-            <button on:click=move |_| add_section(Section::Projects)>"+ Projects"</button>
+            <button on:click=move |_| add_section(Section::Projects)>{t().add_projects}</button>
         </p>
     }
 }
@@ -184,15 +185,15 @@ fn SectionEditor(
         <fieldset class="section">
             <legend>{label}</legend>
             <div class="order">
-                <button aria-label="Move section up" on:click=section_up>"↑"</button>
-                <button aria-label="Move section down" on:click=section_down>"↓"</button>
+                <button aria-label=t().move_section_up on:click=section_up>"↑"</button>
+                <button aria-label=t().move_section_down on:click=section_down>"↓"</button>
             </div>
             <For each=entries key=|e| e.clone() let:entry>
                 <EntryEditor cv=cv edit=edit section=section_id.clone() id=entry />
             </For>
-            <button on:click=add>"+ Entry"</button>
+            <button on:click=add>{t().add_entry}</button>
             " "
-            <button on:click=remove_section>"Remove section"</button>
+            <button on:click=remove_section>{t().remove_section}</button>
         </fieldset>
     }
 }
@@ -297,7 +298,7 @@ fn EntryEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> imp
             let (s, e) = (section.clone(), id.clone());
             view! {
                 <label class="date">{label}
-                    <input value=initial placeholder="2021 or 2021-03"
+                    <input value=initial placeholder=t().date_placeholder
                         on:input=move |ev| {
                             let v = event_target_value(&ev);
                             let parsed = dates::parse(&v);
@@ -321,14 +322,14 @@ fn EntryEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> imp
                         let (s, e) = (s2.clone(), e2.clone());
                         edit.run(Box::new(move |c| if let Some(x) = entry_mut(c, &s, &e) { x.period.current = on }));
                     } />
-                " I work here now"
+                " "{t().current_job}
             </label>
         }
     };
     let description = {
         let (s1, e1, s2, e2) = (section.clone(), id.clone(), section.clone(), id.clone());
         view! {
-            <label>"Description (optional)"
+            <label>{t().description}
                 <textarea
                     prop:value=move || cv.with(|c| c.as_ref().and_then(|c| entry_ref(c, &s1, &e1)).and_then(|e| e.description.clone()).unwrap_or_default())
                     on:input=move |ev| {
@@ -342,25 +343,25 @@ fn EntryEditor(cv: RwSignal<Option<Cv>>, edit: Edit, section: Id, id: Id) -> imp
     let (bs, be) = (section.clone(), id.clone());
     view! {
         <div class="entry">
-            {text("Title", |e| e.title.clone(), |e, v| e.title = v)}
-            {text("Organisation", |e| e.org.clone(), |e, v| e.org = v)}
-            {text("Location", |e| e.location.clone().unwrap_or_default(), |e, v| e.location = opt(v))}
+            {text(t().entry_title, |e| e.title.clone(), |e, v| e.title = v)}
+            {text(t().organisation, |e| e.org.clone(), |e, v| e.org = v)}
+            {text(t().location, |e| e.location.clone().unwrap_or_default(), |e, v| e.location = opt(v))}
             <div class="dates">
-                {date("Start", |p| p.start, |p, d| p.start = d)}
-                {date("End", |p| p.end, |p, d| p.end = d)}
+                {date(t().start, |p| p.start, |p, d| p.start = d)}
+                {date(t().end, |p| p.end, |p, d| p.end = d)}
             </div>
             {current}
             {description}
-            {text("Link (optional, https:// links are clickable)", |e| e.url.clone().unwrap_or_default(), |e, v| e.url = opt(v))}
+            {text(t().link, |e| e.url.clone().unwrap_or_default(), |e, v| e.url = opt(v))}
             <For each=bullets key=|b| b.clone() let:bullet>
                 <BulletEditor cv=cv edit=edit section=bs.clone() entry=be.clone() id=bullet />
             </For>
-            <button on:click=add_bullet>"+ Bullet"</button>
+            <button on:click=add_bullet>{t().add_bullet}</button>
             " "
-            <button on:click=remove_entry>"Remove entry"</button>
+            <button on:click=remove_entry>{t().remove_entry}</button>
             " "
-            <button aria-label="Move entry up" on:click=entry_up>"↑"</button>
-            <button aria-label="Move entry down" on:click=entry_down>"↓"</button>
+            <button aria-label=t().move_entry_up on:click=entry_up>"↑"</button>
+            <button aria-label=t().move_entry_down on:click=entry_down>"↓"</button>
         </div>
     }
 }
@@ -410,7 +411,7 @@ fn BulletEditor(
     };
     view! {
         <div class="bullet">
-            <textarea aria-label="Bullet" prop:value=value
+            <textarea aria-label=t().bullet prop:value=value
                 on:input=move |ev| {
                     let v = event_target_value(&ev);
                     let (s, e, b) = (s2.clone(), e2.clone(), b2.clone());
@@ -420,9 +421,9 @@ fn BulletEditor(
                         }
                     }));
                 }></textarea>
-            <button aria-label="Move bullet up" on:click=bullet_up>"↑"</button>
-            <button aria-label="Move bullet down" on:click=bullet_down>"↓"</button>
-            <button aria-label="Remove bullet" on:click=remove>"×"</button>
+            <button aria-label=t().move_bullet_up on:click=bullet_up>"↑"</button>
+            <button aria-label=t().move_bullet_down on:click=bullet_down>"↓"</button>
+            <button aria-label=t().remove_bullet on:click=remove>"×"</button>
         </div>
     }
 }

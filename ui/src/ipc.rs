@@ -6,6 +6,8 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use wasm_bindgen::prelude::*;
 
+use crate::i18n::{fill, t};
+
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(catch, js_namespace = ["window", "__TAURI__", "core"], js_name = invoke)]
@@ -18,17 +20,16 @@ pub async fn call<A: Serialize, R: DeserializeOwned>(cmd: &str, args: &A) -> Res
     let args = serde_wasm_bindgen::to_value(args).map_err(internal)?;
     match tauri_invoke(cmd, args).await {
         Ok(value) => serde_wasm_bindgen::from_value(value).map_err(internal),
-        Err(err) => Err(serde_wasm_bindgen::from_value(err).unwrap_or_else(|_| {
-            ApiError::new(
-                ErrorCode::Internal,
-                "The app did not answer. Restart PinaxCV.",
-            )
-        })),
+        Err(err) => Err(serde_wasm_bindgen::from_value(err)
+            .unwrap_or_else(|_| ApiError::new(ErrorCode::Internal, t().app_not_answering))),
     }
 }
 
 fn internal(e: impl std::fmt::Display) -> ApiError {
-    ApiError::new(ErrorCode::Internal, format!("Unexpected data: {e}"))
+    ApiError::new(
+        ErrorCode::Internal,
+        fill(t().unexpected_data, &[("error", &e.to_string())]),
+    )
 }
 
 /// `{}` for commands without parameters.

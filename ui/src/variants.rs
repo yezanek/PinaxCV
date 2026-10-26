@@ -8,6 +8,7 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use serde::Serialize;
 
+use crate::i18n::{error_message, fill, t};
 use crate::ipc::{IdArg, ReqArg, call};
 
 #[derive(Serialize)]
@@ -19,12 +20,12 @@ struct CvIdArg<'a> {
 /// The heading shown for a section in the variant panel.
 pub fn section_label(s: &Section) -> String {
     match s {
-        Section::Experience(_) => "Experience".into(),
-        Section::Education(_) => "Education".into(),
-        Section::Projects(_) => "Projects".into(),
-        Section::Skills(_) => "Skills".into(),
-        Section::Languages(_) => "Languages".into(),
-        Section::Certifications(_) => "Certifications".into(),
+        Section::Experience(_) => t().experience.into(),
+        Section::Education(_) => t().education.into(),
+        Section::Projects(_) => t().projects.into(),
+        Section::Skills(_) => t().skills.into(),
+        Section::Languages(_) => t().languages.into(),
+        Section::Certifications(_) => t().certifications.into(),
         Section::Custom(c) => c.title.clone(),
     }
 }
@@ -32,7 +33,7 @@ pub fn section_label(s: &Section) -> String {
 /// A one-line label for an entry.
 pub fn entry_label(e: &Entry) -> String {
     match (e.title.trim(), e.org.trim()) {
-        ("", "") => "(untitled entry)".into(),
+        ("", "") => t().untitled_entry.into(),
         (t, "") => t.into(),
         ("", o) => o.into(),
         (t, o) => format!("{t}, {o}"),
@@ -57,7 +58,7 @@ fn short(text: &str) -> String {
     let text = text.trim();
     match text.char_indices().nth(MAX) {
         Some((i, _)) => format!("{}\u{2026}", &text[..i]),
-        None if text.is_empty() => "(empty bullet)".into(),
+        None if text.is_empty() => t().empty_bullet.into(),
         None => text.into(),
     }
 }
@@ -103,7 +104,7 @@ pub fn rows(s: &Section) -> Vec<Row> {
                     .as_deref()
                     .map(str::trim)
                     .filter(|l| !l.is_empty())
-                    .unwrap_or("(unlabelled group)");
+                    .unwrap_or(t().unlabelled_group);
                 out.push(row(&g.id, label.into(), 0, false));
                 out.extend(
                     g.skills
@@ -142,7 +143,7 @@ pub fn VariantBar(
                     .await
                 {
                     Ok(v) => list.set(v),
-                    Err(e) => error.set(Some(e.message)),
+                    Err(e) => error.set(Some(error_message(&e))),
                 }
             });
         }
@@ -174,7 +175,7 @@ pub fn VariantBar(
                     variant.set(Some(v));
                     changed.run(());
                 }
-                Err(e) => error.set(Some(e.message)),
+                Err(e) => error.set(Some(error_message(&e))),
             }
         });
     };
@@ -184,7 +185,10 @@ pub fn VariantBar(
         move |_| {
             let req = NewVariant {
                 cv_id: cv_id.clone(),
-                name: format!("Variant {}", list.with_untracked(Vec::len) + 1),
+                name: fill(
+                    t().variant_default_name,
+                    &[("n", &(list.with_untracked(Vec::len) + 1).to_string())],
+                ),
                 job: JobTarget::default(),
             };
             let reload = reload.clone();
@@ -203,7 +207,7 @@ pub fn VariantBar(
                         variant.set(Some(v));
                         changed.run(());
                     }
-                    Err(e) => error.set(Some(e.message)),
+                    Err(e) => error.set(Some(error_message(&e))),
                 }
             });
         }
@@ -253,7 +257,7 @@ pub fn VariantBar(
                             return;
                         }
                         pending.set(None);
-                        error.set(Some(e.message));
+                        error.set(Some(error_message(&e)));
                         settled.run(false);
                         return;
                     }
@@ -302,7 +306,7 @@ pub fn VariantBar(
                         reload();
                         changed.run(());
                     }
-                    Err(e) => error.set(Some(e.message)),
+                    Err(e) => error.set(Some(error_message(&e))),
                 }
             });
         }
@@ -325,10 +329,10 @@ pub fn VariantBar(
 
     view! {
         <div class="variants">
-            <label>"Version "
+            <label>{t().version}" "
                 <select prop:disabled=move || busy.get()
                     on:change=move |ev| select(event_target_value(&ev))>
-                    <option value="" selected=move || variant.with(Option::is_none)>"Base CV"</option>
+                    <option value="" selected=move || variant.with(Option::is_none)>{t().base_cv}</option>
                     <For each=move || list.get() key=|s| s.id.clone() let:s>
                         {
                             let id = s.id.clone();
@@ -342,34 +346,31 @@ pub fn VariantBar(
                     </For>
                 </select>
             </label>
-            <button prop:disabled=move || busy.get() on:click=create>"New variant"</button>
+            <button prop:disabled=move || busy.get() on:click=create>{t().new_variant}</button>
         </div>
         <Show when=move || variant.with(Option::is_some)>
             <div class="banner" role="status">
-                {move || variant.with(|v| v.as_ref().map(|v| format!(
-                    "Showing variant \u{201c}{}\u{201d}. Text edits below change the base CV; choose here what this variant shows.",
-                    v.variant.name
-                )))}
+                {move || variant.with(|v| v.as_ref().map(|v| fill(t().showing_variant, &[("name", &v.variant.name)])))}
             </div>
             <div class="variant-actions">
-                <label>"Variant name "
+                <label>{t().variant_name}" "
                     <input prop:value=move || variant.with(|v| v.as_ref().map(|v| v.variant.name.clone()).unwrap_or_default())
                         on:change=move |ev| rename.run(event_target_value(&ev)) />
                 </label>
                 <Show when=move || confirming.with(Option::is_none)
                     fallback=move || view! {
-                        <span>"Delete this variant? The base CV is not changed."</span>
+                        <span>{t().delete_variant_confirm}</span>
                         <button prop:disabled=move || busy.get()
-                            on:click=move |_| delete.run(())>"Delete"</button>
-                        <button on:click=move |_| confirming.set(None)>"Cancel"</button>
+                            on:click=move |_| delete.run(())>{t().delete}</button>
+                        <button on:click=move |_| confirming.set(None)>{t().cancel}</button>
                     }>
                     <button on:click=move |_| confirming.set(
                         variant.with_untracked(|v| v.as_ref().map(|v| v.variant.id.clone())),
-                    )>"Delete variant"</button>
+                    )>{t().delete_variant}</button>
                 </Show>
             </div>
             <fieldset class="variant-visibility">
-                <legend>"Shown in this variant"</legend>
+                <legend>{t().shown_in_variant}</legend>
                 {move || cv.with(|c| c.as_ref().map(|c| c.sections.iter().map(|s| {
                     let sid = s.id().clone();
                     let sid2 = sid.clone();
@@ -378,7 +379,7 @@ pub fn VariantBar(
                         let nested = r.depth > 0;
                         let one_line = r.collapsible.then(|| view! {
                             <label class="collapse"><input type="checkbox" prop:checked=move || collapsed(&c2)
-                                on:change=move |_| toggle(d.clone(), true) />"one line"</label>
+                                on:change=move |_| toggle(d.clone(), true) />{t().one_line}</label>
                         });
                         view! {
                             <li class:nested=nested>

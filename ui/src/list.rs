@@ -5,6 +5,7 @@ use cv_core::{CvSummary, Id, StoredCv};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 
+use crate::i18n::{error_message, t};
 use crate::ipc::{IdArg, NoArgs, ReqArg, call};
 
 #[component]
@@ -19,7 +20,7 @@ pub fn CvList(open: RwSignal<Option<Id>>) -> impl IntoView {
         spawn_local(async move {
             match call::<_, Vec<CvSummary>>("list_cvs", &NoArgs {}).await {
                 Ok(list) => cvs.set(list),
-                Err(e) => error.set(Some(e.message)),
+                Err(e) => error.set(Some(error_message(&e))),
             }
         });
     };
@@ -40,7 +41,7 @@ pub fn CvList(open: RwSignal<Option<Id>>) -> impl IntoView {
             }
             match result {
                 Ok(stored) => open.set(Some(stored.cv.id)),
-                Err(e) => error.set(Some(e.message)),
+                Err(e) => error.set(Some(error_message(&e))),
             }
         });
     };
@@ -50,15 +51,15 @@ pub fn CvList(open: RwSignal<Option<Id>>) -> impl IntoView {
             let result: Result<(), ApiError> = call("delete_cv", &IdArg { id: &id }).await;
             match result {
                 Ok(()) => reload(),
-                Err(e) => error.set(Some(e.message)),
+                Err(e) => error.set(Some(error_message(&e))),
             }
         });
     };
 
     view! {
-        <header class="bar"><h1>"PinaxCV"</h1></header>
+        <header class="bar"><h1>{t().app_name}</h1></header>
         <main class="list">
-            <h2>"Your CVs"</h2>
+            <h2>{t().your_cvs}</h2>
             <p class="error">{move || error.get()}</p>
             <ul>
                 <For each=move || cvs.get() key=|c| c.id.clone() let:cv>
@@ -70,17 +71,17 @@ pub fn CvList(open: RwSignal<Option<Id>>) -> impl IntoView {
                                 <button class="open" on:click=move |_| open.set(Some(id.clone()))>
                                     {cv.title.clone()}
                                 </button>
-                                <button on:click=move |_| delete(del.clone())>"Delete"</button>
+                                <button on:click=move |_| delete(del.clone())>{t().delete}</button>
                             </li>
                         }
                     }
                 </For>
             </ul>
             <p>
-                <input placeholder="Title, for example Main CV" prop:value=move || title.get()
+                <input placeholder=t().new_cv_title_placeholder prop:value=move || title.get()
                     on:input=move |ev| title.set(event_target_value(&ev)) />
                 " "
-                <button on:click=create prop:disabled=move || creating.get()>"New CV"</button>
+                <button on:click=create prop:disabled=move || creating.get()>{t().new_cv}</button>
             </p>
         </main>
     }

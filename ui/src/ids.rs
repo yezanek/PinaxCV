@@ -3,6 +3,8 @@
 
 use cv_core::Id;
 
+use crate::i18n::t;
+
 const CROCKFORD: &[u8; 32] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
 /// A fresh ULID, or `None` (after telling the user) when the browser's
@@ -16,9 +18,7 @@ pub fn new_id() -> Option<Id> {
         .ok()
         .is_some_and(|c| c.get_random_values_with_u8_array(&mut random).is_ok());
     if !filled {
-        let _ = window.alert_with_message(
-            "Could not add the item: the system's secure random source is unavailable.",
-        );
+        let _ = window.alert_with_message(t().no_secure_random);
         return None;
     }
     // Milliseconds since 1970 fit in the 48-bit ULID timestamp until 10889.
