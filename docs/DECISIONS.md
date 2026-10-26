@@ -462,6 +462,13 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Cuts are only proposals (answers: fit-to-page cuts always need review). Each is listed in words ("Hide bullet …", "Show … on one line") with Accept and Reject, plus "Accept all". Accepting applies the hide or collapse to the overlay (`Variant::accept_suggestion`); rejecting marks it rejected. Nothing is hidden until then.
 - While a fit runs, the rest of the overlay is locked and it counts as a variant save, so exports wait for it. Relevance scores (spec section 11.5) are not passed yet; that comes with AI scoring in M7.
 
+## ADR-066 — Checks tab: lint list with jump-to-field (M6)
+
+- The editor has a third tab, Checks (spec section 12.7). It runs `lint` for the shown CV or variant when opened and again after every save of the CV or the variant, and lists the findings grouped as Errors, Warnings and Tips, each with its fix hint.
+- `lint` reads the saved CV, so the tab says it catches up a moment after typing rather than linting unsaved text in the browser.
+- A finding with a target ID, or about the name, email or summary, has a "Show" button. It switches to the Content tab, opens the item's section if it is collapsed, scrolls to the item and focuses its first field. Findings such as the page count have nothing to jump to. When the shown variant overrides the summary or an item's text, the finding is about the override, which is edited in the variant panel rather than the Content tab, so it has no "Show" button.
+- The contact and summary fields carry fixed element IDs for this; items are found by the `data-drag-id` they already carry, skipping the variant panel's rows.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

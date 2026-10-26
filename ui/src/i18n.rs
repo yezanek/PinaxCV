@@ -208,6 +208,14 @@ pub struct Strings {
     pub accept: &'static str,
     pub reject: &'static str,
     pub accept_all: &'static str,
+    pub checks: &'static str,
+    pub lint_heading: &'static str,
+    pub lint_saved_only: &'static str,
+    pub lint_clean: &'static str,
+    pub lint_errors: &'static str,
+    pub lint_warnings: &'static str,
+    pub lint_tips: &'static str,
+    pub show_field: &'static str,
     pub remove_language: &'static str,
 
     // Variants
@@ -424,6 +432,14 @@ pub static EN: Strings = Strings {
     accept: "Accept",
     reject: "Reject",
     accept_all: "Accept all",
+    checks: "Checks",
+    lint_heading: "Content checks",
+    lint_saved_only: "These checks read the saved CV, so they catch up a moment after you type.",
+    lint_clean: "No problems found.",
+    lint_errors: "Errors",
+    lint_warnings: "Warnings",
+    lint_tips: "Tips",
+    show_field: "Show",
     remove_language: "Remove language",
 
     version: "Version",
@@ -609,6 +625,7 @@ mod tests {
 
     /// Every other source file in `src/`.
     const FILES: &[(&str, &str)] = &[
+        ("checks.rs", include_str!("checks.rs")),
         ("dates.rs", include_str!("dates.rs")),
         ("drag.rs", include_str!("drag.rs")),
         ("editor.rs", include_str!("editor.rs")),

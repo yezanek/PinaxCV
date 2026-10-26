@@ -13,6 +13,7 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use wasm_bindgen::JsCast;
 
+use crate::checks::{ChecksTab, EMAIL_FIELD, FULL_NAME_FIELD, SUMMARY_FIELD, Spot, focus_spot};
 use crate::entries::{AddSection, Sections};
 use crate::history::{History, Shortcut, shortcut};
 use crate::i18n::{error_message, fill, t};
@@ -25,6 +26,25 @@ use crate::variants::VariantBar;
 const PREVIEW_DELAY: Duration = Duration::from_millis(150);
 /// Autosave debounce from spec section 12.
 const SAVE_DELAY: Duration = Duration::from_millis(600);
+
+/// The editor's tabs.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Tab {
+    Content,
+    Style,
+    Checks,
+}
+
+impl Tab {
+    /// The tab button's element ID and its panel's.
+    fn ids(self) -> (&'static str, &'static str) {
+        match self {
+            Tab::Content => ("tab-content", "panel-content"),
+            Tab::Style => ("tab-style", "panel-style"),
+            Tab::Checks => ("tab-checks", "panel-checks"),
+        }
+    }
+}
 
 /// "120 / 600 characters" under the summary; past the limit the lint check
 /// warns that the summary is too long.
@@ -377,10 +397,13 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
     });
     on_cleanup(move || keys.remove());
 
-    let field = move |label: &'static str, get: fn(&Cv) -> String, set: fn(&mut Cv, String)| {
+    let field = move |label: &'static str,
+                      id: Option<&'static str>,
+                      get: fn(&Cv) -> String,
+                      set: fn(&mut Cv, String)| {
         view! {
             <label>{label}
-                <input prop:value=move || cv.with(|c| c.as_ref().map(get).unwrap_or_default())
+                <input id=id prop:value=move || cv.with(|c| c.as_ref().map(get).unwrap_or_default())
                     on:input=move |ev| {
                         let v = event_target_value(&ev);
                         edit.run(Box::new(move |c| set(c, v)));
@@ -405,8 +428,28 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
         })
     };
 
-    // The Style tab only hides the Content tab, so inputs keep their state.
-    let style_tab = RwSignal::new(false);
+    // The other tabs only hide the Content tab, so inputs keep their state.
+    let tab = RwSignal::new(Tab::Content);
+    let id_for_checks = id.clone();
+    let tab_button = move |which: Tab, label: &'static str| {
+        let (id, panel) = which.ids();
+        view! {
+            <button id=id role="tab" aria-controls=panel aria-selected=move || (tab.get() == which).to_string()
+                on:click=move |_| tab.set(which)>{label}</button>
+        }
+    };
+    // Runs the checks again after each save of the CV or the variant.
+    let checks_refresh = Signal::derive(move || {
+        saved_edit.get() + variant.with(|v| v.as_ref().map_or(0, |v| v.revision))
+    });
+    let checks_variant =
+        Signal::derive(move || variant.with(|v| v.as_ref().map(|v| v.variant.id.clone())));
+    let checks_overlay =
+        Signal::derive(move || variant.with(|v| v.as_ref().map(|v| v.variant.clone())));
+    let jump = Callback::new(move |to: Spot| {
+        tab.set(Tab::Content);
+        set_timeout(move || focus_spot(&to), Duration::ZERO);
+    });
     let export_pdf = move |_| flush_then(AfterSave::Export(true));
     let export_html = move |_| flush_then(AfterSave::Export(false));
     let leave = move |_| flush_then(AfterSave::Leave);
@@ -426,26 +469,30 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
         <div class="editor">
             <section class="form">
                 <div class="tabs" role="tablist">
-                    <button id="tab-content" role="tab" aria-controls="panel-content" aria-selected=move || (!style_tab.get()).to_string()
-                        on:click=move |_| style_tab.set(false)>{t().content}</button>
-                    <button id="tab-style" role="tab" aria-controls="panel-style" aria-selected=move || style_tab.get().to_string()
-                        on:click=move |_| style_tab.set(true)>{t().style}</button>
+                    {tab_button(Tab::Content, t().content)}
+                    {tab_button(Tab::Style, t().style)}
+                    {tab_button(Tab::Checks, t().checks)}
                 </div>
                 <p class="error">{move || error.get()}</p>
-                <div id="panel-style" role="tabpanel" aria-labelledby="tab-style" hidden=move || !style_tab.get()>
+                <div id="panel-style" role="tabpanel" aria-labelledby="tab-style" hidden=move || tab.get() != Tab::Style>
                     <StyleTab cv=cv edit=edit error=error />
                 </div>
-                <div id="panel-content" role="tabpanel" aria-labelledby="tab-content" hidden=move || style_tab.get()>
+                <div id="panel-checks" role="tabpanel" aria-labelledby="tab-checks" hidden=move || tab.get() != Tab::Checks>
+                    <Show when=move || tab.get() == Tab::Checks>
+                        <ChecksTab cv_id=id_for_checks.clone() variant_id=checks_variant variant=checks_overlay refresh=checks_refresh jump=jump />
+                    </Show>
+                </div>
+                <div id="panel-content" role="tabpanel" aria-labelledby="tab-content" hidden=move || tab.get() != Tab::Content>
                 <VariantBar cv_id=id.clone() cv=cv variant=variant error=error changed=variant_changed
                     busy=variant_busy settled=variant_settled />
-                {field(t().cv_title, |c| c.title.clone(), |c, v| c.title = v)}
-                {field(t().full_name, |c| c.basics.full_name.clone(), |c, v| c.basics.full_name = v)}
-                {field(t().headline, |c| c.basics.headline.clone().unwrap_or_default(), |c, v| c.basics.headline = opt(v))}
-                {field(t().email, |c| c.basics.email.clone().unwrap_or_default(), |c, v| c.basics.email = opt(v))}
-                {field(t().phone, |c| c.basics.phone.clone().unwrap_or_default(), |c, v| c.basics.phone = opt(v))}
-                {field(t().location, |c| c.basics.location.clone().unwrap_or_default(), |c, v| c.basics.location = opt(v))}
+                {field(t().cv_title, None, |c| c.title.clone(), |c, v| c.title = v)}
+                {field(t().full_name, Some(FULL_NAME_FIELD), |c| c.basics.full_name.clone(), |c, v| c.basics.full_name = v)}
+                {field(t().headline, None, |c| c.basics.headline.clone().unwrap_or_default(), |c, v| c.basics.headline = opt(v))}
+                {field(t().email, Some(EMAIL_FIELD), |c| c.basics.email.clone().unwrap_or_default(), |c, v| c.basics.email = opt(v))}
+                {field(t().phone, None, |c| c.basics.phone.clone().unwrap_or_default(), |c, v| c.basics.phone = opt(v))}
+                {field(t().location, None, |c| c.basics.location.clone().unwrap_or_default(), |c, v| c.basics.location = opt(v))}
                 <label>{t().summary}
-                    <textarea aria-describedby="summary-count"
+                    <textarea id=SUMMARY_FIELD aria-describedby="summary-count"
                         prop:value=move || cv.with(|c| c.as_ref().and_then(|c| c.summary.clone()).unwrap_or_default())
                         on:input=move |ev| {
                             let v = event_target_value(&ev);

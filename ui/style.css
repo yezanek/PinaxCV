@@ -110,3 +110,10 @@ main.import ul.warnings li { color: var(--warning); }
 main.import ul.import-entries { list-style: none; padding: 0; margin: 0 0 1rem; }
 main.import ul.import-entries label { color: inherit; }
 main.import ul.import-summary li, main.import ul.warnings li { border: none; padding: 0.1rem 0; }
+.checks h2 { font-size: 1.2rem; margin: 0.5rem 0; }
+.checks h3 { font-size: 1rem; margin: 0.8rem 0 0.3rem; }
+.checks .hint { color: var(--muted); font-size: 0.9em; }
+.lint-group ul { list-style: none; padding: 0; margin: 0; }
+.lint-issue { display: flex; gap: 0.5rem; align-items: start; padding: 0.3rem 0; border-bottom: 1px solid var(--border); }
+.lint-issue span { flex: 1; min-width: 0; }
+.lint-issue small { color: var(--muted); }
