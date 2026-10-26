@@ -5,10 +5,10 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use cv_api::{
-    ApiError, DuplicateCv, DuplicateVariant, ErrorCode, ExportHtmlRequest, ExportPdfRequest,
-    ExportResult, FitOutcome, FitVariant, ImportCommit, ImportMatch, ImportMatchRequest,
-    ImportPreview, NewCv, NewVariant, PreviewRequest, PreviewResponse, PruneResult, SaveCv,
-    SaveVariant, Target, TemplateManifest,
+    AiConfig, AiStatus, ApiError, DuplicateCv, DuplicateVariant, ErrorCode, ExportHtmlRequest,
+    ExportPdfRequest, ExportResult, FitOutcome, FitVariant, ImportCommit, ImportMatch,
+    ImportMatchRequest, ImportPreview, NewCv, NewVariant, PreviewRequest, PreviewResponse,
+    PruneResult, SaveCv, SaveVariant, Target, TemplateManifest,
 };
 use cv_app::App;
 use cv_core::{AtsReport, CvSummary, Id, LintIssue, StoredCv, StoredVariant, VariantSummary};
@@ -108,6 +108,37 @@ pub async fn duplicate_variant(app: Shared<'_>, req: DuplicateVariant) -> Reply<
 #[tauri::command]
 pub async fn prune_variant(app: Shared<'_>, id: Id) -> Reply<PruneResult> {
     run(app, "prune_variant", move |a| a.prune_variant(&id)).await
+}
+
+#[tauri::command]
+pub async fn ai_status(app: Shared<'_>) -> Reply<AiStatus> {
+    run(app, "ai_status", App::ai_status).await
+}
+
+#[tauri::command]
+pub async fn ai_configure(app: Shared<'_>, config: AiConfig) -> Reply<AiStatus> {
+    run(app, "ai_configure", move |a| a.ai_configure(config)).await
+}
+
+#[tauri::command]
+pub async fn ai_forget_key(app: Shared<'_>) -> Reply<AiStatus> {
+    run(app, "ai_forget_key", App::ai_forget_key).await
+}
+
+#[tauri::command]
+pub async fn ai_consent(app: Shared<'_>) -> Reply<AiStatus> {
+    run(app, "ai_consent", App::ai_consent).await
+}
+
+/// The settings and keychain reads run on the blocking pool; only the
+/// provider call runs on the async runtime.
+#[tauri::command]
+pub async fn ai_test_connection(app: Shared<'_>) -> Reply<()> {
+    let (llm, request) = run(app, "ai_test_connection", App::ai_test_request).await?;
+    llm.generate_json(request)
+        .await
+        .map_err(cv_app::llm_error)?;
+    Ok(())
 }
 
 #[tauri::command]

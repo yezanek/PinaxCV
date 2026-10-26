@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-ai-configure"
+description = "Enables the ai_configure command without any pre-configured scope."
+commands.allow = ["ai_configure"]
+
+[[permission]]
+identifier = "deny-ai-configure"
+description = "Denies the ai_configure command without any pre-configured scope."
+commands.deny = ["ai_configure"]

@@ -249,6 +249,12 @@ impl OpenAiLlm {
         // checked here and retried once instead.
         if self.flavor == Flavor::OpenAi {
             body["response_format"]["json_schema"]["strict"] = json!(true);
+            // Reasoning models refuse any temperature but the default.
+            if is_reasoning_model(&self.endpoint.model)
+                && let Some(body) = body.as_object_mut()
+            {
+                body.remove("temperature");
+            }
         }
         // OpenAI's newer models take only `max_completion_tokens`; local
         // servers mostly know only `max_tokens`.
@@ -297,10 +303,12 @@ impl Llm for OpenAiLlm {
         let mut http = self.request(&request);
         let transport = self.endpoint.transport.clone();
         let body = match send(transport.clone(), http.clone(), request.cancel.clone()).await {
-            // OpenAI's reasoning models refuse any temperature but their
-            // default, and which models those are depends on the model and its
-            // reasoning effort. A 400 gets one more try without it.
-            Err(LlmError::Http { status: 400 }) if self.flavor == Flavor::OpenAi => {
+            // Known reasoning models already get no temperature. Others may
+            // still refuse it (support also depends on the reasoning effort),
+            // so a 400 gets one more try without it.
+            Err(LlmError::Http { status: 400 })
+                if self.flavor == Flavor::OpenAi && http.body.get("temperature").is_some() =>
+            {
                 if let Some(fields) = http.body.as_object_mut() {
                     fields.remove("temperature");
                 }
@@ -417,6 +425,14 @@ impl Llm for GeminiLlm {
     fn name(&self) -> &str {
         &self.name
     }
+}
+
+/// OpenAI's reasoning models (GPT-5 and the o-series) accept only the
+/// default temperature.
+fn is_reasoning_model(model: &str) -> bool {
+    let m = model.trim().to_ascii_lowercase();
+    m.starts_with("gpt-5")
+        || (m.starts_with('o') && m[1..].starts_with(|c: char| c.is_ascii_digit()))
 }
 
 #[cfg(test)]
@@ -582,6 +598,39 @@ mod tests {
         let out = llm.generate_json(request()).await;
         assert!(matches!(out, Err(LlmError::Http { status: 400 })));
         assert_eq!(t.sent().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn openai_reasoning_models_get_no_temperature() {
+        for (model, sent_temperature) in [
+            ("gpt-5-mini", false),
+            ("GPT-5", false),
+            ("o3", false),
+            ("o4-mini", false),
+            ("gpt-4.1", true),
+            ("omni-x", true),
+        ] {
+            let t = Recorder::replying(vec![Recorder::ok(json!({
+                "choices": [{ "message": { "content": "{}" } }],
+            }))]);
+            let llm = OpenAiLlm::with_transport(Some("sk-o"), model, OPENAI_URL, false, t.clone())
+                .expect("llm");
+            let _ = llm.generate_json(request()).await;
+            assert_eq!(
+                t.sent()[0].body.get("temperature").is_some(),
+                sent_temperature,
+                "{model}"
+            );
+        }
+        // Compatible servers always get it, whatever the model is called.
+        let t = Recorder::replying(vec![Recorder::ok(json!({
+            "choices": [{ "message": { "content": "{}" } }],
+        }))]);
+        let llm =
+            OpenAiLlm::with_transport(None, "gpt-5", "http://localhost:11434/v1", true, t.clone())
+                .expect("llm");
+        let _ = llm.generate_json(request()).await;
+        assert!(t.sent()[0].body.get("temperature").is_some());
     }
 
     #[tokio::test]

@@ -272,12 +272,36 @@ pub enum AiProvider {
     OpenaiCompatible,
 }
 
+/// Where the provider's API key is kept.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Copy, Debug, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum KeyStorage {
+    /// No key is saved.
+    None,
+    /// In the OS keychain.
+    Keychain,
+    /// Only in memory until the app closes: no keychain is available.
+    Memory,
+}
+
+/// The AI settings and whether the feature may be used.
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
 pub struct AiStatus {
     pub provider: AiProvider,
-    pub model: Option<String>,
+    pub model: String,
+    pub base_url: Option<String>,
+    pub key: KeyStorage,
+    /// Provider, model and (where needed) key are all set.
     pub configured: bool,
+    /// The user accepted the current consent text for this provider and host.
     pub consent_ok: bool,
+    /// Where requests go, for the consent text, for example `api.anthropic.com`.
+    pub host: Option<String>,
+    pub send_name: bool,
+    pub send_location: bool,
+    /// False when no OS keychain could be reached; keys are then asked for
+    /// each session (spec section 13.1).
+    pub keychain_available: bool,
 }
 
 /// Sent once by the settings screen. The API key goes to the OS keychain (or

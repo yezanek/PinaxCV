@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-ai-forget-key"
+description = "Enables the ai_forget_key command without any pre-configured scope."
+commands.allow = ["ai_forget_key"]
+
+[[permission]]
+identifier = "deny-ai-forget-key"
+description = "Denies the ai_forget_key command without any pre-configured scope."
+commands.deny = ["ai_forget_key"]

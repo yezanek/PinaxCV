@@ -9,6 +9,7 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
+cv-ai.workspace = true
 cv-api.workspace = true
 cv-core.workspace = true
 cv-import.workspace = true
@@ -19,6 +20,7 @@ ulid.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt"] }
 
 [lints]
 workspace = true

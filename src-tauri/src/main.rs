@@ -11,6 +11,7 @@ use tauri::Manager;
 
 mod commands;
 mod dialog;
+mod keychain;
 mod log;
 mod preview;
 
@@ -67,7 +68,8 @@ fn main() {
                 file_dialog(tauri_app.handle()),
                 Box::new(UlidIds),
                 preview::BASE_URL,
-            );
+            )
+            .with_secrets(Box::new(keychain::Keychain));
             tauri_app.manage(Arc::new(app));
             Ok(())
         })
@@ -87,6 +89,11 @@ fn main() {
             commands::duplicate_variant,
             commands::prune_variant,
             commands::fit_variant,
+            commands::ai_status,
+            commands::ai_configure,
+            commands::ai_forget_key,
+            commands::ai_consent,
+            commands::ai_test_connection,
             commands::preview,
             commands::export_pdf,
             commands::export_html,
