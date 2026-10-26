@@ -2,7 +2,7 @@
 //! or a variant. The latest review is kept per CV in `review_sessions`;
 //! accepting one of its suggestions changes the base CV.
 
-use std::sync::Arc;
+use std::sync::{Arc, PoisonError};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use cv_ai::{CheckedSummary, NoteCategory, PayloadOptions, StageContext, build_cv_payload};
@@ -11,8 +11,8 @@ use cv_api::{
     ReviewNote, ReviewNoteCategory, ReviewSession, SaveCv, Target,
 };
 use cv_core::{
-    Id, IdSource, Suggestion, SuggestionKind, SuggestionSource, SuggestionStatus, SuggestionTarget,
-    validate,
+    Id, IdSource, SnapshotReason, Suggestion, SuggestionKind, SuggestionSource, SuggestionStatus,
+    SuggestionTarget, validate,
 };
 
 use crate::tailor::StoreCache;
@@ -190,6 +190,11 @@ impl App {
     /// `Conflict`, changing nothing, when that text changed since the
     /// review.
     pub fn review_decide(&self, req: ReviewDecide) -> Result<ReviewDecided> {
+        // One decision at a time: each one rewrites the whole session.
+        let _decision = self
+            .review_lock
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
         let mut session = self
             .get_review(&req.cv_id)?
             .ok_or_else(|| ApiError::new(ErrorCode::NotFound, "This CV has no review yet."))?;
@@ -224,6 +229,11 @@ impl App {
                     "This part of the CV changed since the review. Run the review again.",
                 ));
             }
+            self.with_ids(|ids| {
+                self.store
+                    .add_snapshot(&req.cv_id, SnapshotReason::AiApply, ids)
+            })
+            .map_err(store_error)?;
             saved = Some(self.save_cv(SaveCv {
                 cv,
                 expected_revision: stored.revision,
