@@ -114,7 +114,11 @@ pub fn prepare_text(text: &str) -> Result<PreparedText, PrepareError> {
         return Err(PrepareError::TooLong);
     }
     let sent = Redactor::patterns().text(&clean);
-    let redacted = sent.matches(REDACTED).count() - clean.matches(REDACTED).count();
+    // One URL match can swallow markers that were already in the text.
+    let redacted = sent
+        .matches(REDACTED)
+        .count()
+        .saturating_sub(clean.matches(REDACTED).count());
     Ok(PreparedText { sent, redacted })
 }
 
@@ -138,7 +142,7 @@ fn words(text: &str) -> String {
 /// spacing, line breaks and punctuation at word ends.
 pub fn is_verbatim(source: &str, text: &str) -> bool {
     let needle = words(text);
-    !needle.is_empty() && words(source).contains(&needle)
+    !needle.is_empty() && format!(" {} ", words(source)).contains(&format!(" {needle} "))
 }
 
 /// Contact details found in the original text, in order, without repeats.
@@ -225,6 +229,8 @@ Experience\r\nSenior Engineer, Example AG   \r\n2020 - present\r\n• Built the 
         assert!(is_verbatim(source, "- Built the billing service in Rust."));
         assert!(!is_verbatim(source, "Built the billing service in Go."));
         assert!(!is_verbatim(source, "  "));
+        assert!(!is_verbatim("Rebuilt the service", "built the service"));
+        assert!(!is_verbatim("Trust and safety", "Rust"));
     }
 
     #[tokio::test]
