@@ -5,12 +5,12 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use cv_api::{
-    AiConfig, AiImport, AiReview, AiStatus, AiTailor, ApiError, AppSettings, CvDefaults,
-    DuplicateCv, DuplicateVariant, ErrorCode, ExportHtmlRequest, ExportPdfRequest, ExportResult,
-    FitOutcome, FitVariant, ImportCommit, ImportMatch, ImportMatchRequest, ImportPreview,
-    ImportText, ImportTextSource, JobId, NewCv, NewVariant, PreviewRequest, PreviewResponse,
-    PruneResult, ReviewDecide, ReviewDecided, ReviewSession, SaveCv, SaveVariant, Target,
-    TemplateManifest,
+    AiConfig, AiImport, AiReview, AiStatus, AiTailor, ApiError, AppSettings, BackupResult,
+    CvDefaults, DuplicateCv, DuplicateVariant, ErrorCode, ExportHtmlRequest, ExportPdfRequest,
+    ExportResult, FitOutcome, FitVariant, ImportCommit, ImportMatch, ImportMatchRequest,
+    ImportPreview, ImportText, ImportTextSource, JobId, NewCv, NewVariant, PreviewRequest,
+    PreviewResponse, PruneResult, RestoreResult, ReviewDecide, ReviewDecided, ReviewSession,
+    SaveCv, SaveVariant, Target, TemplateManifest,
 };
 use cv_app::App;
 use cv_core::{AtsReport, CvSummary, Id, LintIssue, StoredCv, StoredVariant, VariantSummary};
@@ -515,6 +515,18 @@ pub async fn get_settings(app: Shared<'_>) -> Reply<AppSettings> {
 #[tauri::command]
 pub async fn set_cv_defaults(app: Shared<'_>, defaults: CvDefaults) -> Reply<AppSettings> {
     run(app, "set_cv_defaults", move |a| a.set_cv_defaults(defaults)).await
+}
+
+/// Asks where to save and writes a backup of all data there.
+#[tauri::command]
+pub async fn backup_db(app: Shared<'_>) -> Reply<BackupResult> {
+    run(app, "backup_db", App::backup_db).await
+}
+
+/// Asks for a backup and replaces all data with it; the UI confirms first.
+#[tauri::command]
+pub async fn restore_db(app: Shared<'_>) -> Reply<RestoreResult> {
+    run(app, "restore_db", App::restore_db).await
 }
 
 /// Opens the data folder in the system's file manager.

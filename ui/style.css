@@ -151,6 +151,7 @@ main.import ul.import-summary li, main.import ul.warnings li { border: none; pad
 .settings label { display: block; margin-bottom: 0.6rem; }
 .settings label:not(.check) > input, .settings label > select { display: block; width: 100%; margin-top: 0.2rem; }
 .settings code.path { overflow-wrap: anywhere; }
+.settings .confirm { border-left: 3px solid var(--warning); padding-left: 0.6rem; }
 .settings label.check { display: flex; gap: 0.4rem; align-items: center; }
 .settings label.check input { width: auto; margin: 0; }
 .settings .hint { color: var(--muted); font-size: 0.9em; }

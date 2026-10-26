@@ -3,7 +3,10 @@
 //! (spec sections 11.1 and 13.1); what new CVs start with; the data
 //! folder; and the about box.
 
-use cv_api::{AiConfig, AiProvider, AiStatus, AppSettings, CvDefaults, KeyStorage};
+use cv_api::{
+    AiConfig, AiProvider, AiStatus, AppSettings, BackupResult, CvDefaults, ErrorCode, KeyStorage,
+    RestoreResult,
+};
 use cv_core::{DateStyle, Locale, Paper};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
@@ -52,22 +55,68 @@ fn parse_date_style(v: &str) -> DateStyle {
     }
 }
 
-/// What new CVs start with, the data folder, and the about box.
+/// What new CVs start with, the data folder with backup and restore, and
+/// the about box.
 #[component]
-fn AppSection() -> impl IntoView {
+fn AppSection(
+    /// Called after a restore replaced the settings.
+    restored: Callback<()>,
+) -> impl IntoView {
     let settings: RwSignal<Option<AppSettings>> = RwSignal::new(None);
     let error: RwSignal<Option<String>> = RwSignal::new(None);
     let message: RwSignal<Option<&'static str>> = RwSignal::new(None);
-    spawn_local(async move {
-        match call::<_, AppSettings>("get_settings", &NoArgs {}).await {
-            Ok(s) => {
-                let _ = settings.try_set(Some(s));
+    let data_message: RwSignal<Option<String>> = RwSignal::new(None);
+    let busy = RwSignal::new(false);
+    let confirm_restore = RwSignal::new(false);
+    let load = move || {
+        spawn_local(async move {
+            match call::<_, AppSettings>("get_settings", &NoArgs {}).await {
+                Ok(s) => {
+                    let _ = settings.try_set(Some(s));
+                }
+                Err(e) => {
+                    let _ = error.try_set(Some(error_message(&e)));
+                }
             }
-            Err(e) => {
-                let _ = error.try_set(Some(error_message(&e)));
+        });
+    };
+    load();
+    let backup = move |_| {
+        busy.set(true);
+        error.set(None);
+        data_message.set(None);
+        spawn_local(async move {
+            let result = call::<_, BackupResult>("backup_db", &NoArgs {}).await;
+            if busy.try_set(false).is_none() {
+                match result {
+                    Ok(r) => data_message.set(Some(fill(t().backup_saved, &[("path", &r.path)]))),
+                    Err(e) if e.code == ErrorCode::Cancelled => {}
+                    Err(e) => error.set(Some(error_message(&e))),
+                }
             }
-        }
-    });
+        });
+    };
+    let restore = move |_| {
+        busy.set(true);
+        error.set(None);
+        data_message.set(None);
+        spawn_local(async move {
+            let result = call::<_, RestoreResult>("restore_db", &NoArgs {}).await;
+            if busy.try_set(false).is_none() {
+                confirm_restore.set(false);
+                match result {
+                    Ok(r) => {
+                        data_message
+                            .set(Some(fill(t().restore_done, &[("path", &r.previous_data)])));
+                        load();
+                        restored.run(());
+                    }
+                    Err(e) if e.code == ErrorCode::Cancelled => {}
+                    Err(e) => error.set(Some(error_message(&e))),
+                }
+            }
+        });
+    };
     let defaults = move || settings.with(|s| s.as_ref().map(|s| s.defaults).unwrap_or_default());
     // Each save sends all defaults, so the selectors wait for the last one:
     // a second change made meanwhile would start from stale values.
@@ -140,12 +189,27 @@ fn AppSection() -> impl IntoView {
         </label>
         <p role="status">{move || message.get()}</p>
 
+        <h2>{s.data_heading}</h2>
         {move || settings.get().and_then(|st| st.data_dir).map(|dir| view! {
-            <h2>{t().data_heading}</h2>
             <p class="hint">{t().data_folder_intro}</p>
             <p><code class="path">{dir}</code></p>
             <p class="actions"><button on:click=open_folder>{t().open_data_folder}</button></p>
         })}
+        <p class="hint">{s.backup_intro}</p>
+        <p class="actions">
+            <button prop:disabled=move || busy.get() on:click=backup>{s.backup_button}</button>
+            <button prop:disabled=move || busy.get() on:click=move |_| confirm_restore.set(true)>{s.restore_button}</button>
+        </p>
+        <Show when=move || confirm_restore.get()>
+            <div class="confirm" role="alertdialog" aria-label=s.restore_button>
+                <p>{s.restore_warning}</p>
+                <p class="actions">
+                    <button prop:disabled=move || busy.get() on:click=restore>{s.restore_confirm}</button>
+                    <button prop:disabled=move || busy.get() on:click=move |_| confirm_restore.set(false)>{s.cancel}</button>
+                </p>
+            </div>
+        </Show>
+        <p role="status">{move || data_message.get()}</p>
 
         <h2>{s.about_heading}</h2>
         {move || settings.get().map(|st| view! {
@@ -397,7 +461,12 @@ pub fn Settings(
                     on:change=move |ev| send_location.set(event_target_checked(&ev)) />{t().send_location}</label>
             </Show>
             <p class="actions">
-                <button prop:disabled=move || busy.get() on:click=save>{t().save}</button>
+                <button
+                    prop:disabled=move || busy.get() || status.with(Option::is_none)
+                    on:click=save
+                >
+                    {t().save}
+                </button>
                 <Show when=move || status.with(|s| s.as_ref().is_some_and(|s| s.configured))>
                     <button prop:disabled=move || busy.get() on:click=test>{t().test_connection}</button>
                 </Show>
@@ -416,7 +485,25 @@ pub fn Settings(
             <Show when=move || status.with(|s| s.as_ref().is_some_and(|s| s.consent_ok))>
                 <p class="hint">{t().consent_given}</p>
             </Show>
-            <AppSection />
+            <AppSection restored=Callback::new(move |()| {
+                // The form holds the replaced database's settings until the
+                // new ones load; Save stays off so they cannot be written back.
+                if status.try_set(None).is_some() {
+                    return;
+                }
+                error.set(None);
+                spawn_local(async move {
+                    let result = call::<_, AiStatus>("ai_status", &NoArgs {}).await;
+                    // The screen was closed meanwhile.
+                    if status.try_get_untracked().is_none() {
+                        return;
+                    }
+                    match result {
+                        Ok(s) => show(s),
+                        Err(e) => error.set(Some(error_message(&e))),
+                    }
+                });
+            }) />
         </main>
     }
 }

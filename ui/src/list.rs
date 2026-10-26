@@ -253,7 +253,8 @@ pub fn CvList(open: RwSignal<Option<Id>>) -> impl IntoView {
     let s = t();
     let home = move || {
         if settings_open.get() {
-            return view! { <Settings close=Callback::new(move |()| settings_open.set(false)) /> }
+            // A restore or "Delete all data" may have replaced the CVs.
+            return view! { <Settings close=Callback::new(move |()| { settings_open.set(false); reload(); }) /> }
                 .into_any();
         }
         if text_import.get() {

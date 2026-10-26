@@ -344,6 +344,12 @@ impl App {
         self
     }
 
+    /// Forgets the built provider, so the next use builds it from the
+    /// settings again (after a restore replaced them).
+    pub(crate) fn reset_llm(&self) {
+        *self.ai.llm.write().unwrap_or_else(PoisonError::into_inner) = None;
+    }
+
     /// Builds the provider from the settings and the saved key, or clears it
     /// when AI is not configured.
     fn rebuild_llm(&self) -> Result<()> {

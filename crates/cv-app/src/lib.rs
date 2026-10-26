@@ -10,6 +10,7 @@
 
 mod ai;
 mod ai_import;
+mod backup;
 mod errors;
 mod files;
 mod ids;
@@ -42,7 +43,7 @@ use cv_store::Store;
 pub use ai::{AI_CONSENT_VERSION, AiState, NoKeychain, SecretError, SecretStore, llm_error};
 pub use ai_import::{TEXT_EXTENSIONS, TextCache, to_partial as extracted_to_partial};
 pub use errors::{render_error, store_error};
-pub use files::{ExportKind, FileDialog, write_atomically};
+pub use files::{BACKUP_EXTENSION, ExportKind, FileDialog, create_atomically, write_atomically};
 pub use ids::UlidIds;
 pub use import::{IMPORT_EXTENSIONS, ImportCache};
 pub use jobs::{JobContext, JobEvent, JobEvents, JobRegistry};
