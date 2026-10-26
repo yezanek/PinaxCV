@@ -32,8 +32,9 @@ pub(crate) struct StoreCache {
 }
 
 impl StoreCache {
-    pub(crate) fn new(app: Arc<App>) -> Self {
-        let generation = app.ai_generation();
+    /// `generation` is [`App::ai_generation`] taken when the job was started,
+    /// before it read anything it could send or cache.
+    pub(crate) fn new(app: Arc<App>, generation: u64) -> Self {
         Self { app, generation }
     }
 }
@@ -74,6 +75,7 @@ impl App {
         events: Arc<dyn JobEvents>,
         req: AiTailor,
     ) -> Result<(JobId, impl Future<Output = ()> + Send + 'static)> {
+        let generation = self.ai_generation();
         self.llm()?;
         let stored = self.get_variant(&req.variant_id)?;
         if stored.variant.job.description_text.trim().is_empty() {
@@ -93,7 +95,7 @@ impl App {
             ));
         }
         Ok(self.start_job(events, move |app, ctx| async move {
-            let result = app.tailor(&ctx, req).await?;
+            let result = app.tailor(&ctx, req, generation).await?;
             serde_json::to_value(result).map_err(|_| {
                 ApiError::new(
                     ErrorCode::Internal,
@@ -103,7 +105,12 @@ impl App {
         }))
     }
 
-    async fn tailor(self: &Arc<Self>, ctx: &JobContext, req: AiTailor) -> Result<TailorResult> {
+    async fn tailor(
+        self: &Arc<Self>,
+        ctx: &JobContext,
+        req: AiTailor,
+        generation: u64,
+    ) -> Result<TailorResult> {
         // Settings, keychain and database reads run on the blocking pool;
         // only the provider calls run on the async runtime (as in ADR-069).
         let variant_id = req.variant_id.clone();
@@ -112,7 +119,7 @@ impl App {
             .await?;
         let model = status.model.clone();
         let job = stored.variant.job.clone();
-        let cache = StoreCache::new(Arc::clone(self));
+        let cache = StoreCache::new(Arc::clone(self), generation);
         let stage = StageContext {
             llm: llm.as_ref(),
             cache: &cache,
