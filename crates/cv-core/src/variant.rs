@@ -180,6 +180,20 @@ impl Variant {
         applied
     }
 
+    /// "Edit then accept": accepts the pending rewrite or summary `id` with
+    /// `text` in place of the proposed one. Returns false for other kinds.
+    pub fn accept_edited(&mut self, id: &Id, text: String) -> bool {
+        let Some(s) = self
+            .suggestions
+            .iter_mut()
+            .find(|s| s.id == *id && s.status == SuggestionStatus::Pending && s.after.is_some())
+        else {
+            return false;
+        };
+        s.after = Some(text);
+        self.accept_suggestion(id)
+    }
+
     /// Accepts every pending suggestion from `sources`; with `safe_only`,
     /// only those without verification warnings. Returns how many were
     /// accepted.
@@ -551,6 +565,28 @@ mod tests {
         // Nothing to apply: stays pending.
         assert!(!v.accept_suggestion(&id(44)));
         assert_eq!(v.suggestions[4].status, SuggestionStatus::Pending);
+    }
+
+    #[test]
+    fn edit_then_accept_applies_the_edited_text() {
+        let mut v = Variant::empty(id(1), id(2), "v");
+        let mut rewrite = tailor(42, SuggestionTarget::Bullet { id: id(30) }, None);
+        rewrite.before = Some("Base text".into());
+        rewrite.after = Some("Better text".into());
+        let hide = tailor(
+            43,
+            SuggestionTarget::Entry { id: id(3) },
+            Some(SuggestionAction::Hide),
+        );
+        v.suggestions = vec![rewrite, hide];
+        assert!(v.accept_edited(&id(42), "My text".into()));
+        assert_eq!(v.text_overrides[&id(30)], "My text");
+        assert_eq!(v.suggestions[0].after.as_deref(), Some("My text"));
+        assert_eq!(v.suggestions[0].status, SuggestionStatus::Accepted);
+        // Decided already, or not a text suggestion.
+        assert!(!v.accept_edited(&id(42), "Again".into()));
+        assert!(!v.accept_edited(&id(43), "Text".into()));
+        assert!(v.hidden.is_empty());
     }
 
     #[test]

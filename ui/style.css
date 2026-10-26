@@ -76,8 +76,6 @@ textarea.override { flex-basis: 100%; width: 100%; order: 1; }
 .review .card { display: flex; gap: 0.4rem; align-items: start; padding: 0.3rem 0; border-top: 1px solid var(--border); }
 .review .card-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
 .review .card-text small { color: var(--muted); }
-.review .rewrite del { color: var(--muted); }
-.review .rewrite ins { text-decoration: none; display: block; }
 .review .badge { align-self: start; font-size: 0.8em; border: 1px solid var(--border); border-radius: 0.6em; padding: 0 0.5em; }
 .review .badge.warn { border-color: currentColor; font-weight: 600; }
 .variant-summary { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
@@ -155,3 +153,13 @@ main.import ul.import-summary li, main.import ul.warnings li { border: none; pad
 .bar .settings-button { margin-left: auto; }
 .consent { border: 1px solid var(--border); padding: 0.6rem 0.9rem; margin-top: 1rem; }
 .consent h3 { margin-top: 0; }
+.review .rewrite { margin: 0; }
+.review .rewrite del { color: var(--muted); }
+.review .rewrite ins { text-decoration: underline; text-decoration-color: var(--accent); }
+.review .badge.warn { color: var(--warning); }
+.review .badge.info { color: var(--accent); border-color: currentColor; }
+.review .card.attention { border-left: 3px solid var(--warning); padding-left: 0.3rem; }
+.discarded ul { list-style: none; padding: 0; margin: 0.3rem 0 0; }
+.discarded li { display: flex; flex-direction: column; gap: 0.1rem; padding: 0.3rem 0; border-top: 1px solid var(--border); }
+.discarded .badge { align-self: start; font-size: 0.8em; border: 1px solid currentColor; border-radius: 0.6em; padding: 0 0.5em; color: var(--warning); }
+.review .needs-attention { align-self: start; font-size: 0.8em; font-weight: 600; color: var(--warning); }

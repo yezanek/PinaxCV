@@ -1,5 +1,6 @@
-//! Tailoring stages A and B (spec sections 11.4 and 11.5). Stage C is
-//! deterministic and lives in `cv_core::selection`.
+//! Tailoring stages A, B and D (spec sections 11.4, 11.5 and 11.7). Stage C
+//! is deterministic and lives in `cv_core::selection`; every stage D rewrite
+//! goes through `verify` before anyone sees it.
 //!
 //! Every answer is checked against its Rust type. An answer that does not
 //! fit gets one retry that says what was wrong (spec section 11.2), and only
@@ -9,16 +10,17 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use cv_core::fit::RelevanceScores;
 use cv_core::selection::Reasons;
-use cv_core::{Id, JobRequirements};
+use cv_core::{Id, JobRequirements, VerificationWarning};
 use schemars::JsonSchema;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
 use tokio_util::sync::CancellationToken;
 
 use crate::cache::{ResponseCache, cache_key};
-use crate::payload::CvPayload;
+use crate::payload::{CvPayload, REDACTED};
 use crate::prompts::{self, Prompt};
 use crate::schema::output_schema;
+use crate::verify::{self, Verdict};
 use crate::{Llm, LlmError};
 
 /// Input-token budget per relevance request; larger CVs are scored in
@@ -204,6 +206,144 @@ fn merge(out: &mut Relevance, batch: &CvPayload, result: RelevanceResult) {
             out.scores.skills.insert(id, s.score);
         }
     }
+}
+
+/// Bullets scoring below this are not rewritten (spec section 11.7).
+pub const REWRITE_MIN_SCORE: u8 = 40;
+/// Most bullets sent in one rewrite request.
+pub const REWRITE_BATCH: usize = 8;
+
+/// Stage D's answer (spec section 11.7).
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct RewriteResult {
+    pub rewrites: Vec<Rewrite>,
+    /// Bullets that are already good.
+    pub no_change: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct Rewrite {
+    pub bullet_id: String,
+    pub new_text: String,
+    pub change_type: ChangeType,
+    pub reason: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ChangeType {
+    Tighten,
+    Terminology,
+    Impact,
+    Clarity,
+}
+
+/// A rewrite after verification.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CheckedRewrite {
+    pub bullet_id: Id,
+    pub before: String,
+    pub after: String,
+    pub change_type: ChangeType,
+    pub reason: String,
+    pub warnings: Vec<VerificationWarning>,
+}
+
+/// Stage D's rewrites: those to show, and those the checks dropped.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Rewrites {
+    pub kept: Vec<CheckedRewrite>,
+    pub discarded: Vec<CheckedRewrite>,
+}
+
+/// Stage D: rewrites of the bullets scoring at least
+/// [`REWRITE_MIN_SCORE`] (a bullet without a score takes its entry's),
+/// per entry in requests of at most [`REWRITE_BATCH`]. Bullets in `skip`,
+/// or in an entry in `skip`, and bullets whose text was redacted are left
+/// alone. Answers for other bullets, and second answers for one, are
+/// ignored.
+pub async fn rewrite_bullets(
+    ctx: &StageContext<'_>,
+    requirements: &JobRequirements,
+    cv: &CvPayload,
+    scores: &RelevanceScores,
+    skip: &BTreeSet<Id>,
+) -> Result<Rewrites, LlmError> {
+    let mut job_keywords: Vec<&str> = requirements.keywords.iter().map(String::as_str).collect();
+    for r in requirements
+        .must_have
+        .iter()
+        .chain(&requirements.nice_to_have)
+    {
+        job_keywords.extend(r.keywords.iter().map(String::as_str));
+    }
+    let skills: Vec<&str> = cv.skills.iter().map(|s| s.name.as_str()).collect();
+    let mut out = Rewrites::default();
+    for entry in &cv.entries {
+        let Ok(entry_id) = Id::parse(&entry.id) else {
+            continue;
+        };
+        if skip.contains(&entry_id) {
+            continue;
+        }
+        let entry_score = scores.entries.get(&entry_id).copied();
+        let candidates: Vec<(Id, &str)> = entry
+            .bullets
+            .iter()
+            .filter(|b| !b.text.contains(REDACTED))
+            .filter_map(|b| Some((Id::parse(&b.id).ok()?, b.text.as_str())))
+            .filter(|(id, _)| !skip.contains(id))
+            .filter(|(id, _)| {
+                scores.bullets.get(id).copied().or(entry_score) >= Some(REWRITE_MIN_SCORE)
+            })
+            .collect();
+        for batch in candidates.chunks(REWRITE_BATCH) {
+            let ids: Vec<String> = batch.iter().map(|(id, _)| id.to_string()).collect();
+            let id_refs: Vec<&str> = ids.iter().map(String::as_str).collect();
+            let prompt = prompts::rewrite(requirements, entry, &id_refs).map_err(prompt_error)?;
+            let result: RewriteResult = ctx.generate(prompt, "RewriteResult").await?;
+            let mut done = BTreeSet::new();
+            for r in result.rewrites {
+                let Some((id, before)) = batch
+                    .iter()
+                    .find(|(id, _)| id.as_str() == r.bullet_id)
+                    .cloned()
+                else {
+                    continue;
+                };
+                if !done.insert(id.clone()) {
+                    continue;
+                }
+                let mut context = verify::Context {
+                    entry: vec![entry.title.as_str(), entry.org.as_str()],
+                    skills: skills.clone(),
+                    job_keywords: job_keywords.clone(),
+                    terminology_declared: r.change_type == ChangeType::Terminology,
+                };
+                context.entry.extend(
+                    entry
+                        .bullets
+                        .iter()
+                        .filter(|b| b.id != r.bullet_id)
+                        .map(|b| b.text.as_str()),
+                );
+                let after = r.new_text.trim().to_owned();
+                let checked = |warnings| CheckedRewrite {
+                    bullet_id: id.clone(),
+                    before: before.to_owned(),
+                    after: after.clone(),
+                    change_type: r.change_type,
+                    reason: r.reason.trim().to_owned(),
+                    warnings,
+                };
+                match verify::verify_rewrite(before, &after, &context) {
+                    Verdict::Keep(w) => out.kept.push(checked(w)),
+                    Verdict::Drop(w) => out.discarded.push(checked(w)),
+                    Verdict::Same => {}
+                }
+            }
+        }
+    }
+    Ok(out)
 }
 
 /// Rough token count: JSON characters / 4.
@@ -392,6 +532,84 @@ mod tests {
                 .iter()
                 .all(|b| b.skills.is_empty() && b.summary.is_none())
         );
+    }
+
+    fn rewrite_payload() -> CvPayload {
+        let mut cv = payload(1, 0);
+        cv.entries[0].bullets = [
+            (
+                B1,
+                "Led the migration of the billing platform to Rust for four teams",
+            ),
+            (
+                "01J02000000000000000000014",
+                "Wrote the on-call runbooks for the payments team",
+            ),
+            (
+                "01J02000000000000000000015",
+                "Built dashboards for latency and error rates",
+            ),
+            (
+                "01J02000000000000000000016",
+                "Talked to [redacted] about the release plan",
+            ),
+        ]
+        .map(|(id, text)| PayloadBullet {
+            id: id.into(),
+            text: text.into(),
+        })
+        .into();
+        cv
+    }
+
+    #[tokio::test]
+    async fn rewrites_are_verified_and_low_scores_skipped() {
+        let id = |s: &str| Id::parse(s).expect("id");
+        let llm = FakeLlm::new().reply(
+            "RewriteResult",
+            json!({
+                "rewrites": [
+                    { "bullet_id": B1, "new_text": "Migrated the billing platform to Rust for four teams",
+                      "change_type": "Tighten", "reason": "Shorter." },
+                    { "bullet_id": B1, "new_text": "Second answer", "change_type": "Tighten", "reason": "" },
+                    { "bullet_id": "01J02000000000000000000014", "new_text": "Wrote on-call runbooks for 12 payments engineers",
+                      "change_type": "Impact", "reason": "Numbers." },
+                    { "bullet_id": "01J0200000000000000000ZZZZ", "new_text": "Unknown", "change_type": "Clarity", "reason": "" }
+                ],
+                "no_change": []
+            }),
+        );
+        let cache = MemoryCache::default();
+        let req: JobRequirements = serde_json::from_value(requirements()).expect("req");
+        let mut scores = RelevanceScores::default();
+        scores.entries.insert(id(E1), 80);
+        scores.bullets.insert(id("01J02000000000000000000015"), 20);
+        let skip = BTreeSet::new();
+        let r = rewrite_bullets(&ctx(&llm, &cache), &req, &rewrite_payload(), &scores, &skip)
+            .await
+            .expect("rewrites");
+        assert_eq!(r.kept.len(), 1);
+        assert_eq!(r.kept[0].bullet_id, id(B1));
+        assert!(r.kept[0].warnings.is_empty());
+        assert_eq!(r.discarded.len(), 1);
+        assert_eq!(
+            r.discarded[0].warnings[0].kind,
+            cv_core::VerificationKind::NewNumber
+        );
+        // Only the two scored, unredacted bullets were sent.
+        let sent = &llm.seen()[0].user;
+        assert!(
+            sent.contains("on-call") && !sent.contains("dashboards") && !sent.contains(REDACTED)
+        );
+
+        // An entry in `skip` sends nothing.
+        let llm = FakeLlm::new();
+        let skip = BTreeSet::from([id(E1)]);
+        let r = rewrite_bullets(&ctx(&llm, &cache), &req, &rewrite_payload(), &scores, &skip)
+            .await
+            .expect("none");
+        assert_eq!(r, Rewrites::default());
+        assert!(llm.seen().is_empty());
     }
 
     #[tokio::test]

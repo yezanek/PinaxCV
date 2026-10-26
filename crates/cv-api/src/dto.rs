@@ -8,6 +8,7 @@ use std::fmt;
 use crate::ApiError;
 use cv_core::{
     AtsReport, Cv, Diagnostic, Id, JobTarget, Link, Section, StoredVariant, TemplateId, Variant,
+    VerificationWarning,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -397,6 +398,22 @@ pub struct TailorResult {
     pub pages: Option<u32>,
     /// False when even every cut leaves the CV over the page target.
     pub fits: Option<bool>,
+    /// Rewrites the safety checks dropped (spec section 11.8), for the
+    /// "discarded" details. They are not saved.
+    #[serde(default)]
+    pub discarded: Vec<DiscardedRewrite>,
+    /// Optional stages that failed; the other suggestions were still saved.
+    #[serde(default)]
+    pub failed_stages: Vec<AiStage>,
+}
+
+/// A rewrite dropped by a safety check, with the findings that dropped it.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct DiscardedRewrite {
+    pub bullet_id: Id,
+    pub before: String,
+    pub after: String,
+    pub warnings: Vec<VerificationWarning>,
 }
 
 #[cfg(test)]

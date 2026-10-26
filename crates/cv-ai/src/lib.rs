@@ -3,7 +3,7 @@
 //!
 //! The provider seam and the providers (spec section 11.2), the payload and
 //! its redaction (11.3), and the prompts and response cache (11.14) are
-//! here; the pipeline and verification arrive with the rest of M7a and M7b.
+//! here, with the tailoring stages and rewrite verification (11.4 to 11.8).
 
 #![forbid(unsafe_code)]
 
@@ -15,11 +15,15 @@ pub mod prompts;
 pub mod providers;
 pub mod schema;
 pub mod stages;
+pub mod verify;
 
 pub use cache::{MemoryCache, ResponseCache, cache_key, generate_cached};
 pub use payload::{CvPayload, PayloadOptions, build_cv_payload};
 pub use prompts::{Kind, Prompt, PromptError};
-pub use stages::{Relevance, StageContext, parse_job, score_relevance};
+pub use stages::{
+    ChangeType, CheckedRewrite, Relevance, Rewrites, StageContext, parse_job, rewrite_bullets,
+    score_relevance,
+};
 
 pub use fake::FakeLlm;
 pub use providers::{AnthropicLlm, GeminiLlm, OpenAiCompatibleLlm, OpenAiLlm};

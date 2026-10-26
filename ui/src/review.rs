@@ -1,16 +1,18 @@
-//! The suggestion review list (spec section 12.6, M7a): tailoring and
-//! review suggestions grouped by what they do, each with Accept and Reject,
-//! and the bulk actions. Nothing is applied without the user's approval;
+//! The suggestion review list (spec section 12.6): tailoring and review
+//! suggestions grouped by what they do, each with Accept and Reject (and
+//! "Edit then accept" for rewrites, shown as a word diff), and the bulk
+//! actions. Nothing is applied without the user's approval;
 //! fit-to-length cuts keep their own list in the fit panel.
 
 use std::collections::BTreeMap;
 
 use cv_core::{
-    Cv, Id, Section, StoredVariant, Suggestion, SuggestionAction, SuggestionKind, SuggestionSource,
-    SuggestionStatus, SuggestionTarget, VerificationKind,
+    Cv, Id, Section, Severity, StoredVariant, Suggestion, SuggestionAction, SuggestionKind,
+    SuggestionSource, SuggestionStatus, SuggestionTarget, VerificationKind,
 };
 use leptos::prelude::*;
 
+use crate::diff::{Part, word_diff};
 use crate::fit::EditFn;
 use crate::i18n::{fill, t};
 use crate::variants::{entry_label, section_label, short};
@@ -103,8 +105,33 @@ pub fn labels(cv: &Cv) -> BTreeMap<Id, String> {
     out
 }
 
+/// The label of the entry each bullet belongs to.
+pub fn bullet_entries(cv: &Cv) -> BTreeMap<Id, String> {
+    let mut out = BTreeMap::new();
+    for section in &cv.sections {
+        let entries = match section {
+            Section::Experience(s)
+            | Section::Education(s)
+            | Section::Projects(s)
+            | Section::Certifications(s) => s.entries.as_slice(),
+            Section::Custom(c) => c.entries.as_slice(),
+            Section::Skills(_) | Section::Languages(_) => continue,
+        };
+        for e in entries {
+            for b in &e.bullets {
+                out.insert(b.id.clone(), entry_label(e));
+            }
+        }
+    }
+    out
+}
+
 /// What accepting `s` does, in words.
-pub fn describe(s: &Suggestion, labels: &BTreeMap<Id, String>) -> String {
+pub fn describe(
+    s: &Suggestion,
+    labels: &BTreeMap<Id, String>,
+    entries: &BTreeMap<Id, String>,
+) -> String {
     let name = |id: &Id| {
         labels
             .get(id)
@@ -114,6 +141,10 @@ pub fn describe(s: &Suggestion, labels: &BTreeMap<Id, String>) -> String {
     let tr = t();
     match (&s.target, &s.action) {
         (SuggestionTarget::Summary, _) => tr.rewrite_summary.into(),
+        (SuggestionTarget::Bullet { id }, None) if s.after.is_some() => match entries.get(id) {
+            Some(entry) => fill(tr.rewrite_bullet_in, &[("item", entry)]),
+            None => fill(tr.suggest_rewrite, &[("item", &name(id))]),
+        },
         (target, Some(SuggestionAction::Reorder { order })) => {
             let list: Vec<String> = order.iter().map(name).collect();
             let what = match target {
@@ -149,7 +180,7 @@ pub fn describe(s: &Suggestion, labels: &BTreeMap<Id, String>) -> String {
     }
 }
 
-fn badge(kind: VerificationKind) -> &'static str {
+pub(crate) fn badge(kind: VerificationKind) -> &'static str {
     let s = t();
     match kind {
         VerificationKind::NewNumber => s.badge_new_number,
@@ -176,6 +207,10 @@ pub fn SuggestionReview(
         })
     });
     let labels = Memo::new(move |_| cv.with(|c| c.as_ref().map(labels).unwrap_or_default()));
+    let entries =
+        Memo::new(move |_| cv.with(|c| c.as_ref().map(bullet_entries).unwrap_or_default()));
+    // The rewrite being edited before it is accepted, and its text.
+    let editing: RwSignal<Option<(Id, String)>> = RwSignal::new(None);
     let any_warnings =
         move || groups.with(|g| g.values().flatten().any(|s| !s.warnings.is_empty()));
     // "Accept all" asks first when any suggestion carries a warning.
@@ -184,6 +219,12 @@ pub fn SuggestionReview(
     let accept = move |id: Id| {
         edit.run(Box::new(move |v| {
             v.accept_suggestion(&id);
+        }))
+    };
+    let accept_edited = move |id: Id, text: String| {
+        editing.set(None);
+        edit.run(Box::new(move |v| {
+            v.accept_edited(&id, text);
         }))
     };
     let reject = move |id: Id| {
@@ -225,32 +266,69 @@ pub fn SuggestionReview(
                     </Show>
                 </div>
                 {move || {
-                    let labels = labels.get();
+                    let (labels, entries) = (labels.get(), entries.get());
                     groups.get().into_iter().map(|(group, items)| {
                         let cards = items.into_iter().map(|s| {
-                            let text = describe(&s, &labels);
-                            let (a, r) = (s.id.clone(), s.id.clone());
-                            let rewrite = s.after.clone().map(|after| view! {
-                                <div class="rewrite">
-                                    <del>{s.before.clone().unwrap_or_default()}</del>
-                                    <ins>{after}</ins>
-                                </div>
+                            let text = describe(&s, &labels, &entries);
+                            let (a, r, e) = (s.id.clone(), s.id.clone(), s.id.clone());
+                            let rewrite = s.after.clone().map(|after| {
+                                let parts = word_diff(s.before.as_deref().unwrap_or_default(), &after)
+                                    .into_iter()
+                                    .map(|p| match p {
+                                        Part::Same(w) => view! { <span>{w}" "</span> }.into_any(),
+                                        Part::Removed(w) => view! { <del>{w}</del>" " }.into_any(),
+                                        Part::Added(w) => view! { <ins>{w}</ins>" " }.into_any(),
+                                    })
+                                    .collect_view();
+                                view! { <p class="rewrite">{parts}</p> }
                             });
+                            let attention = s.warnings.iter().any(|w| w.severity != Severity::Info);
                             let badges = s.warnings.iter().map(|w| view! {
-                                <span class="badge" class:warn=w.severity != cv_core::Severity::Info>
+                                <span class="badge" class:warn=w.severity != Severity::Info
+                                    class:info=w.severity == Severity::Info>
                                     {fill(badge(w.kind), &[("detail", &w.detail)])}
                                 </span>
                             }).collect_view();
+                            let editable = s.after.clone();
+                            let id = s.id.clone();
+                            let is_editing = move || editing.with(|e| e.as_ref().is_some_and(|(i, _)| *i == id));
                             view! {
-                                <li class="card">
+                                <li class="card" class:attention=attention>
                                     <div class="card-text">
                                         <strong>{text}</strong>
+                                        {attention.then(|| view! { <span class="needs-attention">{t().needs_attention}</span> })}
                                         {rewrite}
                                         <small>{s.reason.clone()}</small>
                                         {badges}
+                                        <Show when=is_editing.clone()>
+                                            <label>{t().edited_text}
+                                                <textarea rows="3"
+                                                    prop:value=move || editing.with(|e| e.as_ref().map(|(_, t)| t.clone()).unwrap_or_default())
+                                                    on:input=move |ev| editing.update(|e| if let Some((_, t)) = e { *t = event_target_value(&ev) })></textarea>
+                                            </label>
+                                        </Show>
                                     </div>
-                                    <button prop:disabled=move || busy.get() on:click=move |_| accept(a.clone())>{t().accept}</button>
-                                    <button prop:disabled=move || busy.get() on:click=move |_| reject(r.clone())>{t().reject}</button>
+                                    <Show when=is_editing.clone()
+                                        fallback=move || {
+                                            let (a, r, e) = (a.clone(), r.clone(), e.clone());
+                                            let editable = editable.clone();
+                                            view! {
+                                                <button prop:disabled=move || busy.get() on:click=move |_| accept(a.clone())>{t().accept}</button>
+                                                {editable.map(|after| view! {
+                                                    <button prop:disabled=move || busy.get()
+                                                        on:click=move |_| editing.set(Some((e.clone(), after.clone())))>{t().edit_then_accept}</button>
+                                                })}
+                                                <button prop:disabled=move || busy.get() on:click=move |_| reject(r.clone())>{t().reject}</button>
+                                            }
+                                        }>
+                                        <button prop:disabled=move || busy.get() || editing.with(|e| e.as_ref().is_none_or(|(_, t)| t.trim().is_empty()))
+                                            on:click=move |_| {
+                                                if let Some((id, text)) = editing.get_untracked() {
+                                                    accept_edited(id, text.trim().to_owned());
+                                                }
+                                            }>{t().accept}</button>
+                                        <button on:click=move |_| editing.set(None)>{t().cancel}</button>
+                                    </Show>
                                 </li>
                             }
                         }).collect_view();
@@ -330,6 +408,7 @@ mod tests {
     #[test]
     fn descriptions_name_the_items() {
         let labels = labels(&cv());
+        let entries = bullet_entries(&cv());
         let hide = suggestion(
             SuggestionKind::Hide,
             SuggestionTarget::Entry {
@@ -338,9 +417,9 @@ mod tests {
             Some(SuggestionAction::Hide),
         );
         assert!(
-            describe(&hide, &labels).contains("Backend Engineer, Example AG"),
+            describe(&hide, &labels, &entries).contains("Backend Engineer, Example AG"),
             "{}",
-            describe(&hide, &labels)
+            describe(&hide, &labels, &entries)
         );
         let order = suggestion(
             SuggestionKind::SkillOrder,
@@ -354,7 +433,7 @@ mod tests {
                 ],
             }),
         );
-        let text = describe(&order, &labels);
+        let text = describe(&order, &labels, &entries);
         assert!(text.ends_with("SQL · Rust"), "{text}");
         let gone = suggestion(
             SuggestionKind::Hide,
@@ -363,6 +442,16 @@ mod tests {
             },
             Some(SuggestionAction::Hide),
         );
-        assert!(describe(&gone, &labels).contains(t().removed_item));
+        assert!(describe(&gone, &labels, &entries).contains(t().removed_item));
+        let mut rewrite = suggestion(
+            SuggestionKind::Rewrite,
+            SuggestionTarget::Bullet {
+                id: id("01J02000000000000000000008"),
+            },
+            None,
+        );
+        rewrite.after = Some("Built the search API".into());
+        let text = describe(&rewrite, &labels, &entries);
+        assert!(text.contains("Backend Engineer, Example AG"), "{text}");
     }
 }

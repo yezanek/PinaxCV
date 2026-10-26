@@ -1,0 +1,594 @@
+# Technologies, tools and methods the rewrite check treats as facts
+# (spec section 11.8). One per line, matched case-insensitively.
+# Programming languages
+Ada
+Apex
+Assembly
+Bash
+C
+C#
+C++
+Clojure
+COBOL
+CoffeeScript
+Crystal
+CSS
+Dart
+Delphi
+Elixir
+Elm
+Erlang
+F#
+Fortran
+Go
+Golang
+Groovy
+Haskell
+HTML
+Java
+JavaScript
+Julia
+Kotlin
+LaTeX
+Lisp
+Lua
+MATLAB
+Nim
+Objective-C
+OCaml
+Pascal
+Perl
+PHP
+PL/SQL
+PowerShell
+Prolog
+Python
+R
+Racket
+Ruby
+Rust
+SAS
+Scala
+Scheme
+Shell
+Solidity
+SQL
+Swift
+Tcl
+T-SQL
+TypeScript
+VBA
+Verilog
+VHDL
+WebAssembly
+Wasm
+Zig
+# Frontend
+Angular
+AngularJS
+Astro
+Backbone.js
+Bootstrap
+Chakra
+D3.js
+Ember.js
+Gatsby
+jQuery
+Leptos
+Lit
+Material-UI
+MUI
+Next.js
+Nuxt
+Preact
+React
+React Native
+Redux
+Remix
+RxJS
+Sass
+SolidJS
+Storybook
+Svelte
+SvelteKit
+Tailwind
+Three.js
+Vite
+Vue
+Vue.js
+Webpack
+Yew
+Babel
+esbuild
+Rollup
+Parcel
+# Backend frameworks
+Actix
+ASP.NET
+Axum
+Django
+Express
+Express.js
+FastAPI
+Fastify
+Flask
+gRPC
+Gin
+GraphQL
+Hapi
+Hibernate
+Koa
+Laravel
+Micronaut
+NestJS
+.NET
+.NET Core
+Node.js
+Phoenix
+Quarkus
+Rails
+Ruby on Rails
+Rocket
+Sinatra
+Spring
+Spring Boot
+Symfony
+Tauri
+Tokio
+Tornado
+Electron
+Qt
+GTK
+Flutter
+Xamarin
+SwiftUI
+UIKit
+Jetpack Compose
+Unity
+Unreal
+# Data stores
+Aurora
+BigQuery
+Bigtable
+Cassandra
+ClickHouse
+CockroachDB
+Cosmos DB
+CouchDB
+DB2
+DuckDB
+DynamoDB
+Elasticsearch
+Firebase
+Firestore
+HBase
+InfluxDB
+MariaDB
+Memcached
+MongoDB
+MySQL
+Neo4j
+OpenSearch
+Oracle
+PostgreSQL
+Postgres
+Redis
+Redshift
+ScyllaDB
+Snowflake
+Solr
+SQLite
+SQL Server
+Supabase
+TimescaleDB
+Teradata
+Vertica
+Pinecone
+Weaviate
+Milvus
+Qdrant
+pgvector
+# Messaging and streaming
+ActiveMQ
+Flink
+Kafka
+Kinesis
+NATS
+Pulsar
+RabbitMQ
+Spark
+Storm
+ZeroMQ
+SQS
+SNS
+Pub/Sub
+EventBridge
+Beam
+Airflow
+Dagster
+Prefect
+Luigi
+dbt
+Hadoop
+Hive
+Presto
+Trino
+Databricks
+Delta Lake
+Iceberg
+Parquet
+Avro
+Protobuf
+Fivetran
+Airbyte
+Talend
+Informatica
+# Cloud and infrastructure
+AWS
+Azure
+GCP
+Google Cloud
+Alibaba Cloud
+DigitalOcean
+Heroku
+Netlify
+Vercel
+Cloudflare
+Fastly
+Akamai
+OpenStack
+Lambda
+EC2
+S3
+ECS
+EKS
+Fargate
+CloudFormation
+CloudFront
+CloudWatch
+IAM
+VPC
+Route 53
+API Gateway
+Step Functions
+AKS
+GKE
+Cloud Run
+App Engine
+Azure Functions
+Azure DevOps
+Docker
+Podman
+Kubernetes
+K8s
+OpenShift
+Helm
+Kustomize
+Istio
+Linkerd
+Envoy
+Consul
+Nomad
+Vault
+Terraform
+OpenTofu
+Pulumi
+Ansible
+Chef
+Puppet
+SaltStack
+Packer
+Vagrant
+Nginx
+Apache
+HAProxy
+Traefik
+Caddy
+Linux
+Ubuntu
+Debian
+RHEL
+CentOS
+Windows Server
+macOS
+FreeBSD
+systemd
+Serverless
+# CI/CD and tooling
+CI/CD
+Jenkins
+GitHub Actions
+GitLab CI
+CircleCI
+Travis CI
+TeamCity
+Bamboo
+Argo CD
+ArgoCD
+Flux
+Spinnaker
+Tekton
+Bazel
+Gradle
+Maven
+CMake
+Make
+npm
+Yarn
+pnpm
+Cargo
+pip
+Poetry
+Conda
+Git
+GitHub
+GitLab
+Bitbucket
+Mercurial
+SVN
+Jira
+Confluence
+Notion
+Trello
+Asana
+Linear
+Slack
+Figma
+Sketch
+Adobe XD
+Photoshop
+Illustrator
+InDesign
+Postman
+Swagger
+OpenAPI
+SonarQube
+Snyk
+Dependabot
+Renovate
+# Observability
+Datadog
+Dynatrace
+Elastic Stack
+ELK
+Grafana
+Graylog
+Honeycomb
+Jaeger
+Kibana
+Logstash
+New Relic
+OpenTelemetry
+Prometheus
+Sentry
+Splunk
+Zipkin
+PagerDuty
+Opsgenie
+Loki
+Tempo
+# Testing
+Cypress
+Jest
+JUnit
+Mocha
+Playwright
+pytest
+Selenium
+TestNG
+Vitest
+Cucumber
+Gatling
+JMeter
+k6
+Locust
+Pact
+RSpec
+xUnit
+NUnit
+Testcontainers
+proptest
+# Machine learning and data science
+AI
+ML
+LLM
+NLP
+Hugging Face
+Keras
+LangChain
+LightGBM
+MLflow
+NumPy
+OpenCV
+pandas
+PyTorch
+scikit-learn
+SciPy
+spaCy
+TensorFlow
+XGBoost
+Jupyter
+Kubeflow
+SageMaker
+Vertex AI
+OpenAI
+GPT
+BERT
+Tableau
+Power BI
+Looker
+Metabase
+Superset
+Excel
+Qlik
+Alteryx
+SPSS
+Stata
+# Security and identity
+OAuth
+OAuth2
+OIDC
+OpenID Connect
+SAML
+LDAP
+Active Directory
+Okta
+Auth0
+Keycloak
+JWT
+TLS
+SSL
+PKI
+SIEM
+SOC 2
+ISO 27001
+GDPR
+HIPAA
+PCI DSS
+OWASP
+Burp Suite
+Metasploit
+Nmap
+Wireshark
+CrowdStrike
+Zero Trust
+# Protocols and standards
+REST
+RESTful
+SOAP
+HTTP
+HTTP/2
+HTTP/3
+TCP/IP
+UDP
+WebSocket
+WebSockets
+WebRTC
+MQTT
+AMQP
+DNS
+BGP
+SSH
+FTP
+SMTP
+JSON
+XML
+YAML
+TOML
+CSV
+gRPC-Web
+OData
+JSON:API
+WCAG
+ARIA
+# Methods and practices
+Agile
+Scrum
+Kanban
+SAFe
+Lean
+Six Sigma
+DevOps
+DevSecOps
+SRE
+MLOps
+GitOps
+FinOps
+TDD
+BDD
+DDD
+CQRS
+Event Sourcing
+Microservices
+Monolith
+SOA
+ITIL
+PRINCE2
+PMP
+OKR
+KPI
+A/B testing
+Pair programming
+Code review
+# Business software
+SAP
+S/4HANA
+Salesforce
+HubSpot
+Workday
+ServiceNow
+Zendesk
+Dynamics 365
+NetSuite
+QuickBooks
+Xero
+Shopify
+Magento
+WooCommerce
+WordPress
+Drupal
+Contentful
+Sanity
+Strapi
+Stripe
+PayPal
+Twilio
+SendGrid
+Mailchimp
+Segment
+Mixpanel
+Amplitude
+Google Analytics
+Hotjar
+Zapier
+Airtable
+Miro
+Microsoft 365
+Office 365
+SharePoint
+Teams
+Google Workspace
+# Hardware, embedded and other
+Arduino
+Raspberry Pi
+ARM
+x86
+RISC-V
+FPGA
+CUDA
+OpenCL
+OpenGL
+Vulkan
+DirectX
+Metal
+RTOS
+FreeRTOS
+Zephyr
+Yocto
+AUTOSAR
+CAN
+Modbus
+PLC
+SCADA
+LabVIEW
+Simulink
+SolidWorks
+AutoCAD
+Revit
+Blender
+Maya
+Unity3D
+Godot
+Ethereum
+Bitcoin
+Blockchain
+Web3
+IPFS
+Android
+iOS
+watchOS
+tvOS
+iPadOS
+Chromium
+WebKit
+Firefox
