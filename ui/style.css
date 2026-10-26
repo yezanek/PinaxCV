@@ -169,3 +169,4 @@ main.import ul.import-summary li, main.import ul.warnings li { border: none; pad
 .discarded li { display: flex; flex-direction: column; gap: 0.1rem; padding: 0.3rem 0; border-top: 1px solid var(--border); }
 .discarded .badge { align-self: start; font-size: 0.8em; border: 1px solid currentColor; border-radius: 0.6em; padding: 0 0.5em; color: var(--warning); }
 .review .needs-attention, .gaps .needs-attention, .ai-review .needs-attention { align-self: start; font-size: 0.8em; font-weight: 600; color: var(--warning); }
+textarea.licences { display: block; width: 100%; box-sizing: border-box; font-family: ui-monospace, monospace; font-size: 0.8rem; resize: vertical; }

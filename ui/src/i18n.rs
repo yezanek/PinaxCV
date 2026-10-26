@@ -311,6 +311,9 @@ pub struct Strings {
     pub about_version: &'static str,
     pub about_license: &'static str,
     pub about_fonts: &'static str,
+    pub about_licences_show: &'static str,
+    pub about_licences_hide: &'static str,
+    pub about_licences_label: &'static str,
     pub about_privacy: &'static str,
     pub remove_language: &'static str,
 
@@ -726,7 +729,10 @@ pub static EN: Strings = Strings {
     about_version: "Version {version}",
     about_license: "PinaxCV is open source under the {license} licence.",
     about_fonts: "CVs use the Inter typeface, under the SIL Open Font License 1.1.",
-    about_privacy: "PinaxCV makes no network requests except to the AI provider you set up.",
+    about_licences_show: "Show third-party licences",
+    about_licences_hide: "Hide third-party licences",
+    about_licences_label: "Third-party licences",
+    about_privacy: "PinaxCV makes no network requests except to the AI provider you set up and the links you open.",
     remove_language: "Remove language",
 
     version: "Version",

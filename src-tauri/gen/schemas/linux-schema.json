@@ -441,6 +441,12 @@
           "markdownDescription": "Enables the set_cv_defaults command without any pre-configured scope."
         },
         {
+          "description": "Enables the third_party_licenses command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-third-party-licenses",
+          "markdownDescription": "Enables the third_party_licenses command without any pre-configured scope."
+        },
+        {
           "description": "Denies the ai_cancel command without any pre-configured scope.",
           "type": "string",
           "const": "deny-ai-cancel",
@@ -703,6 +709,12 @@
           "type": "string",
           "const": "deny-set-cv-defaults",
           "markdownDescription": "Denies the set_cv_defaults command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the third_party_licenses command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-third-party-licenses",
+          "markdownDescription": "Denies the third_party_licenses command without any pre-configured scope."
         },
         {
           "description": "Default core plugins set.\n#### This default permission set includes:\n\n- `core:path:default`\n- `core:event:default`\n- `core:window:default`\n- `core:webview:default`\n- `core:app:default`\n- `core:image:default`\n- `core:resources:default`\n- `core:menu:default`\n- `core:tray:default`",

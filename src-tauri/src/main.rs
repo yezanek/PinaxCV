@@ -116,6 +116,7 @@ fn main() {
             commands::get_settings,
             commands::set_cv_defaults,
             commands::open_data_dir,
+            commands::third_party_licenses,
             commands::backup_db,
             commands::restore_db,
             commands::clear_ai_cache,

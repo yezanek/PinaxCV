@@ -49,6 +49,7 @@
     "allow-backup-db",
     "allow-restore-db",
     "allow-clear-ai-cache",
-    "allow-delete-all-data"
+    "allow-delete-all-data",
+    "allow-third-party-licenses"
   ]
 }
