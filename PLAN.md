@@ -8,6 +8,17 @@ Each milestone is delivered as one or more feature branches and pull requests (s
 
 The product owner builds PinaxCV from source on a Linux laptop and a MacBook. `docs/BUILDING.md` gives build instructions for Linux (Debian/Ubuntu, Fedora, Arch), macOS and Windows, and every milestone that changes the build updates it in the same PR (ADR-026). A macOS source build is supported for personal use; it does not add macOS releases, signing or notarization to v1.
 
+## Status (2026-10-26)
+
+| Milestone | State |
+|---|---|
+| M0 to M6 | Done |
+| M7a, M7b | Done. The eval recordings are still hand-written; a live run replaces them (#115). |
+| M8 | Done: backup and restore, Delete all data, Clear AI cache, privacy notice, third-party licences, the optional profile photo. Open: AppImage (#68), NSIS and portable exe (#69), signed updater and opt-in update check (#70), Windows signing (#71), Flatpak (#33), Snap (#34), the release pass on clean VMs (#73). |
+| M9 onwards | Not started |
+
+Smaller follow-ups are in the [open issues](https://github.com/yezanek/PinaxCV/issues).
+
 ## M0 — Architecture & Contracts
 
 - Cargo workspace and crate boundaries; `rust-toolchain.toml`; committed `Cargo.lock`.

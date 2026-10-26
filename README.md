@@ -2,9 +2,20 @@
 
 Privacy-first desktop CV editor. Write once, tailor variants per job, export ATS-friendly PDF and HTML, with optional AI help from the provider of your choice.
 
-PinaxCV is a local-first desktop application written in Rust (Tauri 2 + Leptos, Typst for PDF rendering, SQLite for storage). It needs no PinaxCV account, server or subscription, and sends nothing over the network unless you configure an AI provider or opt into update checks.
+PinaxCV is a local-first desktop application written in Rust (Tauri 2 + Leptos, Typst for PDF rendering, SQLite for storage). It needs no PinaxCV account, server or subscription, and sends nothing over the network unless you configure an AI provider (an opt-in update check is planned).
 
-> **Status:** planning complete, implementation starting. Nothing is usable yet.
+> **Status:** milestones M0 to M7b are built, and so are the M8 items that are not packaging (backup and restore, data deletion, privacy notice, licences, profile photo). There are no releases or installers yet: build it from source with [`docs/BUILDING.md`](docs/BUILDING.md). Packaging, the update check and signing are the open M8 issues.
+
+## What it does
+
+- **Edit CVs** with a live preview: contact details, summary, experience, education, projects, skills, languages, certifications and custom sections. Drag to reorder, undo and redo, keyboard shortcuts, autosave and snapshots.
+- **Style** each CV: template, paper size (A4 or US Letter), date style, font size, spacing, margins and accent colour. An optional profile photo with a crop dialog is off by default.
+- **Export** an ATS-friendly PDF (tagged, PDF/UA-1 when possible) or one self-contained HTML file for a personal website.
+- **Variants** tailor a CV to a job without changing the base: hide, collapse or reorder anything, edit text per variant, and fit to 1 or 2 pages with cuts you review.
+- **Checks**: lint findings that jump to the field, and an ATS check that reads the PDF back the way a parser would.
+- **Import** a Europass CV (PDF or XML), a JSON Resume, a LinkedIn data export (ZIP), a LinkedIn "Save to PDF" or any other text PDF, then review the result and merge it into a new or an existing CV.
+- **Optional AI** with Anthropic, OpenAI, Gemini or any OpenAI-compatible server (Ollama included). You enter the model and key, consent once per provider, and approve every suggestion: job parsing, relevance, selection, rewrites with fact checks, summary, gap questions, a review without a job, and reading pasted text into a CV. Contact details are taken out before anything is sent.
+- **Your data**: back up and restore everything, clear the AI cache, or delete all data from Settings.
 
 ## Product strategy
 
@@ -30,6 +41,8 @@ Read in this order:
 10. [`docs/PRODUCT_EVOLUTION.md`](docs/PRODUCT_EVOLUTION.md) and [`docs/SAAS_MIGRATION.md`](docs/SAAS_MIGRATION.md): future phases.
 11. [`PROMPTS.md`](PROMPTS.md): agent prompts by milestone.
 12. [`docs/BUILDING.md`](docs/BUILDING.md): building from source on Linux, macOS and Windows.
+
+Open work is tracked in the [GitHub issues](https://github.com/yezanek/PinaxCV/issues).
 
 Do not implement future SaaS infrastructure merely because the architecture anticipates it.
 

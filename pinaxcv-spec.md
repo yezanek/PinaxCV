@@ -61,7 +61,7 @@ Individual job seekers, including non-technical ones. UI and CV content are Engl
 | DB | `rusqlite` with feature `bundled`, `rusqlite_migration` | Static SQLite, no system lib; hide behind persistence interfaces so PostgreSQL can be added later |
 | Serialization | `serde`, `serde_json`, `schemars` | |
 | IDs | `ulid` | String form in JSON and DB |
-| HTTP | `reqwest` with `rustls-tls`, no OpenSSL | AI requests only (the updater uses Tauri's plugin) |
+| HTTP | `ureq` with rustls (`ring`), no OpenSSL (ADR-068) | AI requests only (the updater uses Tauri's plugin) |
 | Secrets | `keyring` | Windows Credential Manager; Linux Secret Service; fallback in section 13.1 |
 | Zip/CSV | `zip`, `csv` | LinkedIn |
 | Errors | `thiserror` in libraries, `anyhow` only in `src-tauri` glue | |
@@ -858,7 +858,7 @@ Implementations:
 - `OpenAiCompatibleLlm`: any OpenAI-compatible Chat Completions endpoint at a user-configured base URL (local servers such as Ollama, or hosted services). JSON-schema support varies, so request JSON output, validate it, and tolerate failure (retry once with a "your last output was invalid: <error>" message, then surface an error).
 - `FakeLlm` for tests: returns values from a queue or from files keyed by `schema_name`.
 
-Common behavior: `reqwest` with rustls, 60 s per-request timeout (configurable), max 2 retries with backoff on 429/5xx, no logging of request or response bodies (log only stage, model, token counts, duration). After parsing, validate against the Rust output type with `serde`; on failure retry once with the error message; then return `LlmError::InvalidOutput`.
+Common behavior: `ureq` with rustls on a blocking thread (ADR-068), 60 s per-request timeout (configurable), max 2 retries with backoff on 429/5xx, no redirects, no logging of request or response bodies (log only stage, model, token counts, duration). After parsing, validate against the Rust output type with `serde`; on failure retry once with the error message; then return `LlmError::InvalidOutput`.
 
 ### 11.3 Redaction and payload builder
 
@@ -1202,7 +1202,7 @@ Stages and progress:
 6. `gaps` → 95%
 7. `fit_to_length` if requested → 100% (its `LengthCut` suggestions are `Pending` like all others)
 
-Requirements: each stage cancellable; a failure in an optional stage (rewrite, summary, gaps) doesn't discard prior results, instead the job completes with a `partial: true` flag and per-stage errors; results are stored on the variant as `Pending` suggestions; token usage is accumulated and shown to the user (no dollar estimate, since pricing changes).
+Requirements: each stage cancellable; a failure in an optional stage (rewrite, summary, gaps) doesn't discard prior results, instead the job completes and lists the failed stages in `failed_stages` (ADR-072); results are stored on the variant as `Pending` suggestions; token usage is accumulated and shown to the user (no dollar estimate, since pricing changes).
 
 ### 11.14 Prompt versioning and caching
 
