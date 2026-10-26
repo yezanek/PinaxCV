@@ -20,6 +20,8 @@ pub use merge::{
 };
 pub mod json_resume;
 pub use json_resume::import_json_resume;
+pub mod linkedin_zip;
+pub use linkedin_zip::import_linkedin_zip;
 pub mod import;
 pub use import::{ImportError, MAX_INPUT, import_any, import_europass};
 pub mod pdf_text;

@@ -417,6 +417,14 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Every text value is NFC-normalized, has tabs and other whitespace turned into spaces, is stripped of the remaining control characters (line breaks kept in summaries and descriptions) and is capped at 10,000 characters; each list keeps its first 200 items, with a warning. An entry with neither a title nor an organization is skipped, with a warning. `import_json_resume` enforces the 20 MB input cap itself; that cap and serde_json's nesting limit bound the rest, and nothing in the importer can panic on input.
 - `import_any` sends anything that starts with `{` to this importer, so the import wizard (ADR-058) picks JSON Resume up by adding the `json` extension to its dialog.
 
+## ADR-060 — LinkedIn data export (ZIP) importer (M4)
+
+- `import_linkedin_zip` reads the profile CSVs from spec section 9.3 straight from memory with the `zip` crate (deflate only, no other codecs), and never extracts to disk. Files are matched by name without their folder, case-insensitively, through an alias table (`Email Addresses.csv`, `Email_Addresses.csv`, ...). Other files are not read; their names are listed in one warning.
+- Columns are found by header name (case-insensitive, BOM trimmed, with aliases). The header row is the row, among the first 20, holding the most known columns (the earliest on a tie), which skips the notes preamble some LinkedIn files have even when a preamble line matches one column. A file with rows but no header, a CSV that stops parsing part way, and rows past the cap each give one warning naming the file.
+- The archive is refused when any entry has an unsafe path (`..`, absolute, drive letter, NUL), when it has more than 2,000 entries, or when a CSV unpacks past 5 MB or all read CSVs past 20 MB. Names are checked from the central directory before any entry is decompressed, and only the CSVs that are read are unpacked. Sizes are counted while reading, not trusted from the ZIP headers. Each CSV keeps 500 rows and each value 10,000 characters, NFC-normalized, with tabs and line breaks turned into spaces (descriptions keep their line breaks) and other control characters removed. File names in warnings are cleaned the same way and cut to 100 characters.
+- Positions are sorted newest first; an empty "Finished On" marks the job as current. Descriptions split into bullets on lines and on `-`, `•`, `*`; one paragraph over 300 characters stays a description, with a warning to review it. Skills become one unlabelled group, because the section heading already says Skills. The email is the primary confirmed address, then any confirmed one; an unconfirmed address is never used.
+- `import_any` sends anything with a ZIP signature to this importer, so the import wizard (ADR-058) only needs the `zip` extension added to its dialog.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
