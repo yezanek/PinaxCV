@@ -13,6 +13,7 @@ use crate::drag::DragHandle;
 use crate::fit::{EditFn, FitPanel};
 use crate::i18n::{error_message, fill, t};
 use crate::ipc::{IdArg, ReqArg, call};
+use crate::review::SuggestionReview;
 use crate::tailor::TailorPanel;
 
 #[derive(Serialize)]
@@ -77,7 +78,7 @@ pub struct Row {
 }
 
 /// Shortens bullet text for a checkbox label.
-fn short(text: &str) -> String {
+pub(crate) fn short(text: &str) -> String {
     const MAX: usize = 60;
     let text = text.trim();
     match text.char_indices().nth(MAX) {
@@ -605,8 +606,10 @@ pub fn VariantBar(
             </div>
             <TailorPanel variant=variant error=error changed=changed busy=busy
                 tailoring=tailoring edit=edit_cb />
-            // Tailoring saves the variant when it ends, so fitting waits for it.
+            // Tailoring saves the variant when it ends, so reviewing and
+            // fitting wait for it.
             <fieldset class="variant-overlay" prop:disabled=move || tailoring.get()>
+                <SuggestionReview cv=cv variant=variant busy=busy edit=edit_cb />
                 <FitPanel cv=cv variant=variant error=error changed=changed busy=busy settled=settled
                     fitting=fitting edit=edit_cb />
             </fieldset>

@@ -6,8 +6,8 @@
 use cv_api::{
     AiDone, AiFailed, AiProgress, AiStage, AiStatus, AiTailor, ErrorCode, JobId, TailorResult,
 };
+use cv_core::StoredVariant;
 use cv_core::selection::TailorOptions;
-use cv_core::{StoredVariant, SuggestionSource, SuggestionStatus, Variant};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use serde::Serialize;
@@ -35,14 +35,6 @@ pub fn stage_label(stage: AiStage) -> &'static str {
             s.stage_working
         }
     }
-}
-
-/// The pending suggestions from tailoring.
-pub fn pending_tailor(v: &Variant) -> usize {
-    v.suggestions
-        .iter()
-        .filter(|s| s.source == SuggestionSource::Tailor && s.status == SuggestionStatus::Pending)
-        .count()
 }
 
 /// The status line after a run.
@@ -280,15 +272,6 @@ pub fn TailorPanel(
                 </div>
             })}
             <p role="status">{move || message.get()}</p>
-            {move || {
-                let n = variant.with(|v| v.as_ref().map_or(0, |v| pending_tailor(&v.variant)));
-                (n > 0 && !tailoring.get()).then(|| view! {
-                    <p class="hint">{match n {
-                        1 => t().tailor_pending_one.to_owned(),
-                        n => fill(t().tailor_pending, &[("n", &n.to_string())]),
-                    }}</p>
-                })
-            }}
         </div>
     }
 }
@@ -296,7 +279,7 @@ pub fn TailorPanel(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cv_core::{Id, Timestamp};
+    use cv_core::{Id, Timestamp, Variant};
 
     fn result(suggestions: usize, fits: Option<bool>) -> TailorResult {
         let id = Id::parse("01J02000000000000000000001").expect("id");

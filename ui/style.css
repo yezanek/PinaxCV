@@ -68,6 +68,18 @@ textarea.override { flex-basis: 100%; width: 100%; order: 1; }
 .tailor-progress { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.4rem; }
 .tailor-progress progress { flex: 0 0 10rem; }
 .tailor-run [role="status"] { color: var(--muted); font-size: 0.9em; margin: 0.3rem 0 0; }
+.review { border: 1px solid var(--border); padding: 0.4rem 0.6rem; margin-bottom: 0.75rem; }
+.review h3 { margin: 0 0 0.3rem; font-size: 1em; }
+.review h4 { margin: 0.5rem 0 0.2rem; font-size: 0.95em; }
+.review-bulk { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+.review ul { list-style: none; padding: 0; margin: 0; }
+.review .card { display: flex; gap: 0.4rem; align-items: start; padding: 0.3rem 0; border-top: 1px solid var(--border); }
+.review .card-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+.review .card-text small { color: var(--muted); }
+.review .rewrite del { color: var(--muted); }
+.review .rewrite ins { text-decoration: none; display: block; }
+.review .badge { align-self: start; font-size: 0.8em; border: 1px solid var(--border); border-radius: 0.6em; padding: 0 0.5em; }
+.review .badge.warn { border-color: currentColor; font-weight: 600; }
 .variant-summary { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
 .variant-actions { display: flex; gap: 0.5rem; align-items: end; margin-bottom: 0.5rem; flex-wrap: wrap; }
 

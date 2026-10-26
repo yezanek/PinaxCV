@@ -191,7 +191,12 @@ async fn tailoring_saves_pending_suggestions_and_caches_the_parse() {
                 SuggestionKind::Collapse,
                 SuggestionTarget::Entry { id: id(EDUCATION) }
             ),
-            (SuggestionKind::SkillOrder, SuggestionTarget::Skills),
+            (
+                SuggestionKind::SkillOrder,
+                SuggestionTarget::SkillGroup {
+                    id: id("01J02000000000000000000014")
+                }
+            ),
         ]
     );
     assert_eq!(result.suggestions, 3);
