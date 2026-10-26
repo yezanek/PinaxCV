@@ -385,6 +385,14 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - A bar above the preview has "Fit width" (the default: pages as wide as the pane, up to the existing maximum) and "100%" (the page's real width at 96 CSS pixels per inch, from the CV's paper size; the pane scrolls sideways if needed). The zoom is not saved.
 - Template messages from the newest preview show in a collapsible strip above the pages, with their severity: warnings from a successful render (such as missing glyphs) and the diagnostics a failed render carries in its error details. The strip is hidden when there are none.
 
+## ADR-056 — Local log file (M3)
+
+- The desktop shell logs with `tracing` to `pinaxcv.log` in Tauri's app log directory (`docs/SECURITY.md` lists the paths). Release builds log at info level and debug builds at debug level.
+- Each command logs its name, duration and, on failure, the error code. Arguments and error messages are never logged, because both can quote CV content. A database that fails to open is logged without the error text for the same reason.
+- A panic hook logs the panic's location and message, cut to 300 characters, then runs the default hook.
+- At startup a log over 1 MB is renamed to `pinaxcv.1.log`, replacing the older one, so at most about 2 MB is kept. If the log cannot be opened, the app runs without one.
+- Opening the log folder from the app comes with the Settings screen (`open_data_dir`, spec section 10.2).
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
