@@ -496,6 +496,15 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - The shell keeps keys in the OS keychain through `keyring` 4 (Windows Credential Manager, the Secret Service over zbus on Linux with no libdbus needed, Keychain Services on macOS), filed under `dev.pinaxcv.app` with the provider as the account. `cv-app` only sees a `SecretStore` trait. When no keychain is reachable, the key is held in memory for the session and the screen says so (spec section 13.1). Keys never reach the database, the logs or any reply; `AiStatus` only says where the key is kept.
 - Consent (spec section 11.1) lists where requests go and what is and is not sent, following the two switches. Accepting stores `ai.consent_version` (now 1), `ai.consent_at` (Unix seconds) and `ai.consent_for` (`provider|host`). Another provider or host asks again; another model at the same provider does not. `App::llm` refuses with `ai_not_configured` or `ai_consent_required` until both hold, so later AI stages cannot skip the gate.
 
+## ADR-070 — Payload redaction, prompts and the response cache (M7a)
+
+- `build_cv_payload` (spec section 11.3) sends the resolved CV without email, phone, links or entry URLs. Free text (summary, headline, titles, descriptions, bullets, skills) also goes through a `Redactor` that replaces the CV's own email, phone, link URLs, full address and (unless `ai.send_name`) full name, and anything shaped like an email address, a URL or a phone number with at least 9 digits, by `[redacted]`. Dates and year ranges have fewer digits and stay.
+- Locations, of the CV and of each entry, are cut to their last two comma-separated parts without words holding digits ("Hauptstraße 5, 10115 Berlin, Germany" becomes "Berlin, Germany"), and are left out when `ai.send_location` is off. The payload also lists languages, which the spec's example leaves out, for the review stage.
+- Prompts live in `cv-ai/src/prompts/*.rs`, one `PROMPT_VERSION` each. The renderer only substitutes `{{name}}`, fails on a missing or unused value, and turns every `</` in inserted data into `<\/` (also valid inside JSON strings). The rewrite stage's entry attributes are additionally entity-encoded. The spec gives no user template for `GAPS`; ours wraps the requirements, the unmatched list and the CV in tags like the other stages.
+- Lint findings go to the review stage by code, severity and target only, since messages can quote contact details.
+- `generate_cached` keys responses by `sha256(kind, prompt version, model, user prompt)` with NUL separators and stores only successful answers. The store is behind a `ResponseCache` trait, so `cv-ai` still never reads the database; `cv-app` adapts it to the `ai_cache` table when the pipeline lands.
+- `tests/no_contact_details.rs` builds every stage's prompt from a CV hiding contact details in its free text and checks, through a recording `Llm`, that only `IMPORT_EXTRACT` sends them.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

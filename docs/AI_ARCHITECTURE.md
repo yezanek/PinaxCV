@@ -36,7 +36,7 @@ Every rewrite is checked deterministically for new numbers, new proper nouns or 
 
 ## Prompts and caching
 
-Prompts are `const` strings with a `PROMPT_VERSION`, filled by a minimal placeholder renderer that escapes closing delimiter tags. Responses are cached in SQLite by `sha256(kind + prompt_version + model + input)`.
+Prompts are `const` strings with a `PROMPT_VERSION`, filled by a minimal placeholder renderer that escapes closing delimiter tags. Responses are cached in SQLite by `sha256(kind + prompt_version + model + input)`. The payload builder redacts contact details from free text too (ADR-070).
 
 ## Testing
 
