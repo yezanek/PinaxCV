@@ -16,6 +16,24 @@ pub struct Strings {
     pub delete: &'static str,
     pub new_cv: &'static str,
     pub new_cv_title_placeholder: &'static str,
+    pub new_cv_title: &'static str,
+    pub no_cvs_yet: &'static str,
+    pub duplicate: &'static str,
+    /// `{title}`: the title of a duplicated CV.
+    pub copy_title: &'static str,
+    /// `{title}`.
+    pub deleted_cv: &'static str,
+    /// `{date}`.
+    pub edited: &'static str,
+    /// `{day}`, `{month}` (from `months`), `{year}` and `{time}` (HH:MM).
+    pub date_time: &'static str,
+    pub months: [&'static str; 12],
+    pub one_page: &'static str,
+    /// `{n}`.
+    pub n_pages: &'static str,
+    pub one_variant: &'static str,
+    /// `{n}`.
+    pub n_variants: &'static str,
 
     // Editor bar and status
     pub back_to_cvs: &'static str,
@@ -172,6 +190,20 @@ pub static EN: Strings = Strings {
     delete: "Delete",
     new_cv: "New CV",
     new_cv_title_placeholder: "Title, for example Main CV",
+    new_cv_title: "Title of the new CV",
+    no_cvs_yet: "No CVs yet. Give your first one a title and choose New CV.",
+    duplicate: "Duplicate",
+    copy_title: "{title} (copy)",
+    deleted_cv: "Deleted \u{201c}{title}\u{201d}.",
+    edited: "Edited {date}",
+    date_time: "{day} {month} {year}, {time}",
+    months: [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ],
+    one_page: "1 page",
+    n_pages: "{n} pages",
+    one_variant: "1 variant",
+    n_variants: "{n} variants",
 
     back_to_cvs: "← CVs",
     export_pdf: "Export PDF",

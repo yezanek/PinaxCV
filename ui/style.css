@@ -62,3 +62,11 @@ fieldset.segmented label { display: flex; gap: 0.3rem; align-items: center; marg
 .entry { position: relative; }
 .entry > .drag-handle { position: absolute; top: 0; right: 0; }
 .drop-target { outline: 2px dashed var(--accent); outline-offset: 2px; }
+main.list .new-cv { display: flex; gap: 0.5rem; }
+main.list .new-cv input { flex: 1; padding: 0.4rem; font: inherit; }
+main.list ul.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: 0.75rem; }
+main.list li.card { display: flex; flex-direction: column; align-items: stretch; gap: 0.5rem; padding: 0.75rem; border: 1px solid var(--border); border-radius: 6px; }
+main.list li.card button.open { display: flex; flex-direction: column; gap: 0.3rem; padding: 0; }
+main.list .card-actions { display: flex; gap: 0.4rem; justify-content: flex-end; }
+.toasts { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 0.5rem; }
+.toast { display: flex; gap: 0.75rem; align-items: center; padding: 0.5rem 0.75rem; background: Canvas; color: CanvasText; border: 1px solid var(--border); box-shadow: 0 2px 8px rgb(0 0 0 / 0.25); border-radius: 6px; }
