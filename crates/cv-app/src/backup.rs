@@ -97,15 +97,22 @@ impl App {
     /// Removes every cached AI answer; they hold CV text and go into
     /// backups. The next AI run asks the provider again.
     pub fn clear_ai_cache(&self) -> Result<()> {
+        let _writes = self.ai_writes();
+        self.bump_ai_generation();
         self.store.ai_cache_clear().map_err(crate::store_error)
     }
 
     /// Deletes every CV, variant, snapshot, setting and cached AI answer,
     /// the copies restores kept, and every saved API key. The UI confirms
-    /// first; this cannot be undone.
+    /// first; this cannot be undone. The keys are removed even when the
+    /// store fails part way (it may already have deleted the rows); the
+    /// store's error is reported first.
     pub fn delete_all_data(&self) -> Result<()> {
-        self.store.delete_all_data().map_err(crate::store_error)?;
-        self.forget_all_keys()
+        let _writes = self.ai_writes();
+        self.bump_ai_generation();
+        let stored = self.store.delete_all_data().map_err(crate::store_error);
+        let keys = self.forget_all_keys();
+        stored.and(keys)
     }
 }
 

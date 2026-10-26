@@ -93,7 +93,7 @@ impl App {
             .blocking(|app| Ok((app.llm()?, app.ai_status()?)))
             .await?;
         let model = status.model.clone();
-        let cache = StoreCache(Arc::clone(self));
+        let cache = StoreCache::new(Arc::clone(self));
         let stage = StageContext {
             llm: llm.as_ref(),
             cache: &cache,
