@@ -69,20 +69,28 @@ fn AppSection() -> impl IntoView {
         }
     });
     let defaults = move || settings.with(|s| s.as_ref().map(|s| s.defaults).unwrap_or_default());
+    // Each save sends all defaults, so the selectors wait for the last one:
+    // a second change made meanwhile would start from stale values.
+    let saving = RwSignal::new(false);
     let change = move |edit: Box<dyn FnOnce(&mut CvDefaults)>| {
         let mut d = defaults();
         edit(&mut d);
         message.set(None);
         error.set(None);
+        saving.set(true);
         spawn_local(async move {
-            match call::<_, AppSettings>("set_cv_defaults", &DefaultsArg { defaults: d }).await {
+            let result =
+                call::<_, AppSettings>("set_cv_defaults", &DefaultsArg { defaults: d }).await;
+            // The screen was closed meanwhile.
+            if saving.try_set(false).is_some() {
+                return;
+            }
+            match result {
                 Ok(s) => {
-                    let _ = settings.try_set(Some(s));
-                    let _ = message.try_set(Some(t().defaults_saved));
+                    settings.set(Some(s));
+                    message.set(Some(t().defaults_saved));
                 }
-                Err(e) => {
-                    let _ = error.try_set(Some(error_message(&e)));
-                }
+                Err(e) => error.set(Some(error_message(&e))),
             }
         });
     };
@@ -99,7 +107,7 @@ fn AppSection() -> impl IntoView {
         <h2>{s.defaults_heading}</h2>
         <p class="hint">{s.defaults_intro}</p>
         <label>{s.paper}
-            <select prop:disabled=move || settings.with(Option::is_none)
+            <select prop:disabled=move || saving.get() || settings.with(Option::is_none)
                 on:change=move |ev| {
                     let p = parse_paper(&event_target_value(&ev));
                     change(Box::new(move |d| d.paper = p));
@@ -110,13 +118,13 @@ fn AppSection() -> impl IntoView {
             </select>
         </label>
         <label>{s.cv_language}
-            <select prop:disabled=move || settings.with(Option::is_none)
+            <select prop:disabled=move || saving.get() || settings.with(Option::is_none)
                 on:change=move |_| change(Box::new(|d| d.locale = Locale::En))>
                 <option value="en" selected=move || defaults().locale == Locale::En>{s.english}</option>
             </select>
         </label>
         <label>{s.date_style}
-            <select prop:disabled=move || settings.with(Option::is_none)
+            <select prop:disabled=move || saving.get() || settings.with(Option::is_none)
                 on:change=move |ev| {
                     let v = parse_date_style(&event_target_value(&ev));
                     change(Box::new(move |d| d.date_style = v));
