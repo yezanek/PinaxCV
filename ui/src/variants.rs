@@ -69,6 +69,9 @@ pub struct Row {
     /// First or last in the variant's order, so it cannot move further.
     pub first: bool,
     pub last: bool,
+    /// The base text a variant can replace: a bullet's text or an entry's
+    /// description (empty when it has none).
+    pub text: Option<String>,
 }
 
 /// Shortens bullet text for a checkbox label.
@@ -118,43 +121,49 @@ pub fn sections_in_order<'a>(
 /// An item's ID, its base sibling IDs, and whether it is first or last.
 type Placed<'a> = (&'a Id, Vec<Id>, bool, bool);
 
+/// Adds a row: the item, its parent, label, kind and replaceable text.
+type Push<'b> = dyn for<'a> FnMut(Placed<'a>, &Id, String, RowKind, Option<String>) + 'b;
+
 /// The rows under a section heading: every item a variant can hide
 /// (ADR-015), in the variant's order.
 pub fn rows(s: &Section, v: Option<&Variant>) -> Vec<Row> {
     let mut out = Vec::new();
-    let mut push = |item: Placed, parent: &Id, label: String, kind: RowKind| {
-        let (id, siblings, first, last) = item;
-        out.push(Row {
-            id: id.clone(),
-            label,
-            depth: u8::from(matches!(kind, RowKind::Bullet | RowKind::Skill)),
-            collapsible: kind == RowKind::Entry,
-            kind,
-            parent: parent.clone(),
-            siblings,
-            first,
-            last,
-        });
-    };
-    let entries =
-        |out: &mut dyn FnMut(Placed, &Id, String, RowKind), section: &Id, list: &[Entry]| {
-            for (e, sib, first, last) in in_order(v, section, list, |e| &e.id) {
-                out(
-                    (&e.id, sib, first, last),
-                    section,
-                    entry_label(e),
-                    RowKind::Entry,
-                );
-                for (b, sib, first, last) in in_order(v, &e.id, &e.bullets, |b| &b.id) {
-                    out(
-                        (&b.id, sib, first, last),
-                        &e.id,
-                        short(&b.text),
-                        RowKind::Bullet,
-                    );
-                }
-            }
+    let mut push =
+        |item: Placed, parent: &Id, label: String, kind: RowKind, text: Option<String>| {
+            let (id, siblings, first, last) = item;
+            out.push(Row {
+                id: id.clone(),
+                label,
+                depth: u8::from(matches!(kind, RowKind::Bullet | RowKind::Skill)),
+                collapsible: kind == RowKind::Entry,
+                kind,
+                parent: parent.clone(),
+                siblings,
+                first,
+                last,
+                text,
+            });
         };
+    let entries = |out: &mut Push, section: &Id, list: &[Entry]| {
+        for (e, sib, first, last) in in_order(v, section, list, |e| &e.id) {
+            out(
+                (&e.id, sib, first, last),
+                section,
+                entry_label(e),
+                RowKind::Entry,
+                Some(e.description.clone().unwrap_or_default()),
+            );
+            for (b, sib, first, last) in in_order(v, &e.id, &e.bullets, |b| &b.id) {
+                out(
+                    (&b.id, sib, first, last),
+                    &e.id,
+                    short(&b.text),
+                    RowKind::Bullet,
+                    Some(b.text.clone()),
+                );
+            }
+        }
+    };
     match s {
         Section::Experience(x)
         | Section::Education(x)
@@ -174,6 +183,7 @@ pub fn rows(s: &Section, v: Option<&Variant>) -> Vec<Row> {
                     &k.id,
                     label.into(),
                     RowKind::Group,
+                    None,
                 );
                 for (k, sib, first, last) in in_order(v, &g.id, &g.skills, |k| &k.id) {
                     push(
@@ -181,6 +191,7 @@ pub fn rows(s: &Section, v: Option<&Variant>) -> Vec<Row> {
                         &g.id,
                         k.name.clone(),
                         RowKind::Skill,
+                        None,
                     );
                 }
             }
@@ -192,6 +203,7 @@ pub fn rows(s: &Section, v: Option<&Variant>) -> Vec<Row> {
                     &l.id,
                     i.name.clone(),
                     RowKind::Language,
+                    None,
                 );
             }
         }
@@ -208,6 +220,43 @@ fn move_labels(kind: RowKind) -> (&'static str, &'static str) {
         RowKind::Group => (s.move_group_up, s.move_group_down),
         RowKind::Skill => (s.move_skill_up, s.move_skill_down),
         RowKind::Language => (s.move_language_up, s.move_language_down),
+    }
+}
+
+/// "Edit for this variant" for one piece of text: a button that opens a
+/// text area holding the variant's text (the base text until it differs),
+/// and, while the variant has its own text, an "edited" mark and "Revert to
+/// base".
+#[component]
+fn TextOverride(
+    /// The edit button's accessible name and tooltip, also the text area's.
+    label: &'static str,
+    base: String,
+    /// The variant's own text, if it has one.
+    current: Signal<Option<String>>,
+    set: Callback<String>,
+    revert: Callback<()>,
+) -> impl IntoView {
+    let open = RwSignal::new(false);
+    view! {
+        <span class="text-override">
+            <Show when=move || current.with(Option::is_some)>
+                <span class="edited">{t().edited_in_variant}</span>
+                <button on:click=move |_| revert.run(())>{t().revert_to_base}</button>
+            </Show>
+            <button class="icon" aria-label=label title=label aria-expanded=move || open.get().to_string()
+                on:click=move |_| open.update(|o| *o = !*o)>"✎"</button>
+        </span>
+        <Show when=move || open.get()>
+            {
+                let base = base.clone();
+                view! {
+                    <textarea class="override" aria-label=label rows="3"
+                        prop:value=move || current.get().unwrap_or_else(|| base.clone())
+                        on:change=move |ev| set.run(event_target_value(&ev))></textarea>
+                }
+            }
+        </Show>
     }
 }
 
@@ -257,6 +306,10 @@ pub fn VariantBar(
             return;
         }
         let Ok(id) = Id::parse(&id) else { return };
+        // Drop the old variant while the new one loads, so an edit made in
+        // the meantime can't land on it.
+        variant.set(None);
+        changed.run(());
         spawn_local(async move {
             let result = call::<_, StoredVariant>("get_variant", &IdArg { id: &id }).await;
             if selection.try_get_untracked() != Some(n) {
@@ -420,6 +473,18 @@ pub fn VariantBar(
             };
         }))
     };
+    let override_of = move |id: Id| {
+        Signal::derive(move || {
+            variant.with(|v| {
+                v.as_ref()
+                    .and_then(|v| v.variant.text_overrides.get(&id).cloned())
+            })
+        })
+    };
+    let summary_override = Signal::derive(move || {
+        variant.with(|v| v.as_ref().and_then(|v| v.variant.summary_override.clone()))
+    });
+    let base_summary = Memo::new(move |_| cv.with(|c| c.as_ref().and_then(|c| c.summary.clone())));
     // The order lists alone, so hiding or collapsing does not rebuild the panel.
     let order = Memo::new(move |_| variant.with(|v| v.as_ref().map(|v| v.variant.order.clone())));
     let toggle = move |id: Id, collapse: bool| {
@@ -474,6 +539,21 @@ pub fn VariantBar(
                     )>{t().delete_variant}</button>
                 </Show>
             </div>
+            <div class="variant-summary">
+                <strong>{t().summary}</strong>
+                {move || {
+                    let base = base_summary.get();
+                    view! {
+                        <TextOverride label=t().edit_summary_in_variant base=base.clone().unwrap_or_default()
+                            current=summary_override
+                            set=Callback::new(move |text: String| {
+                                let base = base.clone();
+                                edit(Box::new(move |v| v.set_summary(text, base.as_deref())));
+                            })
+                            revert=Callback::new(move |()| edit(Box::new(|v| { v.revert_summary(); }))) />
+                    }
+                }}
+            </div>
             <fieldset class="variant-visibility">
                 <legend>{t().shown_in_variant}</legend>
                 {move || {
@@ -501,6 +581,21 @@ pub fn VariantBar(
                             <label class="collapse"><input type="checkbox" prop:checked=move || collapsed(&c2)
                                 on:change=move |_| toggle(d.clone(), true) />{t().one_line}</label>
                         });
+                        let text_edit = r.text.clone().map(|base| {
+                            let label = if r.kind == RowKind::Entry { t().edit_description_in_variant } else { t().edit_bullet_in_variant };
+                            let (set_id, set_base, revert_id) = (r.id.clone(), base.clone(), r.id.clone());
+                            view! {
+                                <TextOverride label=label base=base current=override_of(r.id.clone())
+                                    set=Callback::new(move |text: String| {
+                                        let (id, base) = (set_id.clone(), set_base.clone());
+                                        edit(Box::new(move |v| v.set_text(&id, text, &base)));
+                                    })
+                                    revert=Callback::new(move |()| {
+                                        let id = revert_id.clone();
+                                        edit(Box::new(move |v| { v.revert_text(&id); }));
+                                    }) />
+                            }
+                        });
                         let (up_label, down_label) = move_labels(r.kind);
                         let up = (r.parent.clone(), r.siblings.clone(), r.id.clone());
                         let down = up.clone();
@@ -514,6 +609,7 @@ pub fn VariantBar(
                                 <label><input type="checkbox" prop:checked=move || shown(&a)
                                     on:change=move |_| toggle(b.clone(), false) />{r.label}</label>
                                 {one_line}
+                                {text_edit}
                                 <span class="order">
                                     <button aria-label=up_label prop:disabled=r.first
                                         on:click=move |_| reorder(up.0.clone(), up.1.clone(), up.2.clone(), Ok(true))>"↑"</button>
@@ -579,13 +675,18 @@ mod tests {
                     assert!(r[0].collapsible);
                     assert_eq!(r[1].id, e.bullets[0].id);
                     assert_eq!((r[1].depth, r[1].collapsible), (1, false));
+                    assert_eq!(r[1].text.as_deref(), Some(e.bullets[0].text.as_str()));
+                    assert_eq!(
+                        r[0].text.as_deref(),
+                        Some(e.description.as_deref().unwrap_or_default())
+                    );
                     let bullets: usize = x.entries.iter().map(|e| e.bullets.len()).sum();
                     assert_eq!(r.len(), x.entries.len() + bullets);
                 }
                 Section::Skills(k) => {
                     let skills: usize = k.groups.iter().map(|g| g.skills.len()).sum();
                     assert_eq!(r.len(), k.groups.len() + skills);
-                    assert!(r.iter().all(|r| !r.collapsible));
+                    assert!(r.iter().all(|r| !r.collapsible && r.text.is_none()));
                 }
                 Section::Languages(l) => {
                     assert_eq!(r.len(), l.items.len());

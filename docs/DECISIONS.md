@@ -332,7 +332,7 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 
 ## ADR-048 — Variant screen in the editor (M5)
 
-- A "Version" selector above the form picks the base CV or a variant. Text edits always change the base CV; the variant panel only changes what the selected variant hides or collapses, and the order it shows them in (ADR-062).
+- A "Version" selector above the form picks the base CV or a variant. Text edits in the form always change the base CV; the variant panel changes what the selected variant hides or collapses, the order it shows them in (ADR-062), and the variant's own text (ADR-063).
 - The panel lists every item a variant can hide (ADR-015): sections, entries and their bullets, skill groups and their skills, and language items. Only entries can be collapsed to one line.
 - Overlay edits save one at a time. An edit made while a save is in flight is sent next with the revision that save returned. The selector, "New variant" and "Delete" are disabled while a save runs, so the queue only holds the selected variant.
 - Export and "← CVs" wait for both the CV save and the variant save queue, because export reads the variant from storage. If a variant save fails, the export or leave is dropped and the error is shown.
@@ -440,6 +440,13 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - A move stores the parent's full child order (the variant's list first, then the base items it does not name, in base order), so later base additions appear at the end and items deleted from the base are dropped.
 - The panel re-renders when the order changes, not when an item is hidden or collapsed.
 - IPC arguments are serialised in JSON-compatible form: maps become plain objects. Before, a variant's `order` and `text_overrides` were sent as JavaScript `Map`s, which reach the backend as `{}`.
+
+## ADR-063 — Text overrides in a variant (M5)
+
+- In the variant panel, each bullet and each entry has a ✎ button ("Edit text for this variant", "Edit description for this variant") that opens a text area holding the variant's text, or the base text while there is none. The summary has the same control above the list.
+- Saving text equal to the base removes the override (`Variant::set_text`, `Variant::set_summary`), so the variant follows later base edits again. While an override exists the row shows "edited" and "Revert to base", which removes it.
+- An entry description can be set in a variant even when the base entry has none, matching how resolving applies overrides (ADR-015).
+- The form keeps editing the base CV; only the panel writes overrides.
 
 ## Open decisions
 

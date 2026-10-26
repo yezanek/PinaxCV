@@ -47,6 +47,13 @@ fieldset.section > .order { display: flex; justify-content: flex-end; gap: 0.3re
 .variant-section-head { display: flex; gap: 0.5rem; }
 .variant-visibility .order { margin-left: auto; display: flex; gap: 0.2rem; }
 .variant-visibility .order button { padding: 0 0.4rem; }
+.variant-visibility li { flex-wrap: wrap; gap: 0.5rem; }
+.variant-visibility li > label { flex: 1 1 10rem; min-width: 0; }
+.text-override { display: flex; gap: 0.3rem; align-items: center; font-size: 0.85em; }
+.text-override button { padding: 0 0.4rem; }
+.text-override .edited { color: var(--muted); font-style: italic; }
+textarea.override { flex-basis: 100%; width: 100%; order: 1; }
+.variant-summary { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
 .variant-actions { display: flex; gap: 0.5rem; align-items: end; margin-bottom: 0.5rem; flex-wrap: wrap; }
 
 .tabs { display: flex; gap: 0.25rem; margin: -0.25rem 0 0.75rem; border-bottom: 1px solid var(--border); }

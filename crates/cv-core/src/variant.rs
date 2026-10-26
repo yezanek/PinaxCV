@@ -98,6 +98,18 @@ impl Variant {
         self.text_overrides.remove(id).is_some()
     }
 
+    /// Sets this variant's summary. Text equal to the base summary (`base`,
+    /// `None` when the CV has none) removes the override.
+    pub fn set_summary(&mut self, text: String, base: Option<&str>) {
+        self.summary_override = (text != base.unwrap_or_default()).then_some(text);
+    }
+
+    /// "Revert to base" for the summary. Returns whether an override was
+    /// removed.
+    pub fn revert_summary(&mut self) -> bool {
+        self.summary_override.take().is_some()
+    }
+
     /// The order this variant shows `base` (the children of `parent` in base
     /// order) in: the variant's list for `parent` first, skipping unknown and
     /// repeated IDs, then the rest in base order. Resolving uses the same rule.
@@ -171,6 +183,20 @@ fn toggle(set: &mut BTreeSet<Id>, id: &Id) -> bool {
 mod tests {
     use super::*;
     use crate::test_ids::id;
+
+    #[test]
+    fn summary_overrides_follow_the_base_when_equal() {
+        let mut v = Variant::empty(id(1), id(2), "v");
+        v.set_summary("Tailored".into(), Some("Base"));
+        assert_eq!(v.summary_override.as_deref(), Some("Tailored"));
+        v.set_summary("Base".into(), Some("Base"));
+        assert_eq!(v.summary_override, None);
+        v.set_summary(String::new(), None);
+        assert_eq!(v.summary_override, None);
+        v.set_summary("New".into(), None);
+        assert!(v.revert_summary());
+        assert!(!v.revert_summary());
+    }
 
     #[test]
     fn children_order_lists_ordered_children_first() {
