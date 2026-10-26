@@ -490,7 +490,7 @@ pub static EN: Strings = Strings {
     one_variant: "1 variant",
     n_variants: "{n} variants",
     import_cv: "Import…",
-    import_cv_hint: "Import a Europass CV (PDF or XML) or another CV saved as PDF",
+    import_cv_hint: "Import a Europass CV (PDF or XML), a JSON Resume, a LinkedIn data export (ZIP) or another CV saved as PDF",
 
     import_title: "Import a CV",
     import_no_name: "No name found",

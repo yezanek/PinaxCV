@@ -22,7 +22,7 @@ use cv_import::{
 use crate::{App, Result, blank_cv, store_error, validation_error};
 
 /// File extensions the open dialog offers.
-pub const IMPORT_EXTENSIONS: &[&str] = &["pdf", "xml"];
+pub const IMPORT_EXTENSIONS: &[&str] = &["pdf", "xml", "json", "zip"];
 
 /// Previews kept at once; opening another drops the oldest.
 const KEPT_PREVIEWS: usize = 4;
@@ -257,6 +257,14 @@ fn core_field(f: ImportField) -> Field {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_dialog_offers_every_format_import_any_reads() {
+        // Europass PDF/XML, any PDF, JSON Resume and the LinkedIn ZIP export.
+        for ext in ["pdf", "xml", "json", "zip"] {
+            assert!(IMPORT_EXTENSIONS.contains(&ext), "{ext}");
+        }
+    }
 
     #[test]
     fn the_cache_keeps_the_latest_previews() {
