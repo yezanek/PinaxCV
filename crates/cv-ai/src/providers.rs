@@ -296,7 +296,18 @@ impl Llm for OpenAiLlm {
     async fn generate_json(&self, request: LlmRequest) -> Result<Value, LlmError> {
         let mut http = self.request(&request);
         let transport = self.endpoint.transport.clone();
-        let body = send(transport.clone(), http.clone(), request.cancel.clone()).await?;
+        let body = match send(transport.clone(), http.clone(), request.cancel.clone()).await {
+            // OpenAI's reasoning models refuse any temperature but their
+            // default, and which models those are depends on the model and its
+            // reasoning effort. A 400 gets one more try without it.
+            Err(LlmError::Http { status: 400 }) if self.flavor == Flavor::OpenAi => {
+                if let Some(fields) = http.body.as_object_mut() {
+                    fields.remove("temperature");
+                }
+                send(transport.clone(), http.clone(), request.cancel.clone()).await?
+            }
+            other => other?,
+        };
         let text = Self::content(&body)?;
         match json_text(&text) {
             // Spec section 11.2: a compatible server gets one more try, told
@@ -530,6 +541,47 @@ mod tests {
         assert_eq!(sent.body["max_completion_tokens"], 4096);
         assert!(sent.body.get("max_tokens").is_none());
         assert_eq!(sent.body["messages"][0]["role"], "system");
+    }
+
+    #[tokio::test]
+    async fn openai_retries_once_without_temperature_after_a_400() {
+        let bad = || {
+            Ok(crate::http::HttpResponse {
+                status: 400,
+                body: Value::Null,
+            })
+        };
+        let t = Recorder::replying(vec![
+            bad(),
+            Recorder::ok(json!({
+                "choices": [{ "finish_reason": "stop", "message": { "content": "{}" } }],
+            })),
+        ]);
+        let llm = OpenAiLlm::with_transport(Some("sk-o"), "o-x", OPENAI_URL, false, t.clone())
+            .expect("llm");
+        assert_eq!(
+            llm.generate_json(request()).await.expect("retried"),
+            json!({})
+        );
+        let sent = t.sent();
+        assert_eq!(sent.len(), 2);
+        assert!(sent[0].body.get("temperature").is_some());
+        assert!(sent[1].body.get("temperature").is_none());
+
+        // A second 400 is the answer, and compatible servers get no retry.
+        let t = Recorder::replying(vec![bad(), bad()]);
+        let llm = OpenAiLlm::with_transport(Some("sk-o"), "o-x", OPENAI_URL, false, t.clone())
+            .expect("llm");
+        let out = llm.generate_json(request()).await;
+        assert!(matches!(out, Err(LlmError::Http { status: 400 })));
+        assert_eq!(t.sent().len(), 2);
+        let t = Recorder::replying(vec![bad(), bad()]);
+        let llm =
+            OpenAiLlm::with_transport(None, "llama3", "http://localhost:11434/v1", true, t.clone())
+                .expect("llm");
+        let out = llm.generate_json(request()).await;
+        assert!(matches!(out, Err(LlmError::Http { status: 400 })));
+        assert_eq!(t.sent().len(), 1);
     }
 
     #[tokio::test]

@@ -66,6 +66,9 @@ impl UreqTransport {
         let agent = ureq::Agent::config_builder()
             .timeout_connect(Some(CONNECT_TIMEOUT.min(timeout)))
             .timeout_global(Some(timeout))
+            // A redirect could carry the API-key header to another host, so a
+            // 3xx is returned as it is and fails like any other status.
+            .max_redirects(0)
             // Statuses are handled here, so error bodies are read and dropped.
             .http_status_as_error(false)
             .build()

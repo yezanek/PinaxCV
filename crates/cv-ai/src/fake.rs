@@ -93,6 +93,11 @@ mod tests {
         LlmRequest::new("sys".into(), "user".into(), serde_json::json!({}), name)
     }
 
+    #[test]
+    fn name_identifies_the_fake_provider() {
+        assert_eq!(FakeLlm::new().name(), "Fake (no network)");
+    }
+
     #[tokio::test]
     async fn replies_come_back_in_order_per_schema() {
         let llm = FakeLlm::new()
