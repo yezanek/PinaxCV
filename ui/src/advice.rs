@@ -131,6 +131,7 @@ pub fn when(at: &str) -> String {
 pub fn review_message(session: &ReviewSession) -> String {
     match session.suggestions.len() {
         0 => t().ai_review_nothing.to_owned(),
+        1 => t().ai_review_done_one.to_owned(),
         n => fill(t().ai_review_done, &[("n", &n.to_string())]),
     }
 }
