@@ -1,0 +1,2885 @@
+{
+  "schema_version": 1,
+  "id": "01J03000000000000000000440",
+  "title": "Long",
+  "locale": "en",
+  "paper": "a4",
+  "template": "classic",
+  "options": {
+    "font_size_pt": 10.0,
+    "line_spacing": 1.1,
+    "margin_mm": 18.0,
+    "accent": null,
+    "date_style": "month_name_year"
+  },
+  "basics": {
+    "full_name": "Sample Person",
+    "headline": "Senior Rust Engineer",
+    "email": "sample@example.org",
+    "phone": null,
+    "location": "Exampletown, Germany",
+    "links": []
+  },
+  "summary": "Systems engineer with long experience across many teams.",
+  "sections": [
+    {
+      "type": "experience",
+      "id": "01J03000000000000000000437",
+      "title_override": null,
+      "entries": [
+        {
+          "id": "01J03000000000000000000001",
+          "title": "Senior Rust Engineer",
+          "org": "Ferrum Systems",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2021,
+              "month": null
+            },
+            "end": null,
+            "current": true
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000002",
+              "text": "Rewrote the trading gateway in Rust with Tokio, cutting p99 latency from 9 to 2 milliseconds."
+            },
+            {
+              "id": "01J03000000000000000000003",
+              "text": "Designed a lock-free order book in Rust that handles 400,000 updates per second."
+            },
+            {
+              "id": "01J03000000000000000000004",
+              "text": "Led a team of 5 engineers through the move from C++ to Rust over 18 months."
+            },
+            {
+              "id": "01J03000000000000000000005",
+              "text": "Added property-based tests with proptest that caught 14 parsing bugs before release."
+            },
+            {
+              "id": "01J03000000000000000000006",
+              "text": "Profiled hot paths with perf and flamegraphs, saving 30% of CPU time on the matching engine."
+            },
+            {
+              "id": "01J03000000000000000000007",
+              "text": "Wrote the internal Rust style guide and reviewed about 600 pull requests in 2023."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000008",
+          "title": "Software Engineer (Go)",
+          "org": "Blue Harbor (1)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2019,
+              "month": null
+            },
+            "end": {
+              "year": 2020,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000009",
+              "text": "Maintained 4 internal Go services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000010",
+              "text": "Migrated 15 database tables to a new schema without downtime over 3 weekends."
+            },
+            {
+              "id": "01J03000000000000000000011",
+              "text": "Reduced the nightly batch runtime from 51 to 21 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000012",
+              "text": "Mentored 2 junior developers and ran a weekly Go reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000013",
+              "text": "Wrote runbooks for 8 recurring incidents and cut the mean time to recovery by 11%."
+            },
+            {
+              "id": "01J03000000000000000000014",
+              "text": "Automated 3 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000015",
+          "title": "Software Engineer (Java)",
+          "org": "Quantis (2)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2019,
+              "month": null
+            },
+            "end": {
+              "year": 2020,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000016",
+              "text": "Maintained 5 internal Java services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000017",
+              "text": "Migrated 25 database tables to a new schema without downtime over 4 weekends."
+            },
+            {
+              "id": "01J03000000000000000000018",
+              "text": "Reduced the nightly batch runtime from 52 to 22 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000019",
+              "text": "Mentored 3 junior developers and ran a weekly Java reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000020",
+              "text": "Wrote runbooks for 9 recurring incidents and cut the mean time to recovery by 12%."
+            },
+            {
+              "id": "01J03000000000000000000021",
+              "text": "Automated 4 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000022",
+          "title": "Software Engineer (Python)",
+          "org": "Meridian Labs (3)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2018,
+              "month": null
+            },
+            "end": {
+              "year": 2019,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000023",
+              "text": "Maintained 6 internal Python services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000024",
+              "text": "Migrated 35 database tables to a new schema without downtime over 5 weekends."
+            },
+            {
+              "id": "01J03000000000000000000025",
+              "text": "Reduced the nightly batch runtime from 53 to 23 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000026",
+              "text": "Mentored 4 junior developers and ran a weekly Python reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000027",
+              "text": "Wrote runbooks for 10 recurring incidents and cut the mean time to recovery by 13%."
+            },
+            {
+              "id": "01J03000000000000000000028",
+              "text": "Automated 5 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000029",
+          "title": "Software Engineer (TypeScript)",
+          "org": "Nordlicht (4)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2018,
+              "month": null
+            },
+            "end": {
+              "year": 2019,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000030",
+              "text": "Maintained 7 internal TypeScript services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000031",
+              "text": "Migrated 45 database tables to a new schema without downtime over 6 weekends."
+            },
+            {
+              "id": "01J03000000000000000000032",
+              "text": "Reduced the nightly batch runtime from 54 to 24 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000033",
+              "text": "Mentored 1 junior developers and ran a weekly TypeScript reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000034",
+              "text": "Wrote runbooks for 11 recurring incidents and cut the mean time to recovery by 14%."
+            },
+            {
+              "id": "01J03000000000000000000035",
+              "text": "Automated 6 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000036",
+          "title": "Software Engineer (C++)",
+          "org": "Copperfield (5)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2017,
+              "month": null
+            },
+            "end": {
+              "year": 2018,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000037",
+              "text": "Maintained 8 internal C++ services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000038",
+              "text": "Migrated 55 database tables to a new schema without downtime over 7 weekends."
+            },
+            {
+              "id": "01J03000000000000000000039",
+              "text": "Reduced the nightly batch runtime from 55 to 25 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000040",
+              "text": "Mentored 2 junior developers and ran a weekly C++ reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000041",
+              "text": "Wrote runbooks for 12 recurring incidents and cut the mean time to recovery by 15%."
+            },
+            {
+              "id": "01J03000000000000000000042",
+              "text": "Automated 7 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000043",
+          "title": "Software Engineer (Kotlin)",
+          "org": "Atlas Data (6)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2017,
+              "month": null
+            },
+            "end": {
+              "year": 2018,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000044",
+              "text": "Maintained 9 internal Kotlin services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000045",
+              "text": "Migrated 65 database tables to a new schema without downtime over 2 weekends."
+            },
+            {
+              "id": "01J03000000000000000000046",
+              "text": "Reduced the nightly batch runtime from 56 to 26 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000047",
+              "text": "Mentored 3 junior developers and ran a weekly Kotlin reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000048",
+              "text": "Wrote runbooks for 13 recurring incidents and cut the mean time to recovery by 16%."
+            },
+            {
+              "id": "01J03000000000000000000049",
+              "text": "Automated 8 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000050",
+          "title": "Software Engineer (Scala)",
+          "org": "Greenway (7)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2016,
+              "month": null
+            },
+            "end": {
+              "year": 2017,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000051",
+              "text": "Maintained 10 internal Scala services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000052",
+              "text": "Migrated 75 database tables to a new schema without downtime over 3 weekends."
+            },
+            {
+              "id": "01J03000000000000000000053",
+              "text": "Reduced the nightly batch runtime from 57 to 27 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000054",
+              "text": "Mentored 4 junior developers and ran a weekly Scala reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000055",
+              "text": "Wrote runbooks for 14 recurring incidents and cut the mean time to recovery by 17%."
+            },
+            {
+              "id": "01J03000000000000000000056",
+              "text": "Automated 9 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000057",
+          "title": "Software Engineer (Rust)",
+          "org": "Helix Works (8)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2016,
+              "month": null
+            },
+            "end": {
+              "year": 2017,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000058",
+              "text": "Maintained 11 internal Rust services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000059",
+              "text": "Migrated 85 database tables to a new schema without downtime over 4 weekends."
+            },
+            {
+              "id": "01J03000000000000000000060",
+              "text": "Reduced the nightly batch runtime from 58 to 28 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000061",
+              "text": "Mentored 1 junior developers and ran a weekly Rust reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000062",
+              "text": "Wrote runbooks for 15 recurring incidents and cut the mean time to recovery by 18%."
+            },
+            {
+              "id": "01J03000000000000000000063",
+              "text": "Automated 10 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000064",
+          "title": "Software Engineer (Go)",
+          "org": "Orbit Retail (9)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2015,
+              "month": null
+            },
+            "end": {
+              "year": 2016,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000065",
+              "text": "Maintained 12 internal Go services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000066",
+              "text": "Migrated 95 database tables to a new schema without downtime over 5 weekends."
+            },
+            {
+              "id": "01J03000000000000000000067",
+              "text": "Reduced the nightly batch runtime from 59 to 29 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000068",
+              "text": "Mentored 2 junior developers and ran a weekly Go reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000069",
+              "text": "Wrote runbooks for 16 recurring incidents and cut the mean time to recovery by 19%."
+            },
+            {
+              "id": "01J03000000000000000000070",
+              "text": "Automated 11 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000071",
+          "title": "Software Engineer (Java)",
+          "org": "Pinecrest (10)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2015,
+              "month": null
+            },
+            "end": {
+              "year": 2016,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000072",
+              "text": "Maintained 13 internal Java services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000073",
+              "text": "Migrated 105 database tables to a new schema without downtime over 6 weekends."
+            },
+            {
+              "id": "01J03000000000000000000074",
+              "text": "Reduced the nightly batch runtime from 60 to 30 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000075",
+              "text": "Mentored 3 junior developers and ran a weekly Java reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000076",
+              "text": "Wrote runbooks for 17 recurring incidents and cut the mean time to recovery by 20%."
+            },
+            {
+              "id": "01J03000000000000000000077",
+              "text": "Automated 12 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000078",
+          "title": "Software Engineer (Python)",
+          "org": "Silverline (11)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2014,
+              "month": null
+            },
+            "end": {
+              "year": 2015,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000079",
+              "text": "Maintained 14 internal Python services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000080",
+              "text": "Migrated 115 database tables to a new schema without downtime over 7 weekends."
+            },
+            {
+              "id": "01J03000000000000000000081",
+              "text": "Reduced the nightly batch runtime from 61 to 31 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000082",
+              "text": "Mentored 4 junior developers and ran a weekly Python reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000083",
+              "text": "Wrote runbooks for 18 recurring incidents and cut the mean time to recovery by 21%."
+            },
+            {
+              "id": "01J03000000000000000000084",
+              "text": "Automated 13 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000085",
+          "title": "Software Engineer (TypeScript)",
+          "org": "Ferrum Systems (12)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2014,
+              "month": null
+            },
+            "end": {
+              "year": 2015,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000086",
+              "text": "Maintained 15 internal TypeScript services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000087",
+              "text": "Migrated 125 database tables to a new schema without downtime over 2 weekends."
+            },
+            {
+              "id": "01J03000000000000000000088",
+              "text": "Reduced the nightly batch runtime from 62 to 32 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000089",
+              "text": "Mentored 1 junior developers and ran a weekly TypeScript reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000090",
+              "text": "Wrote runbooks for 19 recurring incidents and cut the mean time to recovery by 22%."
+            },
+            {
+              "id": "01J03000000000000000000091",
+              "text": "Automated 14 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000092",
+          "title": "Software Engineer (C++)",
+          "org": "Blue Harbor (13)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2013,
+              "month": null
+            },
+            "end": {
+              "year": 2014,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000093",
+              "text": "Maintained 16 internal C++ services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000094",
+              "text": "Migrated 135 database tables to a new schema without downtime over 3 weekends."
+            },
+            {
+              "id": "01J03000000000000000000095",
+              "text": "Reduced the nightly batch runtime from 63 to 33 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000096",
+              "text": "Mentored 2 junior developers and ran a weekly C++ reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000097",
+              "text": "Wrote runbooks for 20 recurring incidents and cut the mean time to recovery by 23%."
+            },
+            {
+              "id": "01J03000000000000000000098",
+              "text": "Automated 15 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000099",
+          "title": "Software Engineer (Kotlin)",
+          "org": "Quantis (14)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2013,
+              "month": null
+            },
+            "end": {
+              "year": 2014,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000100",
+              "text": "Maintained 17 internal Kotlin services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000101",
+              "text": "Migrated 145 database tables to a new schema without downtime over 4 weekends."
+            },
+            {
+              "id": "01J03000000000000000000102",
+              "text": "Reduced the nightly batch runtime from 64 to 34 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000103",
+              "text": "Mentored 3 junior developers and ran a weekly Kotlin reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000104",
+              "text": "Wrote runbooks for 21 recurring incidents and cut the mean time to recovery by 24%."
+            },
+            {
+              "id": "01J03000000000000000000105",
+              "text": "Automated 16 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000106",
+          "title": "Software Engineer (Scala)",
+          "org": "Meridian Labs (15)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2012,
+              "month": null
+            },
+            "end": {
+              "year": 2013,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000107",
+              "text": "Maintained 18 internal Scala services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000108",
+              "text": "Migrated 155 database tables to a new schema without downtime over 5 weekends."
+            },
+            {
+              "id": "01J03000000000000000000109",
+              "text": "Reduced the nightly batch runtime from 65 to 35 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000110",
+              "text": "Mentored 4 junior developers and ran a weekly Scala reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000111",
+              "text": "Wrote runbooks for 22 recurring incidents and cut the mean time to recovery by 25%."
+            },
+            {
+              "id": "01J03000000000000000000112",
+              "text": "Automated 17 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000113",
+          "title": "Software Engineer (Rust)",
+          "org": "Nordlicht (16)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2012,
+              "month": null
+            },
+            "end": {
+              "year": 2013,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000114",
+              "text": "Maintained 19 internal Rust services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000115",
+              "text": "Migrated 165 database tables to a new schema without downtime over 6 weekends."
+            },
+            {
+              "id": "01J03000000000000000000116",
+              "text": "Reduced the nightly batch runtime from 66 to 36 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000117",
+              "text": "Mentored 1 junior developers and ran a weekly Rust reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000118",
+              "text": "Wrote runbooks for 23 recurring incidents and cut the mean time to recovery by 26%."
+            },
+            {
+              "id": "01J03000000000000000000119",
+              "text": "Automated 18 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000120",
+          "title": "Software Engineer (Go)",
+          "org": "Copperfield (17)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2011,
+              "month": null
+            },
+            "end": {
+              "year": 2012,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000121",
+              "text": "Maintained 20 internal Go services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000122",
+              "text": "Migrated 175 database tables to a new schema without downtime over 7 weekends."
+            },
+            {
+              "id": "01J03000000000000000000123",
+              "text": "Reduced the nightly batch runtime from 67 to 37 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000124",
+              "text": "Mentored 2 junior developers and ran a weekly Go reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000125",
+              "text": "Wrote runbooks for 24 recurring incidents and cut the mean time to recovery by 27%."
+            },
+            {
+              "id": "01J03000000000000000000126",
+              "text": "Automated 19 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000127",
+          "title": "Software Engineer (Java)",
+          "org": "Atlas Data (18)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2011,
+              "month": null
+            },
+            "end": {
+              "year": 2012,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000128",
+              "text": "Maintained 21 internal Java services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000129",
+              "text": "Migrated 185 database tables to a new schema without downtime over 2 weekends."
+            },
+            {
+              "id": "01J03000000000000000000130",
+              "text": "Reduced the nightly batch runtime from 68 to 38 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000131",
+              "text": "Mentored 3 junior developers and ran a weekly Java reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000132",
+              "text": "Wrote runbooks for 25 recurring incidents and cut the mean time to recovery by 28%."
+            },
+            {
+              "id": "01J03000000000000000000133",
+              "text": "Automated 20 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000134",
+          "title": "Software Engineer (Python)",
+          "org": "Greenway (19)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2010,
+              "month": null
+            },
+            "end": {
+              "year": 2011,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000135",
+              "text": "Maintained 22 internal Python services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000136",
+              "text": "Migrated 195 database tables to a new schema without downtime over 3 weekends."
+            },
+            {
+              "id": "01J03000000000000000000137",
+              "text": "Reduced the nightly batch runtime from 69 to 39 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000138",
+              "text": "Mentored 4 junior developers and ran a weekly Python reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000139",
+              "text": "Wrote runbooks for 26 recurring incidents and cut the mean time to recovery by 29%."
+            },
+            {
+              "id": "01J03000000000000000000140",
+              "text": "Automated 21 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000141",
+          "title": "Software Engineer (TypeScript)",
+          "org": "Helix Works (20)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2010,
+              "month": null
+            },
+            "end": {
+              "year": 2011,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000142",
+              "text": "Maintained 23 internal TypeScript services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000143",
+              "text": "Migrated 205 database tables to a new schema without downtime over 4 weekends."
+            },
+            {
+              "id": "01J03000000000000000000144",
+              "text": "Reduced the nightly batch runtime from 70 to 40 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000145",
+              "text": "Mentored 1 junior developers and ran a weekly TypeScript reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000146",
+              "text": "Wrote runbooks for 27 recurring incidents and cut the mean time to recovery by 30%."
+            },
+            {
+              "id": "01J03000000000000000000147",
+              "text": "Automated 22 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000148",
+          "title": "Software Engineer (C++)",
+          "org": "Orbit Retail (21)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2009,
+              "month": null
+            },
+            "end": {
+              "year": 2010,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000149",
+              "text": "Maintained 24 internal C++ services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000150",
+              "text": "Migrated 215 database tables to a new schema without downtime over 5 weekends."
+            },
+            {
+              "id": "01J03000000000000000000151",
+              "text": "Reduced the nightly batch runtime from 71 to 41 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000152",
+              "text": "Mentored 2 junior developers and ran a weekly C++ reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000153",
+              "text": "Wrote runbooks for 28 recurring incidents and cut the mean time to recovery by 31%."
+            },
+            {
+              "id": "01J03000000000000000000154",
+              "text": "Automated 23 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000155",
+          "title": "Software Engineer (Kotlin)",
+          "org": "Pinecrest (22)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2009,
+              "month": null
+            },
+            "end": {
+              "year": 2010,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000156",
+              "text": "Maintained 25 internal Kotlin services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000157",
+              "text": "Migrated 225 database tables to a new schema without downtime over 6 weekends."
+            },
+            {
+              "id": "01J03000000000000000000158",
+              "text": "Reduced the nightly batch runtime from 72 to 42 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000159",
+              "text": "Mentored 3 junior developers and ran a weekly Kotlin reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000160",
+              "text": "Wrote runbooks for 29 recurring incidents and cut the mean time to recovery by 32%."
+            },
+            {
+              "id": "01J03000000000000000000161",
+              "text": "Automated 24 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000162",
+          "title": "Software Engineer (Scala)",
+          "org": "Silverline (23)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2008,
+              "month": null
+            },
+            "end": {
+              "year": 2009,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000163",
+              "text": "Maintained 26 internal Scala services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000164",
+              "text": "Migrated 235 database tables to a new schema without downtime over 7 weekends."
+            },
+            {
+              "id": "01J03000000000000000000165",
+              "text": "Reduced the nightly batch runtime from 73 to 43 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000166",
+              "text": "Mentored 4 junior developers and ran a weekly Scala reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000167",
+              "text": "Wrote runbooks for 30 recurring incidents and cut the mean time to recovery by 33%."
+            },
+            {
+              "id": "01J03000000000000000000168",
+              "text": "Automated 25 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000169",
+          "title": "Software Engineer (Rust)",
+          "org": "Ferrum Systems (24)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2008,
+              "month": null
+            },
+            "end": {
+              "year": 2009,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000170",
+              "text": "Maintained 27 internal Rust services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000171",
+              "text": "Migrated 245 database tables to a new schema without downtime over 2 weekends."
+            },
+            {
+              "id": "01J03000000000000000000172",
+              "text": "Reduced the nightly batch runtime from 74 to 44 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000173",
+              "text": "Mentored 1 junior developers and ran a weekly Rust reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000174",
+              "text": "Wrote runbooks for 31 recurring incidents and cut the mean time to recovery by 34%."
+            },
+            {
+              "id": "01J03000000000000000000175",
+              "text": "Automated 26 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000176",
+          "title": "Software Engineer (Go)",
+          "org": "Blue Harbor (25)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2007,
+              "month": null
+            },
+            "end": {
+              "year": 2008,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000177",
+              "text": "Maintained 28 internal Go services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000178",
+              "text": "Migrated 255 database tables to a new schema without downtime over 3 weekends."
+            },
+            {
+              "id": "01J03000000000000000000179",
+              "text": "Reduced the nightly batch runtime from 75 to 45 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000180",
+              "text": "Mentored 2 junior developers and ran a weekly Go reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000181",
+              "text": "Wrote runbooks for 32 recurring incidents and cut the mean time to recovery by 35%."
+            },
+            {
+              "id": "01J03000000000000000000182",
+              "text": "Automated 27 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000183",
+          "title": "Software Engineer (Java)",
+          "org": "Quantis (26)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2007,
+              "month": null
+            },
+            "end": {
+              "year": 2008,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000184",
+              "text": "Maintained 29 internal Java services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000185",
+              "text": "Migrated 265 database tables to a new schema without downtime over 4 weekends."
+            },
+            {
+              "id": "01J03000000000000000000186",
+              "text": "Reduced the nightly batch runtime from 76 to 46 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000187",
+              "text": "Mentored 3 junior developers and ran a weekly Java reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000188",
+              "text": "Wrote runbooks for 33 recurring incidents and cut the mean time to recovery by 36%."
+            },
+            {
+              "id": "01J03000000000000000000189",
+              "text": "Automated 28 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000190",
+          "title": "Software Engineer (Python)",
+          "org": "Meridian Labs (27)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2006,
+              "month": null
+            },
+            "end": {
+              "year": 2007,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000191",
+              "text": "Maintained 30 internal Python services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000192",
+              "text": "Migrated 275 database tables to a new schema without downtime over 5 weekends."
+            },
+            {
+              "id": "01J03000000000000000000193",
+              "text": "Reduced the nightly batch runtime from 77 to 47 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000194",
+              "text": "Mentored 4 junior developers and ran a weekly Python reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000195",
+              "text": "Wrote runbooks for 34 recurring incidents and cut the mean time to recovery by 37%."
+            },
+            {
+              "id": "01J03000000000000000000196",
+              "text": "Automated 29 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000197",
+          "title": "Software Engineer (TypeScript)",
+          "org": "Nordlicht (28)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2006,
+              "month": null
+            },
+            "end": {
+              "year": 2007,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000198",
+              "text": "Maintained 31 internal TypeScript services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000199",
+              "text": "Migrated 285 database tables to a new schema without downtime over 6 weekends."
+            },
+            {
+              "id": "01J03000000000000000000200",
+              "text": "Reduced the nightly batch runtime from 78 to 48 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000201",
+              "text": "Mentored 1 junior developers and ran a weekly TypeScript reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000202",
+              "text": "Wrote runbooks for 35 recurring incidents and cut the mean time to recovery by 38%."
+            },
+            {
+              "id": "01J03000000000000000000203",
+              "text": "Automated 30 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000204",
+          "title": "Software Engineer (C++)",
+          "org": "Copperfield (29)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2005,
+              "month": null
+            },
+            "end": {
+              "year": 2006,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000205",
+              "text": "Maintained 32 internal C++ services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000206",
+              "text": "Migrated 295 database tables to a new schema without downtime over 7 weekends."
+            },
+            {
+              "id": "01J03000000000000000000207",
+              "text": "Reduced the nightly batch runtime from 79 to 49 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000208",
+              "text": "Mentored 2 junior developers and ran a weekly C++ reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000209",
+              "text": "Wrote runbooks for 36 recurring incidents and cut the mean time to recovery by 39%."
+            },
+            {
+              "id": "01J03000000000000000000210",
+              "text": "Automated 31 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000211",
+          "title": "Software Engineer (Kotlin)",
+          "org": "Atlas Data (30)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2005,
+              "month": null
+            },
+            "end": {
+              "year": 2006,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000212",
+              "text": "Maintained 33 internal Kotlin services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000213",
+              "text": "Migrated 305 database tables to a new schema without downtime over 2 weekends."
+            },
+            {
+              "id": "01J03000000000000000000214",
+              "text": "Reduced the nightly batch runtime from 80 to 50 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000215",
+              "text": "Mentored 3 junior developers and ran a weekly Kotlin reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000216",
+              "text": "Wrote runbooks for 37 recurring incidents and cut the mean time to recovery by 10%."
+            },
+            {
+              "id": "01J03000000000000000000217",
+              "text": "Automated 32 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000218",
+          "title": "Software Engineer (Scala)",
+          "org": "Greenway (31)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2004,
+              "month": null
+            },
+            "end": {
+              "year": 2005,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000219",
+              "text": "Maintained 34 internal Scala services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000220",
+              "text": "Migrated 315 database tables to a new schema without downtime over 3 weekends."
+            },
+            {
+              "id": "01J03000000000000000000221",
+              "text": "Reduced the nightly batch runtime from 81 to 51 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000222",
+              "text": "Mentored 4 junior developers and ran a weekly Scala reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000223",
+              "text": "Wrote runbooks for 38 recurring incidents and cut the mean time to recovery by 11%."
+            },
+            {
+              "id": "01J03000000000000000000224",
+              "text": "Automated 33 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000225",
+          "title": "Software Engineer (Rust)",
+          "org": "Helix Works (32)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2004,
+              "month": null
+            },
+            "end": {
+              "year": 2005,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000226",
+              "text": "Maintained 35 internal Rust services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000227",
+              "text": "Migrated 325 database tables to a new schema without downtime over 4 weekends."
+            },
+            {
+              "id": "01J03000000000000000000228",
+              "text": "Reduced the nightly batch runtime from 82 to 52 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000229",
+              "text": "Mentored 1 junior developers and ran a weekly Rust reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000230",
+              "text": "Wrote runbooks for 39 recurring incidents and cut the mean time to recovery by 12%."
+            },
+            {
+              "id": "01J03000000000000000000231",
+              "text": "Automated 34 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000232",
+          "title": "Software Engineer (Go)",
+          "org": "Orbit Retail (33)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2003,
+              "month": null
+            },
+            "end": {
+              "year": 2004,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000233",
+              "text": "Maintained 36 internal Go services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000234",
+              "text": "Migrated 335 database tables to a new schema without downtime over 5 weekends."
+            },
+            {
+              "id": "01J03000000000000000000235",
+              "text": "Reduced the nightly batch runtime from 83 to 53 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000236",
+              "text": "Mentored 2 junior developers and ran a weekly Go reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000237",
+              "text": "Wrote runbooks for 40 recurring incidents and cut the mean time to recovery by 13%."
+            },
+            {
+              "id": "01J03000000000000000000238",
+              "text": "Automated 35 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000239",
+          "title": "Software Engineer (Java)",
+          "org": "Pinecrest (34)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2003,
+              "month": null
+            },
+            "end": {
+              "year": 2004,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000240",
+              "text": "Maintained 37 internal Java services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000241",
+              "text": "Migrated 345 database tables to a new schema without downtime over 6 weekends."
+            },
+            {
+              "id": "01J03000000000000000000242",
+              "text": "Reduced the nightly batch runtime from 84 to 54 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000243",
+              "text": "Mentored 3 junior developers and ran a weekly Java reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000244",
+              "text": "Wrote runbooks for 41 recurring incidents and cut the mean time to recovery by 14%."
+            },
+            {
+              "id": "01J03000000000000000000245",
+              "text": "Automated 36 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000246",
+          "title": "Software Engineer (Python)",
+          "org": "Silverline (35)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2002,
+              "month": null
+            },
+            "end": {
+              "year": 2003,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000247",
+              "text": "Maintained 38 internal Python services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000248",
+              "text": "Migrated 355 database tables to a new schema without downtime over 7 weekends."
+            },
+            {
+              "id": "01J03000000000000000000249",
+              "text": "Reduced the nightly batch runtime from 85 to 55 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000250",
+              "text": "Mentored 4 junior developers and ran a weekly Python reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000251",
+              "text": "Wrote runbooks for 42 recurring incidents and cut the mean time to recovery by 15%."
+            },
+            {
+              "id": "01J03000000000000000000252",
+              "text": "Automated 37 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000253",
+          "title": "Software Engineer (TypeScript)",
+          "org": "Ferrum Systems (36)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2002,
+              "month": null
+            },
+            "end": {
+              "year": 2003,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000254",
+              "text": "Maintained 39 internal TypeScript services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000255",
+              "text": "Migrated 365 database tables to a new schema without downtime over 2 weekends."
+            },
+            {
+              "id": "01J03000000000000000000256",
+              "text": "Reduced the nightly batch runtime from 86 to 56 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000257",
+              "text": "Mentored 1 junior developers and ran a weekly TypeScript reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000258",
+              "text": "Wrote runbooks for 43 recurring incidents and cut the mean time to recovery by 16%."
+            },
+            {
+              "id": "01J03000000000000000000259",
+              "text": "Automated 38 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000260",
+          "title": "Software Engineer (C++)",
+          "org": "Blue Harbor (37)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2001,
+              "month": null
+            },
+            "end": {
+              "year": 2002,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000261",
+              "text": "Maintained 40 internal C++ services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000262",
+              "text": "Migrated 375 database tables to a new schema without downtime over 3 weekends."
+            },
+            {
+              "id": "01J03000000000000000000263",
+              "text": "Reduced the nightly batch runtime from 87 to 57 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000264",
+              "text": "Mentored 2 junior developers and ran a weekly C++ reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000265",
+              "text": "Wrote runbooks for 44 recurring incidents and cut the mean time to recovery by 17%."
+            },
+            {
+              "id": "01J03000000000000000000266",
+              "text": "Automated 39 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000267",
+          "title": "Software Engineer (Kotlin)",
+          "org": "Quantis (38)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2001,
+              "month": null
+            },
+            "end": {
+              "year": 2002,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000268",
+              "text": "Maintained 41 internal Kotlin services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000269",
+              "text": "Migrated 385 database tables to a new schema without downtime over 4 weekends."
+            },
+            {
+              "id": "01J03000000000000000000270",
+              "text": "Reduced the nightly batch runtime from 88 to 58 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000271",
+              "text": "Mentored 3 junior developers and ran a weekly Kotlin reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000272",
+              "text": "Wrote runbooks for 45 recurring incidents and cut the mean time to recovery by 18%."
+            },
+            {
+              "id": "01J03000000000000000000273",
+              "text": "Automated 40 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000274",
+          "title": "Software Engineer (Scala)",
+          "org": "Meridian Labs (39)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2000,
+              "month": null
+            },
+            "end": {
+              "year": 2001,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000275",
+              "text": "Maintained 42 internal Scala services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000276",
+              "text": "Migrated 395 database tables to a new schema without downtime over 5 weekends."
+            },
+            {
+              "id": "01J03000000000000000000277",
+              "text": "Reduced the nightly batch runtime from 89 to 59 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000278",
+              "text": "Mentored 4 junior developers and ran a weekly Scala reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000279",
+              "text": "Wrote runbooks for 46 recurring incidents and cut the mean time to recovery by 19%."
+            },
+            {
+              "id": "01J03000000000000000000280",
+              "text": "Automated 41 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000281",
+          "title": "Software Engineer (Rust)",
+          "org": "Nordlicht (40)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2000,
+              "month": null
+            },
+            "end": {
+              "year": 2001,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000282",
+              "text": "Maintained 43 internal Rust services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000283",
+              "text": "Migrated 405 database tables to a new schema without downtime over 6 weekends."
+            },
+            {
+              "id": "01J03000000000000000000284",
+              "text": "Reduced the nightly batch runtime from 90 to 60 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000285",
+              "text": "Mentored 1 junior developers and ran a weekly Rust reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000286",
+              "text": "Wrote runbooks for 47 recurring incidents and cut the mean time to recovery by 20%."
+            },
+            {
+              "id": "01J03000000000000000000287",
+              "text": "Automated 42 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000288",
+          "title": "Software Engineer (Go)",
+          "org": "Copperfield (41)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 1999,
+              "month": null
+            },
+            "end": {
+              "year": 2000,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000289",
+              "text": "Maintained 44 internal Go services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000290",
+              "text": "Migrated 415 database tables to a new schema without downtime over 7 weekends."
+            },
+            {
+              "id": "01J03000000000000000000291",
+              "text": "Reduced the nightly batch runtime from 91 to 61 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000292",
+              "text": "Mentored 2 junior developers and ran a weekly Go reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000293",
+              "text": "Wrote runbooks for 48 recurring incidents and cut the mean time to recovery by 21%."
+            },
+            {
+              "id": "01J03000000000000000000294",
+              "text": "Automated 43 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000295",
+          "title": "Software Engineer (Java)",
+          "org": "Atlas Data (42)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 1999,
+              "month": null
+            },
+            "end": {
+              "year": 2000,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000296",
+              "text": "Maintained 45 internal Java services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000297",
+              "text": "Migrated 425 database tables to a new schema without downtime over 2 weekends."
+            },
+            {
+              "id": "01J03000000000000000000298",
+              "text": "Reduced the nightly batch runtime from 92 to 62 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000299",
+              "text": "Mentored 3 junior developers and ran a weekly Java reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000300",
+              "text": "Wrote runbooks for 49 recurring incidents and cut the mean time to recovery by 22%."
+            },
+            {
+              "id": "01J03000000000000000000301",
+              "text": "Automated 44 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000302",
+          "title": "Software Engineer (Python)",
+          "org": "Greenway (43)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 1998,
+              "month": null
+            },
+            "end": {
+              "year": 1999,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000303",
+              "text": "Maintained 46 internal Python services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000304",
+              "text": "Migrated 435 database tables to a new schema without downtime over 3 weekends."
+            },
+            {
+              "id": "01J03000000000000000000305",
+              "text": "Reduced the nightly batch runtime from 93 to 63 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000306",
+              "text": "Mentored 4 junior developers and ran a weekly Python reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000307",
+              "text": "Wrote runbooks for 50 recurring incidents and cut the mean time to recovery by 23%."
+            },
+            {
+              "id": "01J03000000000000000000308",
+              "text": "Automated 45 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000309",
+          "title": "Software Engineer (TypeScript)",
+          "org": "Helix Works (44)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 1998,
+              "month": null
+            },
+            "end": {
+              "year": 1999,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000310",
+              "text": "Maintained 47 internal TypeScript services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000311",
+              "text": "Migrated 445 database tables to a new schema without downtime over 4 weekends."
+            },
+            {
+              "id": "01J03000000000000000000312",
+              "text": "Reduced the nightly batch runtime from 94 to 64 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000313",
+              "text": "Mentored 1 junior developers and ran a weekly TypeScript reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000314",
+              "text": "Wrote runbooks for 51 recurring incidents and cut the mean time to recovery by 24%."
+            },
+            {
+              "id": "01J03000000000000000000315",
+              "text": "Automated 46 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000316",
+          "title": "Software Engineer (C++)",
+          "org": "Orbit Retail (45)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 1997,
+              "month": null
+            },
+            "end": {
+              "year": 1998,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000317",
+              "text": "Maintained 48 internal C++ services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000318",
+              "text": "Migrated 455 database tables to a new schema without downtime over 5 weekends."
+            },
+            {
+              "id": "01J03000000000000000000319",
+              "text": "Reduced the nightly batch runtime from 95 to 65 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000320",
+              "text": "Mentored 2 junior developers and ran a weekly C++ reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000321",
+              "text": "Wrote runbooks for 52 recurring incidents and cut the mean time to recovery by 25%."
+            },
+            {
+              "id": "01J03000000000000000000322",
+              "text": "Automated 47 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000323",
+          "title": "Software Engineer (Kotlin)",
+          "org": "Pinecrest (46)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 1997,
+              "month": null
+            },
+            "end": {
+              "year": 1998,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000324",
+              "text": "Maintained 49 internal Kotlin services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000325",
+              "text": "Migrated 465 database tables to a new schema without downtime over 6 weekends."
+            },
+            {
+              "id": "01J03000000000000000000326",
+              "text": "Reduced the nightly batch runtime from 96 to 66 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000327",
+              "text": "Mentored 3 junior developers and ran a weekly Kotlin reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000328",
+              "text": "Wrote runbooks for 53 recurring incidents and cut the mean time to recovery by 26%."
+            },
+            {
+              "id": "01J03000000000000000000329",
+              "text": "Automated 48 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000330",
+          "title": "Software Engineer (Scala)",
+          "org": "Silverline (47)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 1996,
+              "month": null
+            },
+            "end": {
+              "year": 1997,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000331",
+              "text": "Maintained 50 internal Scala services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000332",
+              "text": "Migrated 475 database tables to a new schema without downtime over 7 weekends."
+            },
+            {
+              "id": "01J03000000000000000000333",
+              "text": "Reduced the nightly batch runtime from 97 to 67 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000334",
+              "text": "Mentored 4 junior developers and ran a weekly Scala reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000335",
+              "text": "Wrote runbooks for 54 recurring incidents and cut the mean time to recovery by 27%."
+            },
+            {
+              "id": "01J03000000000000000000336",
+              "text": "Automated 49 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000337",
+          "title": "Software Engineer (Rust)",
+          "org": "Ferrum Systems (48)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 1996,
+              "month": null
+            },
+            "end": {
+              "year": 1997,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000338",
+              "text": "Maintained 51 internal Rust services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000339",
+              "text": "Migrated 485 database tables to a new schema without downtime over 2 weekends."
+            },
+            {
+              "id": "01J03000000000000000000340",
+              "text": "Reduced the nightly batch runtime from 98 to 68 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000341",
+              "text": "Mentored 1 junior developers and ran a weekly Rust reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000342",
+              "text": "Wrote runbooks for 55 recurring incidents and cut the mean time to recovery by 28%."
+            },
+            {
+              "id": "01J03000000000000000000343",
+              "text": "Automated 50 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000344",
+          "title": "Software Engineer (Go)",
+          "org": "Blue Harbor (49)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 1995,
+              "month": null
+            },
+            "end": {
+              "year": 1996,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000345",
+              "text": "Maintained 52 internal Go services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000346",
+              "text": "Migrated 495 database tables to a new schema without downtime over 3 weekends."
+            },
+            {
+              "id": "01J03000000000000000000347",
+              "text": "Reduced the nightly batch runtime from 99 to 69 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000348",
+              "text": "Mentored 2 junior developers and ran a weekly Go reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000349",
+              "text": "Wrote runbooks for 56 recurring incidents and cut the mean time to recovery by 29%."
+            },
+            {
+              "id": "01J03000000000000000000350",
+              "text": "Automated 51 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000351",
+          "title": "Software Engineer (Java)",
+          "org": "Quantis (50)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 1995,
+              "month": null
+            },
+            "end": {
+              "year": 1996,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000352",
+              "text": "Maintained 53 internal Java services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000353",
+              "text": "Migrated 505 database tables to a new schema without downtime over 4 weekends."
+            },
+            {
+              "id": "01J03000000000000000000354",
+              "text": "Reduced the nightly batch runtime from 100 to 70 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000355",
+              "text": "Mentored 3 junior developers and ran a weekly Java reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000356",
+              "text": "Wrote runbooks for 57 recurring incidents and cut the mean time to recovery by 30%."
+            },
+            {
+              "id": "01J03000000000000000000357",
+              "text": "Automated 52 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000358",
+          "title": "Software Engineer (Python)",
+          "org": "Meridian Labs (51)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 1994,
+              "month": null
+            },
+            "end": {
+              "year": 1995,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000359",
+              "text": "Maintained 54 internal Python services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000360",
+              "text": "Migrated 515 database tables to a new schema without downtime over 5 weekends."
+            },
+            {
+              "id": "01J03000000000000000000361",
+              "text": "Reduced the nightly batch runtime from 101 to 71 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000362",
+              "text": "Mentored 4 junior developers and ran a weekly Python reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000363",
+              "text": "Wrote runbooks for 58 recurring incidents and cut the mean time to recovery by 31%."
+            },
+            {
+              "id": "01J03000000000000000000364",
+              "text": "Automated 53 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000365",
+          "title": "Software Engineer (TypeScript)",
+          "org": "Nordlicht (52)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 1994,
+              "month": null
+            },
+            "end": {
+              "year": 1995,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000366",
+              "text": "Maintained 55 internal TypeScript services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000367",
+              "text": "Migrated 525 database tables to a new schema without downtime over 6 weekends."
+            },
+            {
+              "id": "01J03000000000000000000368",
+              "text": "Reduced the nightly batch runtime from 102 to 72 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000369",
+              "text": "Mentored 1 junior developers and ran a weekly TypeScript reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000370",
+              "text": "Wrote runbooks for 59 recurring incidents and cut the mean time to recovery by 32%."
+            },
+            {
+              "id": "01J03000000000000000000371",
+              "text": "Automated 54 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000372",
+          "title": "Software Engineer (C++)",
+          "org": "Copperfield (53)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 1993,
+              "month": null
+            },
+            "end": {
+              "year": 1994,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000373",
+              "text": "Maintained 56 internal C++ services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000374",
+              "text": "Migrated 535 database tables to a new schema without downtime over 7 weekends."
+            },
+            {
+              "id": "01J03000000000000000000375",
+              "text": "Reduced the nightly batch runtime from 103 to 73 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000376",
+              "text": "Mentored 2 junior developers and ran a weekly C++ reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000377",
+              "text": "Wrote runbooks for 60 recurring incidents and cut the mean time to recovery by 33%."
+            },
+            {
+              "id": "01J03000000000000000000378",
+              "text": "Automated 55 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000379",
+          "title": "Software Engineer (Kotlin)",
+          "org": "Atlas Data (54)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 1993,
+              "month": null
+            },
+            "end": {
+              "year": 1994,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000380",
+              "text": "Maintained 57 internal Kotlin services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000381",
+              "text": "Migrated 545 database tables to a new schema without downtime over 2 weekends."
+            },
+            {
+              "id": "01J03000000000000000000382",
+              "text": "Reduced the nightly batch runtime from 104 to 74 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000383",
+              "text": "Mentored 3 junior developers and ran a weekly Kotlin reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000384",
+              "text": "Wrote runbooks for 61 recurring incidents and cut the mean time to recovery by 34%."
+            },
+            {
+              "id": "01J03000000000000000000385",
+              "text": "Automated 56 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000386",
+          "title": "Software Engineer (Scala)",
+          "org": "Greenway (55)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 1992,
+              "month": null
+            },
+            "end": {
+              "year": 1993,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000387",
+              "text": "Maintained 58 internal Scala services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000388",
+              "text": "Migrated 555 database tables to a new schema without downtime over 3 weekends."
+            },
+            {
+              "id": "01J03000000000000000000389",
+              "text": "Reduced the nightly batch runtime from 105 to 75 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000390",
+              "text": "Mentored 4 junior developers and ran a weekly Scala reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000391",
+              "text": "Wrote runbooks for 62 recurring incidents and cut the mean time to recovery by 35%."
+            },
+            {
+              "id": "01J03000000000000000000392",
+              "text": "Automated 57 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000393",
+          "title": "Software Engineer (Rust)",
+          "org": "Helix Works (56)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 1992,
+              "month": null
+            },
+            "end": {
+              "year": 1993,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000394",
+              "text": "Maintained 59 internal Rust services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000395",
+              "text": "Migrated 565 database tables to a new schema without downtime over 4 weekends."
+            },
+            {
+              "id": "01J03000000000000000000396",
+              "text": "Reduced the nightly batch runtime from 106 to 76 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000397",
+              "text": "Mentored 1 junior developers and ran a weekly Rust reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000398",
+              "text": "Wrote runbooks for 63 recurring incidents and cut the mean time to recovery by 36%."
+            },
+            {
+              "id": "01J03000000000000000000399",
+              "text": "Automated 58 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000400",
+          "title": "Software Engineer (Go)",
+          "org": "Orbit Retail (57)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 1991,
+              "month": null
+            },
+            "end": {
+              "year": 1992,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000401",
+              "text": "Maintained 60 internal Go services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000402",
+              "text": "Migrated 575 database tables to a new schema without downtime over 5 weekends."
+            },
+            {
+              "id": "01J03000000000000000000403",
+              "text": "Reduced the nightly batch runtime from 107 to 77 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000404",
+              "text": "Mentored 2 junior developers and ran a weekly Go reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000405",
+              "text": "Wrote runbooks for 64 recurring incidents and cut the mean time to recovery by 37%."
+            },
+            {
+              "id": "01J03000000000000000000406",
+              "text": "Automated 59 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000407",
+          "title": "Software Engineer (Java)",
+          "org": "Pinecrest (58)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 1991,
+              "month": null
+            },
+            "end": {
+              "year": 1992,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000408",
+              "text": "Maintained 61 internal Java services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000409",
+              "text": "Migrated 585 database tables to a new schema without downtime over 6 weekends."
+            },
+            {
+              "id": "01J03000000000000000000410",
+              "text": "Reduced the nightly batch runtime from 108 to 78 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000411",
+              "text": "Mentored 3 junior developers and ran a weekly Java reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000412",
+              "text": "Wrote runbooks for 65 recurring incidents and cut the mean time to recovery by 38%."
+            },
+            {
+              "id": "01J03000000000000000000413",
+              "text": "Automated 60 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000414",
+          "title": "Software Engineer (Python)",
+          "org": "Silverline (59)",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 1990,
+              "month": null
+            },
+            "end": {
+              "year": 1991,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000415",
+              "text": "Maintained 62 internal Python services for the billing and invoicing teams of the company."
+            },
+            {
+              "id": "01J03000000000000000000416",
+              "text": "Migrated 595 database tables to a new schema without downtime over 7 weekends."
+            },
+            {
+              "id": "01J03000000000000000000417",
+              "text": "Reduced the nightly batch runtime from 109 to 79 minutes by caching reference data in memory."
+            },
+            {
+              "id": "01J03000000000000000000418",
+              "text": "Mentored 4 junior developers and ran a weekly Python reading group for the whole department."
+            },
+            {
+              "id": "01J03000000000000000000419",
+              "text": "Wrote runbooks for 66 recurring incidents and cut the mean time to recovery by 39%."
+            },
+            {
+              "id": "01J03000000000000000000420",
+              "text": "Automated 61 release steps with shell scripts and CI pipelines, saving hours each release week."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000421",
+          "title": "Barista",
+          "org": "Bean There Cafe",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2008,
+              "month": null
+            },
+            "end": {
+              "year": 2010,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000422",
+              "text": "Prepared espresso drinks for up to 300 customers on busy weekend mornings in the old town."
+            },
+            {
+              "id": "01J03000000000000000000423",
+              "text": "Trained 4 new baristas on milk texturing, latte art and keeping the espresso machine clean."
+            },
+            {
+              "id": "01J03000000000000000000424",
+              "text": "Counted the till at closing and kept the daily cash difference under 2 euros for two years."
+            },
+            {
+              "id": "01J03000000000000000000425",
+              "text": "Ordered beans and milk from 3 local suppliers and kept stock for the coming week."
+            },
+            {
+              "id": "01J03000000000000000000426",
+              "text": "Cleaned and descaled the espresso machine every evening following the maintenance checklist."
+            },
+            {
+              "id": "01J03000000000000000000427",
+              "text": "Handled customer complaints politely and offered replacement drinks when an order went wrong."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        }
+      ]
+    },
+    {
+      "type": "skills",
+      "id": "01J03000000000000000000438",
+      "title_override": null,
+      "groups": [
+        {
+          "id": "01J03000000000000000000439",
+          "label": null,
+          "skills": [
+            {
+              "id": "01J03000000000000000000428",
+              "name": "Rust"
+            },
+            {
+              "id": "01J03000000000000000000429",
+              "name": "Tokio"
+            },
+            {
+              "id": "01J03000000000000000000430",
+              "name": "C++"
+            },
+            {
+              "id": "01J03000000000000000000431",
+              "name": "Go"
+            },
+            {
+              "id": "01J03000000000000000000432",
+              "name": "Java"
+            },
+            {
+              "id": "01J03000000000000000000433",
+              "name": "Python"
+            },
+            {
+              "id": "01J03000000000000000000434",
+              "name": "PostgreSQL"
+            },
+            {
+              "id": "01J03000000000000000000435",
+              "name": "Kafka"
+            },
+            {
+              "id": "01J03000000000000000000436",
+              "name": "Linux"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

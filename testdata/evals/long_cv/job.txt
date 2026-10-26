@@ -1,0 +1,12 @@
+Senior Rust Engineer, Trading Infrastructure
+
+We build the exchange connectivity and matching systems behind our trading desk.
+
+What you need
+- 5+ years of systems programming, at least 2 in Rust
+- Async Rust with Tokio
+- Low-latency or high-throughput systems
+- Experience leading or mentoring engineers
+
+Nice to have
+- Experience with eBPF

@@ -1,0 +1,12 @@
+Frontend Developer
+
+Help us build accessible web shops for our clients.
+
+Requirements
+- React
+- TypeScript
+- Accessible interfaces (WCAG)
+- Unit tests with Jest
+
+Nice to have
+- Next.js

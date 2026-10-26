@@ -1,0 +1,174 @@
+{
+  "job.txt": {
+    "JobRequirements": [
+      {
+        "title": "Java Backend Developer",
+        "seniority": "mid",
+        "language": "en",
+        "must_have": [
+          {
+            "id": "r1",
+            "text": "Java and Spring Boot",
+            "kind": "skill",
+            "keywords": [
+              "Java",
+              "Spring Boot"
+            ]
+          },
+          {
+            "id": "r2",
+            "text": "Automated testing",
+            "kind": "experience",
+            "keywords": [
+              "JUnit",
+              "testing"
+            ]
+          },
+          {
+            "id": "r3",
+            "text": "Mentoring junior developers",
+            "kind": "other",
+            "keywords": [
+              "mentoring"
+            ]
+          },
+          {
+            "id": "r4",
+            "text": "Running services on AWS",
+            "kind": "skill",
+            "keywords": [
+              "AWS"
+            ]
+          }
+        ],
+        "nice_to_have": [
+          {
+            "id": "r5",
+            "text": "Kotlin",
+            "kind": "skill",
+            "keywords": [
+              "Kotlin"
+            ]
+          }
+        ],
+        "responsibilities": [],
+        "keywords": [
+          "Java",
+          "Spring Boot",
+          "JUnit",
+          "testing",
+          "AWS",
+          "Kotlin"
+        ],
+        "domain": null
+      }
+    ],
+    "RelevanceResult": [
+      {
+        "entries": [
+          {
+            "entry_id": "01J04000000000000000000001",
+            "score": 90,
+            "matched_requirements": [
+              "r1",
+              "r2",
+              "r3"
+            ],
+            "reason": "Java and Spring Boot billing platform"
+          },
+          {
+            "entry_id": "01J04000000000000000000005",
+            "score": 5,
+            "matched_requirements": [],
+            "reason": "Restaurant service, unrelated"
+          }
+        ],
+        "bullets": [
+          {
+            "bullet_id": "01J04000000000000000000002",
+            "score": 88,
+            "matched_requirements": [
+              "r1"
+            ]
+          },
+          {
+            "bullet_id": "01J04000000000000000000003",
+            "score": 85,
+            "matched_requirements": [
+              "r2"
+            ]
+          },
+          {
+            "bullet_id": "01J04000000000000000000004",
+            "score": 70,
+            "matched_requirements": [
+              "r3"
+            ]
+          },
+          {
+            "bullet_id": "01J04000000000000000000006",
+            "score": 3,
+            "matched_requirements": []
+          }
+        ],
+        "skills": [
+          {
+            "skill_id": "01J04000000000000000000007",
+            "score": 95
+          },
+          {
+            "skill_id": "01J04000000000000000000008",
+            "score": 92
+          },
+          {
+            "skill_id": "01J04000000000000000000009",
+            "score": 85
+          },
+          {
+            "skill_id": "01J04000000000000000000010",
+            "score": 50
+          }
+        ]
+      }
+    ],
+    "RewriteResult": [
+      {
+        "rewrites": [
+          {
+            "bullet_id": "01J04000000000000000000002",
+            "new_text": "Entwicklung einer Java-Plattform zur monatlichen Abrechnung von 2 Millionen Kunden.",
+            "change_type": "Tighten",
+            "reason": "Kürzer"
+          },
+          {
+            "bullet_id": "01J04000000000000000000003",
+            "new_text": "Einführung automatisierter Tests mit JUnit, die die Fehlerquote um 30 % senkten.",
+            "change_type": "Clarity",
+            "reason": "Klarer Satzbau"
+          }
+        ],
+        "no_change": [
+          "01J04000000000000000000004"
+        ]
+      }
+    ],
+    "GapResult": [
+      {
+        "gaps": [
+          {
+            "requirement_id": "r4",
+            "severity": "missing",
+            "question": "Have you run or deployed services on AWS, and which services?",
+            "where_to_add_hint": "the skills section"
+          },
+          {
+            "requirement_id": "r5",
+            "severity": "missing",
+            "question": "Have you written production code in Kotlin?",
+            "where_to_add_hint": "the skills section"
+          }
+        ]
+      }
+    ]
+  }
+}

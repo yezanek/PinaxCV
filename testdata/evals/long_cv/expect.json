@@ -1,0 +1,5 @@
+{
+  "relevant": "01J03000000000000000000001",
+  "irrelevant": "01J03000000000000000000421",
+  "min_relevance_requests": 2
+}

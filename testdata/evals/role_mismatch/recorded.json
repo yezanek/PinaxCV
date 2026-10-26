@@ -1,0 +1,181 @@
+{
+  "job.txt": {
+    "JobRequirements": [
+      {
+        "title": "Backend Engineer",
+        "seniority": "mid",
+        "language": "en",
+        "must_have": [
+          {
+            "id": "r1",
+            "text": "3+ years of backend development in Go",
+            "kind": "experience",
+            "keywords": [
+              "Go"
+            ]
+          },
+          {
+            "id": "r2",
+            "text": "Experience with PostgreSQL",
+            "kind": "skill",
+            "keywords": [
+              "PostgreSQL"
+            ]
+          },
+          {
+            "id": "r3",
+            "text": "Running services on Kubernetes",
+            "kind": "skill",
+            "keywords": [
+              "Kubernetes"
+            ]
+          },
+          {
+            "id": "r4",
+            "text": "Designing and testing REST APIs",
+            "kind": "experience",
+            "keywords": [
+              "REST",
+              "API"
+            ]
+          }
+        ],
+        "nice_to_have": [
+          {
+            "id": "r5",
+            "text": "Experience with Kafka",
+            "kind": "skill",
+            "keywords": [
+              "Kafka"
+            ]
+          }
+        ],
+        "responsibilities": [],
+        "keywords": [
+          "Go",
+          "PostgreSQL",
+          "Kubernetes",
+          "REST",
+          "API",
+          "Kafka"
+        ],
+        "domain": "logistics"
+      }
+    ],
+    "RelevanceResult": [
+      {
+        "entries": [
+          {
+            "entry_id": "01J01000000000000000000001",
+            "score": 88,
+            "matched_requirements": [
+              "r1",
+              "r2",
+              "r4"
+            ],
+            "reason": "Go and PostgreSQL backend work"
+          },
+          {
+            "entry_id": "01J01000000000000000000005",
+            "score": 8,
+            "matched_requirements": [],
+            "reason": "Graphic design, unrelated to backend work"
+          }
+        ],
+        "bullets": [
+          {
+            "bullet_id": "01J01000000000000000000002",
+            "score": 92,
+            "matched_requirements": [
+              "r1",
+              "r2"
+            ]
+          },
+          {
+            "bullet_id": "01J01000000000000000000003",
+            "score": 60,
+            "matched_requirements": []
+          },
+          {
+            "bullet_id": "01J01000000000000000000004",
+            "score": 70,
+            "matched_requirements": [
+              "r4"
+            ]
+          },
+          {
+            "bullet_id": "01J01000000000000000000006",
+            "score": 5,
+            "matched_requirements": []
+          },
+          {
+            "bullet_id": "01J01000000000000000000007",
+            "score": 5,
+            "matched_requirements": []
+          }
+        ],
+        "skills": [
+          {
+            "skill_id": "01J01000000000000000000008",
+            "score": 95
+          },
+          {
+            "skill_id": "01J01000000000000000000009",
+            "score": 90
+          },
+          {
+            "skill_id": "01J01000000000000000000010",
+            "score": 60
+          },
+          {
+            "skill_id": "01J01000000000000000000011",
+            "score": 5
+          },
+          {
+            "skill_id": "01J01000000000000000000012",
+            "score": 5
+          }
+        ]
+      }
+    ],
+    "RewriteResult": [
+      {
+        "rewrites": [
+          {
+            "bullet_id": "01J01000000000000000000002",
+            "new_text": "Built a Go order service on PostgreSQL that handles 3,000 requests per second.",
+            "change_type": "Clarity",
+            "reason": "Leads with the stack the job asks for"
+          },
+          {
+            "bullet_id": "01J01000000000000000000004",
+            "new_text": "Wrote Docker Compose integration tests for the payment REST API.",
+            "change_type": "Terminology",
+            "reason": "Uses the job's term REST"
+          }
+        ],
+        "no_change": [
+          "01J01000000000000000000003"
+        ]
+      }
+    ],
+    "GapResult": [
+      {
+        "gaps": [
+          {
+            "requirement_id": "r3",
+            "severity": "missing",
+            "question": "Have you deployed or run services on Kubernetes, and in which role?",
+            "where_to_add_hint": "the Backend Engineer entry or the skills section"
+          },
+          {
+            "requirement_id": "r5",
+            "severity": "missing",
+            "question": "Have you worked with Kafka or another message broker?",
+            "where_to_add_hint": "the skills section"
+          }
+        ]
+      }
+    ]
+  }
+}

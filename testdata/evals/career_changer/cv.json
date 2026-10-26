@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "id": "01J02000000000000000000019",
+  "title": "Data",
+  "locale": "en",
+  "paper": "a4",
+  "template": "classic",
+  "options": {
+    "font_size_pt": 10.0,
+    "line_spacing": 1.1,
+    "margin_mm": 18.0,
+    "accent": null,
+    "date_style": "month_name_year"
+  },
+  "basics": {
+    "full_name": "Sample Person",
+    "headline": "Aspiring Data Analyst",
+    "email": "sample@example.org",
+    "phone": null,
+    "location": "Exampletown, Germany",
+    "links": []
+  },
+  "summary": "Former mathematics teacher moving into data analysis.",
+  "sections": [
+    {
+      "type": "experience",
+      "id": "01J02000000000000000000015",
+      "title_override": null,
+      "entries": [
+        {
+          "id": "01J02000000000000000000001",
+          "title": "Mathematics Teacher",
+          "org": "Lindenhof Secondary School",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2012,
+              "month": null
+            },
+            "end": {
+              "year": 2023,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J02000000000000000000002",
+              "text": "Taught statistics and algebra to classes of 28 students aged 14 to 18."
+            },
+            {
+              "id": "01J02000000000000000000003",
+              "text": "Built a spreadsheet that tracked grades for 300 students and flagged those falling behind."
+            },
+            {
+              "id": "01J02000000000000000000004",
+              "text": "Organised the yearly school science fair with 12 volunteer parents."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J02000000000000000000005",
+          "title": "Weekend Sales Assistant",
+          "org": "Corner Books",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2008,
+              "month": null
+            },
+            "end": {
+              "year": 2012,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J02000000000000000000006",
+              "text": "Served customers and restocked shelves on weekends."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        }
+      ]
+    },
+    {
+      "type": "projects",
+      "id": "01J02000000000000000000016",
+      "title_override": null,
+      "entries": [
+        {
+          "id": "01J02000000000000000000007",
+          "title": "Retail Sales Dashboard",
+          "org": "Data Academy bootcamp",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2023,
+              "month": null
+            },
+            "end": {
+              "year": 2024,
+              "month": null
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J02000000000000000000008",
+              "text": "Cleaned 2 years of sales data in Python with pandas and loaded it into PostgreSQL."
+            },
+            {
+              "id": "01J02000000000000000000009",
+              "text": "Built a Tableau dashboard showing weekly revenue by store for 40 stores."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        }
+      ]
+    },
+    {
+      "type": "skills",
+      "id": "01J02000000000000000000017",
+      "title_override": null,
+      "groups": [
+        {
+          "id": "01J02000000000000000000018",
+          "label": null,
+          "skills": [
+            {
+              "id": "01J02000000000000000000010",
+              "name": "Python"
+            },
+            {
+              "id": "01J02000000000000000000011",
+              "name": "pandas"
+            },
+            {
+              "id": "01J02000000000000000000012",
+              "name": "SQL"
+            },
+            {
+              "id": "01J02000000000000000000013",
+              "name": "Tableau"
+            },
+            {
+              "id": "01J02000000000000000000014",
+              "name": "Excel"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

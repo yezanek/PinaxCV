@@ -1,0 +1,12 @@
+Java Backend Developer
+
+Our payments team in Vienna works in English and is hiring a backend developer.
+
+Requirements
+- Java and Spring Boot
+- Automated testing
+- Mentoring junior developers
+- Running services on AWS
+
+Nice to have
+- Kotlin

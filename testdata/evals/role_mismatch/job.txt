@@ -1,0 +1,12 @@
+Backend Engineer (Go)
+
+We are a logistics company looking for a backend engineer to build and run our order platform.
+
+Requirements
+- 3+ years of backend development in Go
+- Experience with PostgreSQL
+- Running services on Kubernetes
+- Designing and testing REST APIs
+
+Nice to have
+- Experience with Kafka
