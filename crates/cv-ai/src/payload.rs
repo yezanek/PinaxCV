@@ -235,12 +235,15 @@ pub(crate) static PHONE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\+?\(?\d[\d\s()./-]{6,}\d").expect("phone pattern"));
 
 /// Whether a [`PHONE`] match is a phone number: 9 digits or more, and not
-/// only months, days and years ("01/2019 - 03/2021").
+/// only months, days and years ("01/2019 - 03/2021"). A run without a year
+/// ("06 12 34 56 78") is a phone number.
 pub(crate) fn is_phone(m: &str) -> bool {
-    let dates_only = m
-        .split(|c: char| !c.is_ascii_digit())
-        .filter(|g| !g.is_empty())
-        .all(|g| g.len() <= 2 || (g.len() == 4 && (g.starts_with("19") || g.starts_with("20"))));
+    let groups = || {
+        m.split(|c: char| !c.is_ascii_digit())
+            .filter(|g| !g.is_empty())
+    };
+    let is_year = |g: &str| g.len() == 4 && (g.starts_with("19") || g.starts_with("20"));
+    let dates_only = groups().any(is_year) && groups().all(|g| g.len() <= 2 || is_year(g));
     m.chars().filter(char::is_ascii_digit).count() >= 9 && !dates_only
 }
 
