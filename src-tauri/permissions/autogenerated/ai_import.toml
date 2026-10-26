@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-ai-import"
+description = "Enables the ai_import command without any pre-configured scope."
+commands.allow = ["ai_import"]
+
+[[permission]]
+identifier = "deny-ai-import"
+description = "Denies the ai_import command without any pre-configured scope."
+commands.deny = ["ai_import"]

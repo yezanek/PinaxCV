@@ -201,6 +201,12 @@
           "markdownDescription": "Enables the ai_forget_key command without any pre-configured scope."
         },
         {
+          "description": "Enables the ai_import command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-ai-import",
+          "markdownDescription": "Enables the ai_import command without any pre-configured scope."
+        },
+        {
           "description": "Enables the ai_review command without any pre-configured scope.",
           "type": "string",
           "const": "allow-ai-review",
@@ -321,6 +327,18 @@
           "markdownDescription": "Enables the import_parse command without any pre-configured scope."
         },
         {
+          "description": "Enables the import_text_basic command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-import-text-basic",
+          "markdownDescription": "Enables the import_text_basic command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the import_text_prepare command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-import-text-prepare",
+          "markdownDescription": "Enables the import_text_prepare command without any pre-configured scope."
+        },
+        {
           "description": "Enables the lint command without any pre-configured scope.",
           "type": "string",
           "const": "allow-lint",
@@ -403,6 +421,12 @@
           "type": "string",
           "const": "deny-ai-forget-key",
           "markdownDescription": "Denies the ai_forget_key command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the ai_import command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-ai-import",
+          "markdownDescription": "Denies the ai_import command without any pre-configured scope."
         },
         {
           "description": "Denies the ai_review command without any pre-configured scope.",
@@ -523,6 +547,18 @@
           "type": "string",
           "const": "deny-import-parse",
           "markdownDescription": "Denies the import_parse command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the import_text_basic command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-import-text-basic",
+          "markdownDescription": "Denies the import_text_basic command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the import_text_prepare command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-import-text-prepare",
+          "markdownDescription": "Denies the import_text_prepare command without any pre-configured scope."
         },
         {
           "description": "Denies the lint command without any pre-configured scope.",

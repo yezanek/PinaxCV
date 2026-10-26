@@ -25,6 +25,7 @@ mod review;
 mod settings;
 mod style;
 mod tailor;
+mod text_import;
 mod variants;
 
 #[component]

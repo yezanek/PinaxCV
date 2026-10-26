@@ -1,5 +1,6 @@
 //! Spec section 17, M7 acceptance: no contact details appear in any request
-//! of any stage except `IMPORT_EXTRACT`. Every stage's prompt is built from
+//! of any stage; `IMPORT_EXTRACT` sends the name and street but no email,
+//! phone or links (ADR-076). Every stage's prompt is built from
 //! a CV whose free text also hides contact details, sent through a
 //! recording `Llm`, and the captured requests are searched.
 
@@ -85,7 +86,7 @@ async fn run_every_stage(llm: &FakeLlm, opts: PayloadOptions) -> Vec<Kind> {
         prompts::summary(&req, &payload),
         prompts::gaps(&req, &req.nice_to_have, &payload),
         prompts::review(&lint, &payload),
-        prompts::import_extract(&text),
+        prompts::import_extract(&cv_ai::extract::prepare_text(&text).expect("text").sent),
     ];
     let mut kinds = Vec::new();
     for p in prompts {
@@ -117,7 +118,7 @@ fn leaks(text: &str, name_allowed: bool) -> Vec<&'static str> {
 }
 
 #[tokio::test]
-async fn only_import_extract_sends_contact_details() {
+async fn no_stage_sends_contact_details() {
     let llm = FakeLlm::new();
     let kinds = run_every_stage(&llm, PayloadOptions::default()).await;
     let seen = llm.seen();
@@ -126,7 +127,14 @@ async fn only_import_extract_sends_contact_details() {
         let sent = format!("{}\n{}", request.system, request.user);
         let found = leaks(&sent, false);
         if *kind == Kind::ImportExtract {
-            assert!(found.contains(&EMAIL) && found.contains(&NAME), "{found:?}");
+            // The import sends the text as written, name and street
+            // included, after the user has seen it; email, phone and links
+            // are found again locally (ADR-076).
+            let found: Vec<_> = found
+                .into_iter()
+                .filter(|f| ![NAME, STREET, POSTCODE].contains(f))
+                .collect();
+            assert!(found.is_empty(), "import sent {found:?}");
         } else {
             assert!(found.is_empty(), "{} sent {found:?}", kind.as_str());
         }
@@ -157,4 +165,17 @@ fn the_redactor_is_what_the_payload_uses() {
     let r = Redactor::new(&cv.basics, PayloadOptions::default());
     let payload = build_cv_payload(&cv.resolve(None), PayloadOptions::default());
     assert_eq!(payload.summary, cv.summary.as_deref().map(|s| r.text(s)));
+}
+
+#[test]
+fn phone_numbers_in_pairs_of_digits_are_redacted() {
+    let r = Redactor::patterns();
+    for phone in ["06 12 34 56 78", "+33 1 23 45 67 89", "01.23.45.67.89"] {
+        let sent = r.text(&format!("Call {phone} after 6"));
+        assert!(!sent.contains(phone), "{phone} was sent");
+        assert!(sent.contains(cv_ai::payload::REDACTED));
+    }
+    // Months and years stay.
+    let dates = "01/2019 - 03/2021, 2019 - 2021";
+    assert_eq!(r.text(dates), dates);
 }

@@ -187,6 +187,38 @@ pub struct ImportPreview {
     pub sections: Vec<Section>,
     /// What the importer skipped or had to guess, in words for the user.
     pub warnings: Vec<String>,
+    /// Bullets an AI import could not find word for word in the text; the
+    /// preview highlights them.
+    #[serde(default)]
+    pub needs_review: Vec<Id>,
+}
+
+/// Where the text for a text import comes from (spec section 9.4).
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ImportTextSource {
+    /// Asks for a PDF or text file.
+    File,
+    Pasted {
+        text: String,
+    },
+}
+
+/// `import_text_prepare`: the text exactly as `ai_import` would send it.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct ImportText {
+    /// Names this text in `ai_import` and `import_text_basic`.
+    pub text_id: u64,
+    pub text: String,
+    /// How many email addresses, phone numbers and links were taken out.
+    pub redacted: usize,
+}
+
+/// `ai_import`: extract a prepared text with AI; the job's `result` is an
+/// `ImportPreview`.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct AiImport {
+    pub text_id: u64,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]

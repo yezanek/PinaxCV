@@ -9,6 +9,7 @@
 #![forbid(unsafe_code)]
 
 mod ai;
+mod ai_import;
 mod errors;
 mod files;
 mod ids;
@@ -37,6 +38,7 @@ use cv_render::{ExportOptions, Exporter, HtmlExporter, PdfExporter, Renderer, at
 use cv_store::Store;
 
 pub use ai::{AI_CONSENT_VERSION, AiState, NoKeychain, SecretError, SecretStore, llm_error};
+pub use ai_import::{TEXT_EXTENSIONS, TextCache, to_partial as extracted_to_partial};
 pub use errors::{render_error, store_error};
 pub use files::{ExportKind, FileDialog, write_atomically};
 pub use ids::UlidIds;
@@ -58,6 +60,7 @@ pub struct App {
     dialog: Box<dyn FileDialog>,
     previews: PreviewCache,
     imports: ImportCache,
+    texts: TextCache,
     ai: AiState,
     jobs: JobRegistry,
     next_preview: AtomicU64,
@@ -81,6 +84,7 @@ impl App {
             dialog,
             previews: PreviewCache::default(),
             imports: ImportCache::default(),
+            texts: TextCache::default(),
             ai: AiState::default(),
             jobs: JobRegistry::default(),
             next_preview: AtomicU64::new(0),

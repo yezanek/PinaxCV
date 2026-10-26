@@ -224,15 +224,28 @@ pub fn city_country(location: &str) -> Option<String> {
     Some(parts[start..].join(", ")).filter(|l| !l.is_empty())
 }
 
-static EMAIL: LazyLock<Regex> = LazyLock::new(|| {
+pub(crate) static EMAIL: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?i)[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)+").expect("email pattern")
 });
-static URL: LazyLock<Regex> =
+pub(crate) static URL: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?i)\b(https?://|www\.)[^\s<>]+").expect("url pattern"));
 /// Phone-like runs; [`Redactor::text`] keeps those with fewer than 9 digits,
 /// so dates and year ranges survive.
-static PHONE: LazyLock<Regex> =
+pub(crate) static PHONE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\+?\(?\d[\d\s()./-]{6,}\d").expect("phone pattern"));
+
+/// Whether a [`PHONE`] match is a phone number: 9 digits or more, and not
+/// only months, days and years ("01/2019 - 03/2021"). A run without a year
+/// ("06 12 34 56 78") is a phone number.
+pub(crate) fn is_phone(m: &str) -> bool {
+    let groups = || {
+        m.split(|c: char| !c.is_ascii_digit())
+            .filter(|g| !g.is_empty())
+    };
+    let is_year = |g: &str| g.len() == 4 && (g.starts_with("19") || g.starts_with("20"));
+    let dates_only = groups().any(is_year) && groups().all(|g| g.len() <= 2 || is_year(g));
+    m.chars().filter(char::is_ascii_digit).count() >= 9 && !dates_only
+}
 
 /// Removes contact details from free text: the CV's own email, phone, links
 /// and (unless allowed) name, and anything shaped like an email address, a
@@ -265,6 +278,12 @@ impl Redactor {
         Self { known }
     }
 
+    /// A redactor that knows no CV: it takes out only what is shaped like
+    /// an email address, a URL or a phone number.
+    pub fn patterns() -> Self {
+        Self { known: Vec::new() }
+    }
+
     /// `text` with contact details replaced by [`REDACTED`].
     pub fn text(&self, text: &str) -> String {
         let mut out = text.to_owned();
@@ -276,7 +295,7 @@ impl Redactor {
         PHONE
             .replace_all(&out, |c: &regex::Captures| {
                 let m = &c[0];
-                if m.chars().filter(char::is_ascii_digit).count() >= 9 {
+                if is_phone(m) {
                     REDACTED.to_owned()
                 } else {
                     m.to_owned()

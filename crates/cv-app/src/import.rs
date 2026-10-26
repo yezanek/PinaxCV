@@ -81,10 +81,14 @@ impl App {
         let result = self
             .with_ids(|ids| import_any(&bytes, &mut || ids.next_id()))
             .map_err(import_error)?;
-        Ok(self.keep_preview(result))
+        Ok(self.keep_preview(result, Vec::new()))
     }
 
-    fn keep_preview(&self, result: ImportResult) -> ImportPreview {
+    pub(crate) fn keep_preview(
+        &self,
+        result: ImportResult,
+        needs_review: Vec<Id>,
+    ) -> ImportPreview {
         let ImportResult {
             cv_partial: p,
             warnings,
@@ -100,6 +104,7 @@ impl App {
             summary: p.summary.clone(),
             sections: p.sections.clone(),
             warnings: warnings.into_iter().map(|w| w.message).collect(),
+            needs_review,
         };
         ImportPreview {
             preview_id: self.imports.put(p),
@@ -188,7 +193,7 @@ impl App {
 
 /// Reads at most [`MAX_INPUT`] bytes, failing on anything larger without
 /// reading it all.
-fn read_capped(path: &Path) -> Result<Vec<u8>> {
+pub(crate) fn read_capped(path: &Path) -> Result<Vec<u8>> {
     // The io::Error text can carry the path, which holds the user's name.
     let unreadable = |e: std::io::Error| {
         ApiError::new(
@@ -208,7 +213,7 @@ fn read_capped(path: &Path) -> Result<Vec<u8>> {
     Ok(bytes)
 }
 
-fn import_error(e: ImportError) -> ApiError {
+pub(crate) fn import_error(e: ImportError) -> ApiError {
     match e {
         ImportError::TooLarge => ApiError::new(
             ErrorCode::Import,
