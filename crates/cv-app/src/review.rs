@@ -79,21 +79,27 @@ impl App {
         events: Arc<dyn JobEvents>,
         req: AiReview,
     ) -> Result<(JobId, impl Future<Output = ()> + Send + 'static)> {
+        let generation = self.ai_generation();
         self.llm()?;
         self.get_cv(&req.cv_id)?;
         Ok(self.start_job(events, move |app, ctx| async move {
-            let result = app.review(&ctx, req).await?;
+            let result = app.review(&ctx, req, generation).await?;
             serde_json::to_value(result)
                 .map_err(|_| internal("The review result could not be sent."))
         }))
     }
 
-    async fn review(self: &Arc<Self>, ctx: &JobContext, req: AiReview) -> Result<ReviewSession> {
+    async fn review(
+        self: &Arc<Self>,
+        ctx: &JobContext,
+        req: AiReview,
+        generation: u64,
+    ) -> Result<ReviewSession> {
         let (llm, status) = self
             .blocking(|app| Ok((app.llm()?, app.ai_status()?)))
             .await?;
         let model = status.model.clone();
-        let cache = StoreCache(Arc::clone(self));
+        let cache = StoreCache::new(Arc::clone(self), generation);
         let stage = StageContext {
             llm: llm.as_ref(),
             cache: &cache,

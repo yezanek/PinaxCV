@@ -118,6 +118,8 @@ fn main() {
             commands::open_data_dir,
             commands::backup_db,
             commands::restore_db,
+            commands::clear_ai_cache,
+            commands::delete_all_data,
         ])
         .run(context)
         .unwrap_or_else(|e| panic!("PinaxCV could not start: {e}"));

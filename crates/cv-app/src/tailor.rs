@@ -24,14 +24,26 @@ use crate::{App, JobContext, JobEvents, Result, llm_error, store_error};
 
 /// The `ai_cache` table as the stages' cache. A failing read is a miss and
 /// a failing write is skipped: the provider is only asked again. Both run on
-/// the blocking pool, like the job's other store work.
-pub(crate) struct StoreCache(pub(crate) Arc<App>);
+/// the blocking pool, like the job's other store work. Answers that arrive
+/// after the cache was cleared or the data deleted are not written.
+pub(crate) struct StoreCache {
+    app: Arc<App>,
+    generation: u64,
+}
+
+impl StoreCache {
+    /// `generation` is [`App::ai_generation`] taken when the job was started,
+    /// before it read anything it could send or cache.
+    pub(crate) fn new(app: Arc<App>, generation: u64) -> Self {
+        Self { app, generation }
+    }
+}
 
 #[async_trait::async_trait]
 impl ResponseCache for StoreCache {
     async fn get(&self, key: &str) -> Option<String> {
         let key = key.to_owned();
-        self.0
+        self.app
             .blocking(move |app| Ok(app.store.ai_cache_get(&key).ok().flatten()))
             .await
             .ok()
@@ -40,10 +52,14 @@ impl ResponseCache for StoreCache {
 
     async fn put(&self, key: &str, kind: &str, response: &str) {
         let (key, kind, response) = (key.to_owned(), kind.to_owned(), response.to_owned());
+        let generation = self.generation;
         let _ = self
-            .0
+            .app
             .blocking(move |app| {
-                let _ = app.store.ai_cache_put(&key, &kind, &response);
+                let _writes = app.ai_writes();
+                if app.ai_generation() == generation {
+                    let _ = app.store.ai_cache_put(&key, &kind, &response);
+                }
                 Ok(())
             })
             .await;
@@ -59,6 +75,7 @@ impl App {
         events: Arc<dyn JobEvents>,
         req: AiTailor,
     ) -> Result<(JobId, impl Future<Output = ()> + Send + 'static)> {
+        let generation = self.ai_generation();
         self.llm()?;
         let stored = self.get_variant(&req.variant_id)?;
         if stored.variant.job.description_text.trim().is_empty() {
@@ -78,7 +95,7 @@ impl App {
             ));
         }
         Ok(self.start_job(events, move |app, ctx| async move {
-            let result = app.tailor(&ctx, req).await?;
+            let result = app.tailor(&ctx, req, generation).await?;
             serde_json::to_value(result).map_err(|_| {
                 ApiError::new(
                     ErrorCode::Internal,
@@ -88,7 +105,12 @@ impl App {
         }))
     }
 
-    async fn tailor(self: &Arc<Self>, ctx: &JobContext, req: AiTailor) -> Result<TailorResult> {
+    async fn tailor(
+        self: &Arc<Self>,
+        ctx: &JobContext,
+        req: AiTailor,
+        generation: u64,
+    ) -> Result<TailorResult> {
         // Settings, keychain and database reads run on the blocking pool;
         // only the provider calls run on the async runtime (as in ADR-069).
         let variant_id = req.variant_id.clone();
@@ -97,7 +119,7 @@ impl App {
             .await?;
         let model = status.model.clone();
         let job = stored.variant.job.clone();
-        let cache = StoreCache(Arc::clone(self));
+        let cache = StoreCache::new(Arc::clone(self), generation);
         let stage = StageContext {
             llm: llm.as_ref(),
             cache: &cache,

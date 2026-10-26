@@ -59,8 +59,8 @@ fn parse_date_style(v: &str) -> DateStyle {
 /// the about box.
 #[component]
 fn AppSection(
-    /// Called after a restore replaced the settings.
-    restored: Callback<()>,
+    /// Called after a restore or a deletion replaced the settings.
+    reloaded: Callback<()>,
 ) -> impl IntoView {
     let settings: RwSignal<Option<AppSettings>> = RwSignal::new(None);
     let error: RwSignal<Option<String>> = RwSignal::new(None);
@@ -68,6 +68,7 @@ fn AppSection(
     let data_message: RwSignal<Option<String>> = RwSignal::new(None);
     let busy = RwSignal::new(false);
     let confirm_restore = RwSignal::new(false);
+    let confirm_delete = RwSignal::new(false);
     let load = move || {
         spawn_local(async move {
             match call::<_, AppSettings>("get_settings", &NoArgs {}).await {
@@ -109,7 +110,7 @@ fn AppSection(
                         data_message
                             .set(Some(fill(t().restore_done, &[("path", &r.previous_data)])));
                         load();
-                        restored.run(());
+                        reloaded.run(());
                     }
                     Err(e) if e.code == ErrorCode::Cancelled => {}
                     Err(e) => error.set(Some(error_message(&e))),
@@ -140,6 +141,28 @@ fn AppSection(
                     message.set(Some(t().defaults_saved));
                 }
                 Err(e) => error.set(Some(error_message(&e))),
+            }
+        });
+    };
+    // Runs `cmd`, which answers with nothing, then says `done`.
+    let act = move |cmd: &'static str, done: &'static str, reload: bool| {
+        busy.set(true);
+        error.set(None);
+        data_message.set(None);
+        spawn_local(async move {
+            let result = call::<_, ()>(cmd, &NoArgs {}).await;
+            if busy.try_set(false).is_none() {
+                confirm_delete.set(false);
+                match result {
+                    Ok(()) => {
+                        data_message.set(Some(done.to_owned()));
+                        if reload {
+                            load();
+                            reloaded.run(());
+                        }
+                    }
+                    Err(e) => error.set(Some(error_message(&e))),
+                }
             }
         });
     };
@@ -206,6 +229,22 @@ fn AppSection(
                 <p class="actions">
                     <button prop:disabled=move || busy.get() on:click=restore>{s.restore_confirm}</button>
                     <button prop:disabled=move || busy.get() on:click=move |_| confirm_restore.set(false)>{s.cancel}</button>
+                </p>
+            </div>
+        </Show>
+        <p class="hint">{s.clear_cache_intro}</p>
+        <p class="actions">
+            <button prop:disabled=move || busy.get()
+                on:click=move |_| act("clear_ai_cache", t().cache_cleared, false)>{s.clear_cache_button}</button>
+            <button prop:disabled=move || busy.get() on:click=move |_| confirm_delete.set(true)>{s.delete_all_button}</button>
+        </p>
+        <Show when=move || confirm_delete.get()>
+            <div class="confirm" role="alertdialog" aria-label=s.delete_all_button>
+                <p>{s.delete_all_warning}</p>
+                <p class="actions">
+                    <button prop:disabled=move || busy.get()
+                        on:click=move |_| act("delete_all_data", t().all_data_deleted, true)>{s.delete_all_confirm}</button>
+                    <button prop:disabled=move || busy.get() on:click=move |_| confirm_delete.set(false)>{s.cancel}</button>
                 </p>
             </div>
         </Show>
@@ -485,8 +524,8 @@ pub fn Settings(
             <Show when=move || status.with(|s| s.as_ref().is_some_and(|s| s.consent_ok))>
                 <p class="hint">{t().consent_given}</p>
             </Show>
-            <AppSection restored=Callback::new(move |()| {
-                // The form holds the replaced database's settings until the
+            <AppSection reloaded=Callback::new(move |()| {
+                // The form holds the old database's settings until the
                 // new ones load; Save stays off so they cannot be written back.
                 if status.try_set(None).is_some() {
                     return;

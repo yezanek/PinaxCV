@@ -417,6 +417,44 @@ fn file_database_survives_reopen_backup_and_restore() {
 }
 
 #[test]
+fn delete_all_data_leaves_an_empty_working_store() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let db = dir.path().join("pinaxcv.sqlite3");
+    let clock = TestClock::new();
+    let s = SqliteStore::open_with_clock(&db, Box::new(clock.clone())).expect("open");
+    let mut secret = cv(10);
+    secret.title = "Unmistakable-Title-4711".into();
+    s.create_cv(&secret).expect("create");
+    s.set_setting("ai.model", "m").expect("setting");
+    s.ai_cache_put("k", "job_parse", "{\"cached\":\"Unmistakable-Title-4711\"}")
+        .expect("cache");
+    let backup = dir.path().join("backup.sqlite3");
+    s.backup_to(&backup).expect("backup");
+    clock.advance(Duration::from_secs(1));
+    let copy = s.restore_from(&backup).expect("restore");
+    assert!(copy.exists());
+
+    s.delete_all_data().expect("delete");
+    assert!(s.list_cvs().expect("list").is_empty());
+    assert_eq!(s.get_setting("ai.model").expect("get"), None);
+    assert_eq!(s.ai_cache_get("k").expect("get"), None);
+    assert!(!copy.exists(), "restore copies are removed");
+    assert!(backup.exists(), "files elsewhere are not touched");
+    // Nothing of the deleted CV is left in the database or its WAL.
+    for file in [db.clone(), dir.path().join("pinaxcv.sqlite3-wal")] {
+        if let Ok(bytes) = std::fs::read(&file) {
+            let found = bytes
+                .windows(b"Unmistakable-Title-4711".len())
+                .any(|w| w == b"Unmistakable-Title-4711");
+            assert!(!found, "{} still holds deleted text", file.display());
+        }
+    }
+    // The store keeps working.
+    s.create_cv(&cv(20)).expect("create after delete");
+    assert_eq!(s.list_cvs().expect("list").len(), 1);
+}
+
+#[test]
 fn store_is_shareable_across_threads() {
     fn assert_send_sync<T: Send + Sync>() {}
     assert_send_sync::<SqliteStore>();

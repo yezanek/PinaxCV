@@ -45,6 +45,8 @@ const COMMANDS: &[&str] = &[
     "open_data_dir",
     "backup_db",
     "restore_db",
+    "clear_ai_cache",
+    "delete_all_data",
 ];
 
 fn main() {

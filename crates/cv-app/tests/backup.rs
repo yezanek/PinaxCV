@@ -1,9 +1,11 @@
-//! Backup and restore against a SQLite database on disk.
+//! Backup, restore and deletion against a SQLite database on disk.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
-use cv_api::{ErrorCode, NewCv};
-use cv_app::{App, ExportKind, FileDialog, UlidIds};
+use cv_api::{AiConfig, AiProvider, ErrorCode, KeyStorage, NewCv};
+use cv_app::{App, ExportKind, FileDialog, SecretError, SecretStore, UlidIds};
 use cv_store::{SqliteStore, SystemClock};
 
 /// Saves to `save` and opens `open`; `None` cancels.
@@ -110,5 +112,116 @@ fn cancelled_dialogs_do_nothing() {
     assert_eq!(
         app.restore_db().expect_err("cancel").code,
         ErrorCode::Cancelled
+    );
+}
+
+/// A keychain in a shared map, so the test can look inside.
+#[derive(Clone, Default)]
+struct Keychain(Arc<Mutex<HashMap<String, String>>>);
+
+impl SecretStore for Keychain {
+    fn get(&self, account: &str) -> Result<Option<String>, SecretError> {
+        Ok(self.0.lock().expect("lock").get(account).cloned())
+    }
+
+    fn set(&self, account: &str, secret: &str) -> Result<(), SecretError> {
+        self.0
+            .lock()
+            .expect("lock")
+            .insert(account.into(), secret.into());
+        Ok(())
+    }
+
+    fn delete(&self, account: &str) -> Result<(), SecretError> {
+        self.0.lock().expect("lock").remove(account);
+        Ok(())
+    }
+}
+
+#[test]
+fn delete_all_data_removes_cvs_settings_cache_and_keys() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let keychain = Keychain::default();
+    let app =
+        app(&dir.path().join("pinaxcv.db"), None, None).with_secrets(Box::new(keychain.clone()));
+    let status = app
+        .ai_configure(AiConfig {
+            provider: AiProvider::Anthropic,
+            model: "some-model".into(),
+            base_url: None,
+            api_key: Some("sk-test".into()),
+            send_name: false,
+            send_location: true,
+        })
+        .expect("configure");
+    assert_eq!(status.key, KeyStorage::Keychain);
+    new_cv(&app, "Mine");
+    app.clear_ai_cache().expect("clear cache");
+    assert_eq!(titles(&app), ["Mine"], "clearing the cache keeps CVs");
+
+    app.delete_all_data().expect("delete");
+    assert!(titles(&app).is_empty());
+    let status = app.ai_status().expect("status");
+    assert_eq!(
+        (status.provider, status.key, status.configured),
+        (AiProvider::None, KeyStorage::None, false)
+    );
+    assert!(keychain.0.lock().expect("lock").is_empty(), "keys deleted");
+    // The app keeps working.
+    new_cv(&app, "Fresh start");
+    assert_eq!(titles(&app), ["Fresh start"]);
+}
+
+/// A keychain whose first deletion fails.
+#[derive(Clone, Default)]
+struct StuckKeychain {
+    keys: Keychain,
+    failed: Arc<Mutex<bool>>,
+}
+
+impl SecretStore for StuckKeychain {
+    fn get(&self, account: &str) -> Result<Option<String>, SecretError> {
+        self.keys.get(account)
+    }
+
+    fn set(&self, account: &str, secret: &str) -> Result<(), SecretError> {
+        self.keys.set(account, secret)
+    }
+
+    fn delete(&self, account: &str) -> Result<(), SecretError> {
+        let mut failed = self.failed.lock().expect("lock");
+        if !*failed {
+            *failed = true;
+            return Err(SecretError::Failed("locked".into()));
+        }
+        self.keys.delete(account)
+    }
+}
+
+#[test]
+fn a_failing_key_deletion_still_removes_the_others() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let keychain = StuckKeychain::default();
+    let app =
+        app(&dir.path().join("pinaxcv.db"), None, None).with_secrets(Box::new(keychain.clone()));
+    for (provider, key) in [(AiProvider::Openai, "sk-a"), (AiProvider::Gemini, "sk-b")] {
+        app.ai_configure(AiConfig {
+            provider,
+            model: "some-model".into(),
+            base_url: None,
+            api_key: Some(key.into()),
+            send_name: false,
+            send_location: true,
+        })
+        .expect("configure");
+    }
+    new_cv(&app, "Mine");
+
+    let err = app.delete_all_data().expect_err("one key stayed");
+    assert_eq!(err.code, ErrorCode::Keychain);
+    assert!(titles(&app).is_empty(), "the data is deleted anyway");
+    assert!(
+        keychain.keys.0.lock().expect("lock").is_empty(),
+        "every other key is removed"
     );
 }

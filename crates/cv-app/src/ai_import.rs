@@ -313,23 +313,29 @@ impl App {
         events: Arc<dyn JobEvents>,
         req: AiImport,
     ) -> Result<(JobId, impl Future<Output = ()> + Send + 'static)> {
+        let generation = self.ai_generation();
         self.llm()?;
         self.texts.get(req.text_id)?;
         Ok(self.start_job(events, move |app, ctx| async move {
-            let preview = app.extract(&ctx, req).await?;
+            let preview = app.extract(&ctx, req, generation).await?;
             serde_json::to_value(preview).map_err(|_| {
                 ApiError::new(ErrorCode::Internal, "The import result could not be sent.")
             })
         }))
     }
 
-    async fn extract(self: &Arc<Self>, ctx: &JobContext, req: AiImport) -> Result<ImportPreview> {
+    async fn extract(
+        self: &Arc<Self>,
+        ctx: &JobContext,
+        req: AiImport,
+        generation: u64,
+    ) -> Result<ImportPreview> {
         let (llm, status) = self
             .blocking(|app| Ok((app.llm()?, app.ai_status()?)))
             .await?;
         let model = status.model;
         let (original, sent) = self.texts.get(req.text_id)?;
-        let cache = StoreCache(Arc::clone(self));
+        let cache = StoreCache::new(Arc::clone(self), generation);
         let stage = StageContext {
             llm: llm.as_ref(),
             cache: &cache,
