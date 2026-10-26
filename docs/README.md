@@ -17,3 +17,6 @@
 - `DECISIONS.md` — architecture decisions.
 - `RELEASING.md` — desktop release process.
 - `ATS_RULES.md` — ATS assumptions and limitations.
+- `BUILDING.md` — building and running from source on Linux, macOS and Windows.
+
+What PinaxCV stores and sends is in [`../PRIVACY.md`](../PRIVACY.md).

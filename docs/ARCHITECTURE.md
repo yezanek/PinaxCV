@@ -15,8 +15,10 @@ cv-app application services
    ├── cv-store ── SQLite (v1)
    ├── cv-render ── Typst / HTML
    ├── cv-import
-   └── cv-ai
+   └── cv-ai ── AI providers over HTTPS (ureq); local OpenAI-compatible servers may use HTTP
 ```
+
+The Leptos UI is the `pinaxcv-ui` crate in `ui/`, built to WebAssembly by Trunk and embedded in the shell. `crates/e2e` holds the `tauri-driver` smoke test.
 
 `cv-core` is the semantic center. It must not know about the desktop shell, database, network, or operating system.
 

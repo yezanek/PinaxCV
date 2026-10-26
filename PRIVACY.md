@@ -20,7 +20,9 @@ sends, and how to remove it.
 - **A log file** (`pinaxcv.log`, at most about 2 MB) records which actions
   ran, how long they took and error codes, so you can attach it to a bug
   report yourself. It never contains CV text, job descriptions, AI prompts or
-  API keys, and it is never uploaded.
+  API keys, and it is never uploaded. It is in the data folder on Linux
+  (`logs/`), in `~/Library/Logs/dev.pinaxcv.app` on macOS and in
+  `%LOCALAPPDATA%\dev.pinaxcv.app\logs` on Windows.
 - **Your AI provider's API key** is stored in your system's keychain (macOS
   Keychain, Windows Credential Manager, or the Secret Service on Linux). If
   no keychain is available, PinaxCV keeps the key in memory only and asks for
@@ -82,8 +84,11 @@ no request.
   your API keys from the keychain. Files you saved elsewhere (exports and
   backups) and the log file are not touched; delete them yourself if you
   want.
-- Uninstalling PinaxCV does not always remove the data folder. Delete it
-  yourself (Settings → Your data → "Open folder") to remove everything.
+- Uninstalling PinaxCV does not always remove the data folder, and never
+  removes the API keys in your keychain. Run "Delete all data…" before you
+  uninstall (it also removes the keys), or delete the data folder yourself
+  (Settings → Your data → "Open folder") and the PinaxCV entries in your
+  keychain. On macOS and Windows also delete the log folder named above.
 
 ## Questions
 

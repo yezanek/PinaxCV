@@ -46,7 +46,7 @@ Implement stages D-G with mandatory verification, `IMPORT_EXTRACT`, the rewrite 
 
 ## M8 — Release
 
-Implement Linux/Windows packaging (AppImage, deb, Flatpak, NSIS, portable exe), updater and signing for 1.0. CI already exists from M0. Keep macOS and SaaS work out of this milestone.
+Implement Linux/Windows packaging (AppImage, Flatpak, Snap, NSIS, portable exe; no `.deb`, ADR-049), updater and signing for 1.0. Backup/restore, data deletion, the privacy notice, licences and the profile photo are already done. CI already exists from M0. Keep macOS and SaaS work out of this milestone.
 
 ## M10 — macOS, future
 

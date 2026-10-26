@@ -2,7 +2,7 @@
 
 PinaxCV builds from source on Linux, macOS and Windows. Linux and Windows are the v1 release platforms. macOS builds are for development and personal use only: there are no signed or notarized macOS releases until Future M10 (ADR-007), but CI builds and tests on macOS on every PR, and these instructions are kept working there.
 
-This file is updated in every milestone that changes how PinaxCV is built. Until the desktop app lands in M3, a build produces the library crates and their tests, plus the M0.5 spike app in `spikes/tauri-leptos/`.
+This file is updated in every milestone that changes how PinaxCV is built. A build produces the desktop app (`pinaxcv`), the library crates and their tests. There are no installers yet: packaging is the open M8 work (AppImage #68, NSIS and portable exe #69, Flatpak #33, Snap #34).
 
 ## 1. System packages
 
@@ -11,7 +11,7 @@ This file is updated in every milestone that changes how PinaxCV is built. Until
 ```sh
 sudo apt update
 sudo apt install build-essential curl wget file git libwebkit2gtk-4.1-dev \
-  libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+  libsoup-3.0-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
 ```
 
 Debian 12 or Ubuntu 22.04 or newer (WebKitGTK 4.1 is required).
@@ -70,11 +70,14 @@ The same checks CI runs:
 ```sh
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
-cargo build -p cv-core -p cv-api --target wasm32-unknown-unknown --locked
+cargo clippy -p cv-core -p cv-api -p pinaxcv-ui --target wasm32-unknown-unknown --locked -- -D warnings
 bash scripts/check-boundaries.sh
+python3 scripts/third_party_licenses.py --check
 ```
 
-On Windows, run `scripts/check-boundaries.sh` from Git Bash.
+On Windows, run `scripts/check-boundaries.sh` from Git Bash. The licence check needs Python 3; after changing dependencies, run `python3 scripts/third_party_licenses.py` without `--check` to regenerate `THIRD_PARTY_LICENSES.md` (ADR-082).
+
+The AI evals replay recorded answers as part of `cargo test`. To run them against a real provider before a release, see [`testdata/evals/README.md`](../testdata/evals/README.md).
 
 To measure preview and export speed on your own machine (spec section 16; numbers in ADR-035):
 
@@ -91,52 +94,36 @@ git clone https://github.com/xitanggg/open-resume.git && git -C open-resume chec
 npm ci && npx tsx check.ts /tmp/pinaxcv-fixtures
 ```
 
-## 4. Try the spike app (until M3)
+## 4. Run the desktop app
 
-The M0.5 spike is a small Tauri + Leptos window that shows a pre-rendered CV page through the `preview` URI scheme:
-
-```sh
-cd spikes/tauri-leptos/ui
-trunk build --release --locked
-cd ..
-cargo build --release --locked -p spike-tauri
-```
-
-Then run `target/release/spike-tauri` from `spikes/tauri-leptos/` (`target\release\spike-tauri.exe` on Windows).
-
-The PDF spike prints its measurements and writes `out.pdf` to the current directory:
-
-```sh
-cd spikes/typst-pdf
-cargo run --release --locked
-```
-
-## 5. The desktop app (from M3)
-
-M3 adds the app itself. It needs `tauri-cli`, which provides `cargo tauri`, at the version the project pins:
-
-```sh
-cargo install tauri-cli --version 2.12.2 --locked
-```
-
-To run the app, build the UI, then start the shell:
+Build the UI, then start the shell:
 
 ```sh
 (cd ui && trunk build --locked)
 cargo run -p pinaxcv
 ```
 
-Rebuild the UI with Trunk after changing anything under `ui/`. The first screen lists your CVs; the editor has the contact fields, summary, and work experience, education and project entries with bullets, plus a live preview, autosave, and PDF and HTML export.
+For everyday use, build an optimised binary once and run it directly:
 
-The database is `pinaxcv.sqlite3` in `~/.local/share/dev.pinaxcv.app/` on Linux, `~/Library/Application Support/dev.pinaxcv.app/` on macOS and `%APPDATA%\dev.pinaxcv.app\` on Windows.
+```sh
+(cd ui && trunk build --release --locked)
+cargo build --release -p pinaxcv --locked
+```
 
-This section will then cover `cargo tauri dev` for a live-reloading development build and `cargo tauri build` for a release build:
+The app is then `target/release/pinaxcv` (`target\release\pinaxcv.exe` on Windows). It is a single binary with the UI, templates and fonts built in, so you can copy it anywhere. On macOS it runs as a plain binary rather than an `.app`; a binary you built yourself is not quarantined, so Gatekeeper does not prompt.
 
-- Linux: AppImage. Flatpak (#33) and Snap (#34) are planned and will be built from their own manifests.
-- Windows: NSIS installer.
-- macOS: an unsigned `.app` for your own machine. A locally built app is not quarantined, so it opens without Gatekeeper prompts.
+Rebuild the UI with Trunk after changing anything under `ui/`; the shell embeds `ui/dist` at compile time. `cargo tauri dev` and `cargo tauri build` are not set up yet (no `beforeDevCommand`, bundling is off); they arrive with the packaging issues.
 
-## 6. End-to-end smoke test
+Where the app keeps things:
+
+| | Linux | macOS | Windows |
+|---|---|---|---|
+| Database (`pinaxcv.sqlite3`) | `~/.local/share/dev.pinaxcv.app/` | `~/Library/Application Support/dev.pinaxcv.app/` | `%APPDATA%\dev.pinaxcv.app\` |
+| Log (`pinaxcv.log`) | `~/.local/share/dev.pinaxcv.app/logs/` | `~/Library/Logs/dev.pinaxcv.app/` | `%LOCALAPPDATA%\dev.pinaxcv.app\logs\` |
+
+API keys for AI providers go to the system keychain: the Secret Service on Linux (GNOME Keyring, KWallet and others; no extra build packages are needed), Keychain on macOS, Credential Manager on Windows. Without a keychain the app keeps the key in memory for the session.
+
+## 5. End-to-end smoke test
 
 CI drives the real app through [`tauri-driver`](https://v2.tauri.app/develop/tests/webdriver/) on Linux and Windows: it creates a CV, edits it, waits for the preview and exports a PDF (`crates/e2e/tests/smoke.rs`). `cargo test` skips it unless `PINAXCV_E2E_APP` is set.
 
@@ -162,3 +149,23 @@ The shell stops `tauri-driver` when the test ends. The test uses the app's norma
 - **`webkit2gtk-4.1` not found (Linux):** your distribution is too old or the `-dev`/`-devel` package is missing. Ubuntu 20.04 and Debian 11 only ship WebKitGTK 4.0, which Tauri 2 does not support.
 - **`link.exe` not found (Windows):** the C++ Build Tools are missing, or the shell was opened before they were installed.
 - **Slow first build:** the first build compiles Typst, Tauri and all their dependencies from source, which takes several minutes. Later builds are incremental.
+
+## Appendix: the M0.5 spikes
+
+The M0.5 spikes in `spikes/` are throwaway experiments kept for reference (ADR-022 to ADR-025). The Tauri spike is a small Tauri + Leptos window that shows a pre-rendered CV page through the `preview` URI scheme:
+
+```sh
+cd spikes/tauri-leptos/ui
+trunk build --release --locked
+cd ..
+cargo build --release --locked -p spike-tauri
+```
+
+Then run `target/release/spike-tauri` from `spikes/tauri-leptos/` (`target\release\spike-tauri.exe` on Windows).
+
+The PDF spike prints its measurements and writes `out.pdf` to the current directory:
+
+```sh
+cd spikes/typst-pdf
+cargo run --release --locked
+```
