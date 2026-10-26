@@ -526,7 +526,12 @@ pub fn Settings(
                     on:change=move |ev| send_location.set(event_target_checked(&ev)) />{t().send_location}</label>
             </Show>
             <p class="actions">
-                <button prop:disabled=move || busy.get() on:click=save>{t().save}</button>
+                <button
+                    prop:disabled=move || busy.get() || status.with(Option::is_none)
+                    on:click=save
+                >
+                    {t().save}
+                </button>
                 <Show when=move || status.with(|s| s.as_ref().is_some_and(|s| s.configured))>
                     <button prop:disabled=move || busy.get() on:click=test>{t().test_connection}</button>
                 </Show>
@@ -546,10 +551,21 @@ pub fn Settings(
                 <p class="hint">{t().consent_given}</p>
             </Show>
             <AppSection reloaded=Callback::new(move |()| {
+                // The form holds the old database's settings until the
+                // new ones load; Save stays off so they cannot be written back.
+                if status.try_set(None).is_some() {
+                    return;
+                }
+                error.set(None);
                 spawn_local(async move {
-                    if let Ok(s) = call::<_, AiStatus>("ai_status", &NoArgs {}).await {
-                        let _ = status.try_set(None);
-                        show(s);
+                    let result = call::<_, AiStatus>("ai_status", &NoArgs {}).await;
+                    // The screen was closed meanwhile.
+                    if status.try_get_untracked().is_none() {
+                        return;
+                    }
+                    match result {
+                        Ok(s) => show(s),
+                        Err(e) => error.set(Some(error_message(&e))),
                     }
                 });
             }) />

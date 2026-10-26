@@ -371,6 +371,10 @@ fn file_database_survives_reopen_backup_and_restore() {
         matches!(s.backup_to(&backup), Err(StoreError::Invalid(_))),
         "never overwrites"
     );
+    let empty = dir.path().join("empty.sqlite3");
+    std::fs::write(&empty, b"").expect("empty file");
+    s.backup_to(&empty).expect("fills an empty file");
+    assert!(std::fs::metadata(&empty).expect("meta").len() > 0);
 
     s.create_cv(&cv(20)).expect("create after backup");
     clock.advance(Duration::from_secs(1));

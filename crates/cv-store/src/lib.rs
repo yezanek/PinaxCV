@@ -124,7 +124,8 @@ pub trait Store: Send + Sync {
     /// timestamp (decisions on its suggestions).
     fn review_session_update(&self, cv_id: &Id, content: &str) -> Result<()>;
 
-    /// Writes a consistent copy of the database (`VACUUM INTO`). Contains no secrets.
+    /// Writes a consistent copy of the database (`VACUUM INTO`) to `path`,
+    /// which must be absent or an empty file. Contains no secrets.
     fn backup_to(&self, path: &Path) -> Result<()>;
     /// Replaces the database with a backup (spec section 5.3) after copying
     /// the current one aside; returns that copy's path.
