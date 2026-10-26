@@ -447,6 +447,7 @@ mod tests {
         let options = ExportOptions {
             include_email: false,
             include_phone: false,
+            photo: None,
         };
         let pdf = crate::Renderer::new()
             .compile(&cv, &options)

@@ -232,10 +232,18 @@ impl App {
                 ctx.progress(AiStage::Fit, 80);
                 let mut trial = stored.variant.clone();
                 apply(&mut trial, &stored.variant.undecided(&selection));
+                // Count pages with the photo when the variant shows it, as
+                // the PDF export draws them.
+                let resolved = cv.resolve(Some(&trial));
+                let photo = self.blocking(move |app| app.photo_for(&resolved)).await?;
                 let app = Arc::clone(self);
                 let scores = relevance.scores.clone();
                 let result = tokio::task::spawn_blocking(move || {
-                    app.with_ids(|ids| fit(&cv, &trial, Some(&scores), target, &app.renderer, ids))
+                    let pages = crate::PhotoPages {
+                        renderer: &app.renderer,
+                        photo,
+                    };
+                    app.with_ids(|ids| fit(&cv, &trial, Some(&scores), target, &pages, ids))
                 })
                 .await
                 .map_err(|_| ApiError::new(ErrorCode::Internal, "Fitting stopped unexpectedly."))?

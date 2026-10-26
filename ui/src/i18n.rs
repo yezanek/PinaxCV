@@ -317,6 +317,23 @@ pub struct Strings {
     pub about_privacy: &'static str,
     pub remove_language: &'static str,
 
+    // Profile photo (ADR-083)
+    pub photo: &'static str,
+    pub photo_hint: &'static str,
+    pub photo_add: &'static str,
+    pub photo_replace: &'static str,
+    pub photo_recrop: &'static str,
+    pub photo_remove: &'static str,
+    pub photo_show: &'static str,
+    pub photo_show_variant: &'static str,
+    pub photo_alt: &'static str,
+    pub photo_crop_title: &'static str,
+    pub photo_crop_hint: &'static str,
+    pub photo_zoom: &'static str,
+    pub photo_square: &'static str,
+    pub photo_portrait: &'static str,
+    pub photo_apply: &'static str,
+
     // Variants
     pub version: &'static str,
     pub base_cv: &'static str,
@@ -735,6 +752,22 @@ pub static EN: Strings = Strings {
     about_privacy: "PinaxCV makes no network requests except to the AI provider you set up and the links you open.",
     remove_language: "Remove language",
 
+    photo: "Photo",
+    photo_hint: "Optional. Many employers, for example in the US and the UK, prefer CVs without a photo. It never adds text for applicant tracking systems.",
+    photo_add: "Add photo…",
+    photo_replace: "Replace…",
+    photo_recrop: "Change crop",
+    photo_remove: "Remove photo",
+    photo_show: "Show the photo on this CV",
+    photo_show_variant: "Show the photo in this variant",
+    photo_alt: "Your photo",
+    photo_crop_title: "Crop your photo",
+    photo_crop_hint: "Drag to move the photo. Zoom with the slider or the mouse wheel.",
+    photo_zoom: "Zoom",
+    photo_square: "Square",
+    photo_portrait: "Portrait (3:4)",
+    photo_apply: "Use photo",
+
     version: "Version",
     base_cv: "Base CV",
     new_variant: "New variant",
@@ -1022,6 +1055,7 @@ mod tests {
         ("main.rs", include_str!("main.rs")),
         ("settings.rs", include_str!("settings.rs")),
         ("order.rs", include_str!("order.rs")),
+        ("photo.rs", include_str!("photo.rs")),
         ("preview.rs", include_str!("preview.rs")),
         ("review.rs", include_str!("review.rs")),
         ("style.rs", include_str!("style.rs")),
@@ -1041,6 +1075,8 @@ mod tests {
             "Control+Z",
             "Control+Shift+Z",
             "Control+E",
+            // `KeyboardEvent.key` names.
+            "Escape",
         ];
         let mut found = Vec::new();
         for (name, src) in FILES {

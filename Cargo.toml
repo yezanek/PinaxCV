@@ -38,6 +38,8 @@ cv-import = { path = "crates/cv-import" }
 cv-render = { path = "crates/cv-render" }
 cv-store = { path = "crates/cv-store" }
 async-trait = "0.1.92"
+base64 = "0.22.1"
+image = { version = "0.25.10", default-features = false, features = ["jpeg", "png"] }
 insta = "1.49.0"
 lopdf = "0.45.0"
 roxmltree = "0.21.1"
@@ -56,7 +58,7 @@ console_error_panic_hook = "0.1.7"
 serde-wasm-bindgen = "0.6.5"
 wasm-bindgen = "0.2.129"
 wasm-bindgen-futures = "0.4.79"
-web-sys = { version = "0.3.79", features = ["Window", "Location", "Crypto", "Document", "Element", "DomRect", "DomTokenList", "PointerEvent", "NodeList", "Navigator", "Clipboard", "HtmlElement"] }
+web-sys = { version = "0.3.79", features = ["Window", "Location", "Crypto", "Document", "Element", "DomRect", "DomTokenList", "PointerEvent", "WheelEvent", "KeyboardEvent", "NodeList", "Navigator", "Clipboard", "HtmlElement"] }
 js-sys = "0.3.79"
 ulid = "3.0.0"
 typst-layout = "=0.15.1"

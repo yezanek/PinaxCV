@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-photo-apply"
+description = "Enables the photo_apply command without any pre-configured scope."
+commands.allow = ["photo_apply"]
+
+[[permission]]
+identifier = "deny-photo-apply"
+description = "Denies the photo_apply command without any pre-configured scope."
+commands.deny = ["photo_apply"]

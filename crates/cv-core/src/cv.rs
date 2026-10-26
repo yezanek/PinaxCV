@@ -138,6 +138,11 @@ pub struct Basics {
     pub location: Option<String>,
     /// Printed visibly; only `https:` and `mailto:` URLs become clickable in exports.
     pub links: Vec<Link>,
+    /// Whether the base CV shows the profile photo, when the CV has one. The
+    /// photo itself is stored beside the CV, not in this document; each
+    /// variant has its own switch (`Variant::show_photo`).
+    #[serde(default)]
+    pub show_photo: bool,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]

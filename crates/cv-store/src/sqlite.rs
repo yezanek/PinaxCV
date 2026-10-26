@@ -15,7 +15,7 @@ use rusqlite::{Connection, OpenFlags, OptionalExtension, Transaction, params};
 
 use crate::clock::{Clock, SystemClock, timestamp};
 use crate::migrate::{migrate_cv_json, migrate_variant_json};
-use crate::{Result, Store, StoreError};
+use crate::{Result, Store, StoreError, StoredPhoto};
 
 /// Snapshots kept per CV; older ones are deleted when a new one is added.
 pub const SNAPSHOTS_PER_CV: u32 = 50;
@@ -24,10 +24,13 @@ pub const EXPORT_SNAPSHOT_INTERVAL: Duration = Duration::from_secs(3600);
 
 /// Database schema migrations, applied in order; `PRAGMA user_version` holds
 /// the number applied so far.
-const MIGRATIONS: [&str; 1] = [include_str!("../migrations/0001_init.sql")];
+const MIGRATIONS: [&str; 2] = [
+    include_str!("../migrations/0001_init.sql"),
+    include_str!("../migrations/0002_photos.sql"),
+];
 
 /// The newest database schema this build understands.
-pub const DB_SCHEMA_VERSION: u32 = 1;
+pub const DB_SCHEMA_VERSION: u32 = 2;
 
 /// SQLite-backed [`Store`].
 pub struct SqliteStore {
@@ -555,6 +558,12 @@ impl Store for SqliteStore {
         copy.title = new_title.to_owned();
         let copy = prepare_cv(&copy)?;
         let stored = insert_cv(&tx, &copy, &now)?;
+        tx.execute(
+            "INSERT INTO photos (cv_id, original, image, crop, updated_at) \
+             SELECT ?2, original, image, crop, ?3 FROM photos WHERE cv_id = ?1",
+            params![id.as_str(), copy.id.as_str(), now.0],
+        )
+        .map_err(backend)?;
         tx.commit().map_err(backend)?;
         Ok(stored)
     }
@@ -852,6 +861,58 @@ impl Store for SqliteStore {
         Ok(())
     }
 
+    fn photo_get(&self, cv_id: &Id) -> Result<Option<StoredPhoto>> {
+        let conn = self.lock();
+        conn.query_row(
+            "SELECT p.original, p.image, p.crop FROM photos p JOIN cvs c ON c.id = p.cv_id \
+             WHERE p.cv_id = ?1 AND c.deleted_at IS NULL",
+            params![cv_id.as_str()],
+            |r| {
+                Ok(StoredPhoto {
+                    original: r.get(0)?,
+                    image: r.get(1)?,
+                    crop: r.get(2)?,
+                })
+            },
+        )
+        .optional()
+        .map_err(backend)
+    }
+
+    fn photo_put(&self, cv_id: &Id, photo: &StoredPhoto) -> Result<()> {
+        let now = self.now();
+        let conn = self.lock();
+        let changed = conn
+            .execute(
+                "INSERT INTO photos (cv_id, original, image, crop, updated_at) \
+                 SELECT id, ?2, ?3, ?4, ?5 FROM cvs WHERE id = ?1 AND deleted_at IS NULL \
+                 ON CONFLICT (cv_id) DO UPDATE SET original = excluded.original, \
+                 image = excluded.image, crop = excluded.crop, updated_at = excluded.updated_at",
+                params![
+                    cv_id.as_str(),
+                    photo.original,
+                    photo.image,
+                    photo.crop,
+                    now.0
+                ],
+            )
+            .map_err(backend)?;
+        if changed == 0 {
+            return Err(StoreError::NotFound(cv_id.clone()));
+        }
+        Ok(())
+    }
+
+    fn photo_delete(&self, cv_id: &Id) -> Result<()> {
+        let conn = self.lock();
+        conn.execute(
+            "DELETE FROM photos WHERE cv_id = ?1",
+            params![cv_id.as_str()],
+        )
+        .map_err(backend)?;
+        Ok(())
+    }
+
     fn review_session_get(&self, cv_id: &Id) -> Result<Option<(String, Timestamp)>> {
         let conn = self.lock();
         conn.query_row(
@@ -914,6 +975,7 @@ impl Store for SqliteStore {
         let tx = conn.transaction().map_err(backend)?;
         // Children first; the foreign keys would cascade anyway.
         for table in [
+            "photos",
             "ai_cache",
             "settings",
             "review_sessions",
@@ -985,6 +1047,28 @@ mod tests {
     }
 
     #[test]
+    fn a_version_1_database_gains_the_photos_table() {
+        let conn = Connection::open_in_memory().expect("open");
+        conn.execute_batch(&format!("{}\nPRAGMA user_version = 1;", MIGRATIONS[0]))
+            .expect("v1 schema");
+        conn.execute(
+            "INSERT INTO cvs (id, title, content, created_at, updated_at) VALUES ('a', 't', '{}', 'x', 'x')",
+            [],
+        )
+        .expect("v1 row");
+        migrate_db(&conn).expect("migrate");
+        assert_eq!(user_version(&conn).expect("version"), DB_SCHEMA_VERSION);
+        let photos: i64 = conn
+            .query_row("SELECT COUNT(*) FROM photos", [], |r| r.get(0))
+            .expect("photos table");
+        assert_eq!(photos, 0);
+        let cvs: i64 = conn
+            .query_row("SELECT COUNT(*) FROM cvs", [], |r| r.get(0))
+            .expect("cvs kept");
+        assert_eq!(cvs, 1);
+    }
+
+    #[test]
     fn newer_database_schema_is_refused() {
         let conn = Connection::open_in_memory().expect("open");
         conn.execute_batch("PRAGMA user_version = 99").expect("set");
@@ -992,7 +1076,7 @@ mod tests {
             migrate_db(&conn),
             Err(StoreError::NewerSchema {
                 found: 99,
-                supported: 1
+                supported: DB_SCHEMA_VERSION
             })
         ));
     }

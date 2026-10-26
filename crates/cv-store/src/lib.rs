@@ -46,6 +46,19 @@ pub enum StoreError {
 
 pub type Result<T> = std::result::Result<T, StoreError>;
 
+/// A CV's profile photo (ADR-083). The store keeps the bytes as given; the
+/// app decodes, crops and re-encodes them.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct StoredPhoto {
+    /// The chosen image, re-encoded without metadata, kept so the crop can
+    /// be redone.
+    pub original: Vec<u8>,
+    /// The cropped image the CV shows.
+    pub image: Vec<u8>,
+    /// The crop as JSON, in the original's pixels.
+    pub crop: String,
+}
+
 /// Persistence for CVs, variants, snapshots, settings and the AI cache (spec section 5.3).
 ///
 /// Synchronous by design (ADR-019): async callers go through `spawn_blocking`.
@@ -93,6 +106,14 @@ pub trait Store: Send + Sync {
     fn ai_cache_get(&self, key: &str) -> Result<Option<String>>;
     fn ai_cache_put(&self, key: &str, kind: &str, response: &str) -> Result<()>;
     fn ai_cache_clear(&self) -> Result<()>;
+
+    /// The CV's profile photo, if it has one and the CV is not deleted.
+    fn photo_get(&self, cv_id: &Id) -> Result<Option<StoredPhoto>>;
+    /// Sets or replaces the CV's photo; [`StoreError::NotFound`] for a
+    /// missing or deleted CV.
+    fn photo_put(&self, cv_id: &Id, photo: &StoredPhoto) -> Result<()>;
+    /// Removes the CV's photo, if any.
+    fn photo_delete(&self, cv_id: &Id) -> Result<()>;
 
     /// The latest AI review of a CV made without a variant (spec section
     /// 11.11): opaque JSON and when it was saved.

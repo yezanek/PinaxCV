@@ -35,6 +35,7 @@ impl Cv {
             template: self.template.clone(),
             options: self.options.clone(),
             basics: self.basics.clone(),
+            show_photo: variant.map_or(self.basics.show_photo, |v| v.show_photo),
             summary: variant
                 .and_then(|v| v.summary_override.clone())
                 .or_else(|| self.summary.clone()),

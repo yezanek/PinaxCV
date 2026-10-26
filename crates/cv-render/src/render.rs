@@ -6,7 +6,7 @@
 //! filesystem, network or package access.
 
 use std::collections::BTreeSet;
-use std::sync::{Mutex, PoisonError};
+use std::sync::{Arc, Mutex, PoisonError};
 
 use cv_core::{Diagnostic, PageCountError, PageCounter, ResolvedCv, Severity};
 use typst::diag::{FileError, FileResult, SourceDiagnostic};
@@ -76,7 +76,7 @@ impl Renderer {
         if let Some(missing) = world.missing_glyphs(&data) {
             warnings.push(missing);
         }
-        world.set_data(json);
+        world.set_data(json, options.photo.clone());
         let result = typst::compile::<PagedDocument>(&*world);
         warnings.extend(result.warnings.iter().map(diagnostic));
         match result.output {
@@ -215,6 +215,8 @@ struct CvWorld {
     main: Source,
     data_id: FileId,
     data: Bytes,
+    photo_id: FileId,
+    photo: Option<Bytes>,
 }
 
 fn file_id(name: &str) -> FileId {
@@ -236,11 +238,14 @@ impl CvWorld {
             main: Source::new(file_id("template.typ"), template.to_owned()),
             data_id: file_id("data.json"),
             data: Bytes::new(b"{}".to_vec()),
+            photo_id: file_id("photo.jpg"),
+            photo: None,
         }
     }
 
-    fn set_data(&mut self, json: Vec<u8>) {
+    fn set_data(&mut self, json: Vec<u8>, photo: Option<Arc<[u8]>>) {
         self.data = Bytes::new(json);
+        self.photo = photo.map(Bytes::new);
     }
 
     /// Lists the printed characters no embedded font covers.
@@ -358,6 +363,8 @@ impl World for CvWorld {
     fn file(&self, id: FileId) -> FileResult<Bytes> {
         if id == self.data_id {
             Ok(self.data.clone())
+        } else if id == self.photo_id {
+            self.photo.clone().ok_or(FileError::AccessDenied)
         } else {
             Err(FileError::AccessDenied)
         }

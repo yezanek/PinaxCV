@@ -32,6 +32,8 @@ pub mod codes {
     pub const LONG_URL: &str = "long_url";
     pub const UNSAFE_LINK: &str = "unsafe_link";
     pub const PAGE_COUNT: &str = "page_count";
+    /// Added by the app, which knows whether a photo is stored (ADR-083).
+    pub const PHOTO: &str = "photo";
 }
 
 /// Bullets longer than this many characters get `bullet_too_long`.

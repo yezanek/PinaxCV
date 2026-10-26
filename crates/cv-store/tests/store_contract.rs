@@ -9,7 +9,7 @@ use cv_core::{
     Basics, Bullet, CV_SCHEMA_VERSION, Cv, Entry, EntrySection, Id, IdSource, Locale, Paper,
     Period, Section, SnapshotReason, TemplateId, TemplateOptions, Variant,
 };
-use cv_store::{Clock, SNAPSHOTS_PER_CV, SqliteStore, Store, StoreError};
+use cv_store::{Clock, SNAPSHOTS_PER_CV, SqliteStore, Store, StoreError, StoredPhoto};
 
 /// A clock tests move by hand, in milliseconds since the epoch.
 #[derive(Clone)]
@@ -62,6 +62,7 @@ fn cv(n: u32) -> Cv {
             phone: None,
             location: None,
             links: vec![],
+            show_photo: false,
         },
         summary: None,
         sections: vec![Section::Experience(EntrySection {
@@ -428,6 +429,8 @@ fn delete_all_data_leaves_an_empty_working_store() {
     s.set_setting("ai.model", "m").expect("setting");
     s.ai_cache_put("k", "job_parse", "{\"cached\":\"Unmistakable-Title-4711\"}")
         .expect("cache");
+    s.photo_put(&secret.id, &photo(b"Unmistakable-Photo-0815"))
+        .expect("photo");
     let backup = dir.path().join("backup.sqlite3");
     s.backup_to(&backup).expect("backup");
     clock.advance(Duration::from_secs(1));
@@ -438,15 +441,16 @@ fn delete_all_data_leaves_an_empty_working_store() {
     assert!(s.list_cvs().expect("list").is_empty());
     assert_eq!(s.get_setting("ai.model").expect("get"), None);
     assert_eq!(s.ai_cache_get("k").expect("get"), None);
+    assert_eq!(s.photo_get(&secret.id).expect("get"), None);
     assert!(!copy.exists(), "restore copies are removed");
     assert!(backup.exists(), "files elsewhere are not touched");
     // Nothing of the deleted CV is left in the database or its WAL.
     for file in [db.clone(), dir.path().join("pinaxcv.sqlite3-wal")] {
         if let Ok(bytes) = std::fs::read(&file) {
-            let found = bytes
-                .windows(b"Unmistakable-Title-4711".len())
-                .any(|w| w == b"Unmistakable-Title-4711");
-            assert!(!found, "{} still holds deleted text", file.display());
+            for needle in [&b"Unmistakable-Title-4711"[..], b"Unmistakable-Photo-0815"] {
+                let found = bytes.windows(needle.len()).any(|w| w == needle);
+                assert!(!found, "{} still holds deleted data", file.display());
+            }
         }
     }
     // The store keeps working.
@@ -498,4 +502,50 @@ fn review_sessions_keep_the_latest_per_live_cv() {
     ));
     s.delete_cv(&id(10)).expect("delete");
     assert_eq!(s.review_session_get(&id(10)).expect("get"), None);
+}
+
+fn photo(marker: &[u8]) -> StoredPhoto {
+    StoredPhoto {
+        original: [b"original-".as_slice(), marker].concat(),
+        image: [b"image-".as_slice(), marker].concat(),
+        crop: "{\"x\":0,\"y\":0,\"width\":10,\"height\":10}".into(),
+    }
+}
+
+#[test]
+fn photos_belong_to_live_cvs_and_follow_duplicates() {
+    let (s, _clock) = store();
+    let base = s.create_cv(&cv(1)).expect("create").cv;
+    assert_eq!(s.photo_get(&base.id).expect("get"), None);
+    s.photo_put(&base.id, &photo(b"a")).expect("put");
+    assert_eq!(s.photo_get(&base.id).expect("get"), Some(photo(b"a")));
+    s.photo_put(&base.id, &photo(b"b")).expect("replace");
+    assert_eq!(s.photo_get(&base.id).expect("get"), Some(photo(b"b")));
+
+    let copy = s
+        .duplicate_cv(&base.id, "Copy", &mut Ids(100))
+        .expect("duplicate")
+        .cv;
+    assert_eq!(s.photo_get(&copy.id).expect("get"), Some(photo(b"b")));
+    s.photo_delete(&copy.id).expect("delete");
+    assert_eq!(s.photo_get(&copy.id).expect("get"), None);
+    assert_eq!(
+        s.photo_get(&base.id).expect("get"),
+        Some(photo(b"b")),
+        "the original keeps its photo"
+    );
+
+    // A deleted CV hides its photo until it is restored, and takes none.
+    s.delete_cv(&base.id).expect("delete cv");
+    assert_eq!(s.photo_get(&base.id).expect("get"), None);
+    assert!(matches!(
+        s.photo_put(&base.id, &photo(b"c")),
+        Err(StoreError::NotFound(_))
+    ));
+    s.restore_cv(&base.id).expect("restore cv");
+    assert_eq!(s.photo_get(&base.id).expect("get"), Some(photo(b"b")));
+    assert!(matches!(
+        s.photo_put(&id(999), &photo(b"c")),
+        Err(StoreError::NotFound(_))
+    ));
 }

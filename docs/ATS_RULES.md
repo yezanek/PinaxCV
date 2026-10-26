@@ -8,14 +8,14 @@ Users should still verify the final document through the employer's application 
 
 ## Template rules (enforced by the golden ATS suite)
 
-1. Single column; no side-by-side layout.
+1. Single column; no side-by-side layout. Exception: the optional profile photo (ADR-083) may sit beside the contact block, as a PDF artifact with no text, so extraction and reading order are the same with and without it.
 2. Reading order equals source order; no floating or absolutely positioned content.
 3. Standard headings, printed as written (not upper-cased).
 4. Contact block is body text at the top of page 1, with no icons. Email and phone should appear within the first five extracted lines; lines six to eight still pass, and the check fails only if either appears after line eight.
 5. No headers or footers with contact info; a "Page 1 of 2" footer only if it does not interleave with body text.
 6. Ligatures off; kerning on.
 7. Real lists with a standard bullet glyph.
-8. No images, backgrounds, skill bars or decorative glyphs.
+8. No images, backgrounds, skill bars or decorative glyphs. Exception: the user's profile photo, off by default and shown only when switched on for the CV or variant (ADR-083).
 9. Text is real text, never outlined shapes.
 10. Inter only; document language set from the CV locale.
 11. Empty fields and sections leave no stray separators or headings.

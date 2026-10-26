@@ -37,6 +37,8 @@ impl FileDialog for TauriFileDialog {
     fn choose_open_path(&self, extensions: &[&str]) -> Option<PathBuf> {
         let label = if extensions == [cv_app::BACKUP_EXTENSION] {
             "PinaxCV backup"
+        } else if extensions == cv_app::PHOTO_EXTENSIONS {
+            "Photo"
         } else {
             "CV file"
         };

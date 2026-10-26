@@ -39,6 +39,10 @@ pub struct Variant {
     /// last tailoring run.
     #[serde(default)]
     pub gaps: Vec<GapQuestion>,
+    /// Whether this variant shows the CV's profile photo. Off until the user
+    /// turns it on, so a photo goes only to the jobs that ask for one.
+    #[serde(default)]
+    pub show_photo: bool,
     /// Mirrors the storage revision; the store's column is authoritative.
     pub revision: u64,
 }
@@ -73,6 +77,7 @@ impl Variant {
             page_target: None,
             suggestions: Vec::new(),
             gaps: Vec::new(),
+            show_photo: false,
             revision: 0,
         }
     }

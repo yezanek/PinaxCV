@@ -23,6 +23,9 @@ pub struct ResolvedCv {
     pub template: TemplateId,
     pub options: TemplateOptions,
     pub basics: Basics,
+    /// Whether to show the CV's profile photo: the variant's switch, or the
+    /// base CV's without a variant. The image is attached at export time.
+    pub show_photo: bool,
     /// Base summary, or the variant's `summary_override`.
     pub summary: Option<String>,
     /// Visible sections in final order. Empty sections are omitted.
