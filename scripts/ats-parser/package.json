@@ -1,0 +1,15 @@
+{
+  "name": "pinaxcv-ats-parser-check",
+  "private": true,
+  "description": "Parses exported fixture PDFs with OpenResume's resume parser (ADR-061). CI only; not shipped.",
+  "license": "Apache-2.0",
+  "scripts": {
+    "check": "tsx check.ts"
+  },
+  "devDependencies": {
+    "@reduxjs/toolkit": "1.9.7",
+    "pdfjs-dist": "3.11.174",
+    "tsx": "4.19.2",
+    "typescript": "5.6.3"
+  }
+}

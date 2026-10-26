@@ -102,20 +102,28 @@ impl Compiled {
         &self.warnings
     }
 
-    /// Exports a tagged PDF. The bytes depend only on the input: no creation
-    /// date, a fixed document identifier and no creator string.
+    /// Exports a tagged PDF that declares PDF/UA-1 conformance. When Typst
+    /// cannot meet PDF/UA-1, as with glyphs missing from the font (ADR-033),
+    /// it exports the same tagged PDF without the claim (ADR-061). The bytes
+    /// depend only on the input: no creation date, a fixed document
+    /// identifier and no creator string.
     pub fn to_pdf(&self) -> Result<Vec<u8>, RenderError> {
-        let options = typst_pdf::PdfOptions {
+        let options = |standards| typst_pdf::PdfOptions {
             ident: Smart::Custom("pinaxcv".to_owned()),
             creator: Smart::Custom(None),
             timestamp: None,
             tagged: true,
+            standards,
             ..Default::default()
         };
-        typst_pdf::pdf(&self.document, &options).map_err(|errors| {
-            let message: Vec<String> = errors.iter().map(|e| e.message.to_string()).collect();
-            RenderError::Export(message.join("; "))
-        })
+        let ua = typst_pdf::PdfStandards::new(&[typst_pdf::PdfStandard::Ua_1])
+            .map_err(|e| RenderError::Export(e.message().to_string()))?;
+        typst_pdf::pdf(&self.document, &options(ua))
+            .or_else(|_| typst_pdf::pdf(&self.document, &options(Default::default())))
+            .map_err(|errors| {
+                let message: Vec<String> = errors.iter().map(|e| e.message.to_string()).collect();
+                RenderError::Export(message.join("; "))
+            })
     }
 
     /// Renders every page to PNG at `pixels_per_pt` (1.5 suits the preview).
@@ -403,6 +411,16 @@ mod tests {
         assert!(pages >= 3, "long fixture is {pages} pages");
         assert_eq!(compile("long").page_count(), pages);
         assert_eq!(compile("minimal").page_count(), 1);
+    }
+
+    #[test]
+    fn pdfs_claim_pdf_ua_when_typst_can_meet_it() {
+        let contains = |pdf: &[u8], needle: &[u8]| pdf.windows(needle.len()).any(|w| w == needle);
+        let typical = compile("typical").to_pdf().expect("typical exports");
+        assert!(contains(&typical, b"pdfuaid"), "PDF/UA-1 declared");
+        // Missing glyphs break PDF/UA-1; the export still succeeds without it.
+        let cjk = compile("cjk").to_pdf().expect("cjk still exports");
+        assert!(cjk.starts_with(b"%PDF") && !contains(&cjk, b"pdfuaid"));
     }
 
     #[test]

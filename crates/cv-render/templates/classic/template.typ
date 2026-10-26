@@ -47,16 +47,24 @@
   #d.summary
 ]
 
+// The title (bold) and the period (right-aligned) share the first line, and
+// the organisation and location follow on the next. Each is its own text run
+// with clear space around it, so parsers that group runs by font and spacing
+// read title, organisation and dates apart (ADR-061).
 #let entry(e) = {
-  let head = ()
-  if e.title != none { head.push(strong(e.title)) }
-  if e.org != none { head.push(e.org) }
-  let sub = ()
-  if e.period != none { sub.push(e.period) }
-  if e.location != none { sub.push(e.location) }
+  let rest = ()
+  if e.org != none { rest.push(e.org) }
+  if e.location != none { rest.push(e.location) }
+  let first = none
+  if e.title != none {
+    first = strong(e.title)
+  } else if rest.len() > 0 {
+    first = rest.join(" | ")
+    rest = ()
+  }
   block(breakable: false, sticky: not e.collapsed, below: 0.5em)[
-    #head.join(", ")
-    #if sub.len() > 0 [ \ #sub.join(" | ")]
+    #first#if e.period != none [#h(1fr)#e.period]
+    #if rest.len() > 0 [ \ #rest.join(" | ")]
   ]
   if e.description != none { block(below: 0.5em, e.description) }
   if e.link != none { block(below: 0.5em, url-text(e.link)) }
