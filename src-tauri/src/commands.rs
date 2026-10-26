@@ -549,11 +549,19 @@ fn open_folder(dir: &std::path::Path) -> Reply<()> {
     } else {
         "xdg-open"
     };
-    // Explorer exits with 1 even when it opened the folder, so only a
-    // failure to start counts.
-    std::process::Command::new(program)
-        .arg(dir)
-        .spawn()
-        .map(drop)
-        .map_err(|_| ApiError::new(ErrorCode::Io, "The data folder could not be opened."))
+    let failed = || ApiError::new(ErrorCode::Io, "The data folder could not be opened.");
+    let mut command = std::process::Command::new(program);
+    command.arg(dir);
+    if cfg!(windows) {
+        // Explorer exits with 1 even when it opened the folder, so only a
+        // failure to start counts.
+        command.spawn().map(drop).map_err(|_| failed())
+    } else {
+        // `open` and `xdg-open` hand the folder to the file manager and
+        // exit; a non-zero status means it was not opened.
+        match command.status() {
+            Ok(status) if status.success() => Ok(()),
+            _ => Err(failed()),
+        }
+    }
 }
