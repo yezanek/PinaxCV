@@ -117,3 +117,12 @@ main.import ul.import-summary li, main.import ul.warnings li { border: none; pad
 .lint-issue { display: flex; gap: 0.5rem; align-items: start; padding: 0.3rem 0; border-bottom: 1px solid var(--border); }
 .lint-issue span { flex: 1; min-width: 0; }
 .lint-issue small { color: var(--muted); }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ats { margin-top: 1.5rem; }
+.ats-score { font-weight: 600; }
+.ats-checks { list-style: none; padding: 0; margin: 0.3rem 0; }
+.ats-checks li { display: flex; gap: 0.5rem; padding: 0.2rem 0; }
+.ats-checks li.failed { color: var(--warning); }
+.ats-checks small { color: var(--muted); }
+.ats-text-head { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.8rem; }
+.ats-text { font-family: ui-monospace, monospace; font-size: 0.85em; white-space: pre-wrap; border: 1px solid var(--border); padding: 0.5rem; max-height: 24rem; overflow: auto; }
