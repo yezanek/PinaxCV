@@ -13,7 +13,7 @@ Summary of `pinaxcv-spec.md` section 11. The spec is authoritative.
 
 ## Providers
 
-`Llm` trait with `AnthropicLlm`, `OpenAiLlm`, `GeminiLlm`, `OpenAiCompatibleLlm` (any base URL, including local servers such as Ollama) and `FakeLlm` for tests. The user enters the model name; there is no default. Requests use `reqwest` with rustls, timeouts and bounded retries, and never log request or response bodies.
+`Llm` trait with `AnthropicLlm`, `OpenAiLlm`, `GeminiLlm`, `OpenAiCompatibleLlm` (any base URL, including local servers such as Ollama) and `FakeLlm` for tests. The user enters the model name; there is no default. Requests use `ureq` with rustls on a blocking thread (ADR-068), a 60 s timeout by default, up to two retries on 408, 429 and 5xx, and never log request or response bodies.
 
 ## Pipeline (`ai_tailor`)
 
