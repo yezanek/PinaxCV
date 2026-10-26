@@ -8,7 +8,7 @@ use cv_api::{
     PreviewResponse, SaveCv, Target,
 };
 use cv_core::lint::SUMMARY_MAX_CHARS;
-use cv_core::{Cv, Id, StoredCv, StoredVariant};
+use cv_core::{Cv, Diagnostic, Id, StoredCv, StoredVariant};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 
@@ -16,6 +16,7 @@ use crate::entries::{AddSection, Sections};
 use crate::history::{History, Shortcut, shortcut};
 use crate::i18n::{error_message, fill, t};
 use crate::ipc::{IdArg, ReqArg, call};
+use crate::preview::{DiagnosticsStrip, Zoom, ZoomControls, diagnostics_from, page_width};
 use crate::style::StyleTab;
 use crate::variants::VariantBar;
 
@@ -58,6 +59,9 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
     // Bumped on every edit; a timer acts only if no newer edit happened.
     let edits = RwSignal::new(0u64);
     let pages: RwSignal<Vec<String>> = RwSignal::new(Vec::new());
+    // Template messages from the newest preview, and the page zoom.
+    let diagnostics: RwSignal<Vec<Diagnostic>> = RwSignal::new(Vec::new());
+    let zoom = RwSignal::new(Zoom::FitWidth);
     let status = RwSignal::new(String::from(t().loading));
     let error: RwSignal<Option<String>> = RwSignal::new(None);
     // The variant being viewed; `None` is the base CV.
@@ -102,8 +106,14 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
             }
             rendering.set(false);
             match result {
-                Ok(resp) => pages.set(resp.page_urls),
-                Err(e) => error.set(Some(error_message(&e))),
+                Ok(resp) => {
+                    pages.set(resp.page_urls);
+                    diagnostics.set(resp.diagnostics);
+                }
+                Err(e) => {
+                    diagnostics.set(diagnostics_from(&e));
+                    error.set(Some(error_message(&e)));
+                }
             }
         });
     };
@@ -448,11 +458,16 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
             </section>
             <section class="preview" class:stale=move || rendering.get() aria-label=t().preview
                 aria-busy=move || rendering.get().to_string()>
-                <Show when=move || rendering.get()>
-                    <span class="spinner" role="status" aria-label=t().updating_preview></span>
-                </Show>
+                <div class="preview-bar">
+                    <ZoomControls zoom=zoom />
+                    <Show when=move || rendering.get()>
+                        <span class="spinner" role="status" aria-label=t().updating_preview></span>
+                    </Show>
+                </div>
+                <DiagnosticsStrip diagnostics=diagnostics />
                 <For each=move || pages.get() key=|u| u.clone() let:url>
-                    <img src=url alt=t().page_preview />
+                    <img src=url alt=t().page_preview class:actual=move || zoom.get() == Zoom::Actual
+                        style:width=move || page_width(zoom.get(), cv.with(|c| c.as_ref().map(|c| c.paper).unwrap_or_default())) />
                 </For>
             </section>
         </div>
