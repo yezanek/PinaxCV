@@ -198,3 +198,33 @@ async fn a_text_file_can_be_read_without_ai() {
         Some(ErrorCode::Import)
     );
 }
+
+#[tokio::test]
+async fn a_job_started_before_the_cache_was_cleared_does_not_fill_it() {
+    let (app, llm) = app(
+        FakeLlm::new()
+            .reply("ExtractedCv", extracted())
+            .reply("ExtractedCv", extracted()),
+        None,
+        true,
+    );
+    let prepared = app
+        .import_text_prepare(ImportTextSource::Pasted { text: TEXT.into() })
+        .expect("prepared");
+    let events = Arc::new(Recorded::default());
+    let (_, job) = app
+        .ai_import(
+            events,
+            AiImport {
+                text_id: prepared.text_id,
+            },
+        )
+        .expect("started");
+    // Cleared after the job started but before it ran.
+    app.clear_ai_cache().expect("clear");
+    job.await;
+    assert_eq!(llm.seen().len(), 1);
+    // Its answer was not cached, so the same import asks the provider again.
+    extract(&app, prepared.text_id).await.expect("extracted");
+    assert_eq!(llm.seen().len(), 2);
+}
