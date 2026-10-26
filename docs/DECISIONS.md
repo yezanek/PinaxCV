@@ -448,6 +448,13 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - An entry description can be set in a variant even when the base entry has none, matching how resolving applies overrides (ADR-015).
 - The form keeps editing the base CV; only the panel writes overrides.
 
+## ADR-064 — Duplicating and pruning variants (M5)
+
+- "Duplicate variant" copies the selected variant under "<name> (copy)" and selects the copy. It is disabled while overlay edits are saving, so the copy is made from the saved overlay.
+- Selecting a variant first runs `prune_variant`, which drops hidden, collapsed, order and text entries whose base content was deleted, then loads it. Base edits made since the variant was last open are therefore cleaned up when it is opened.
+- Pruning is not run after every base save while a variant is open. Resolving already ignores missing IDs, and pruning on save would lose a variant's settings for an item that undo brings back with the same ID. The spec (section on resolving variants) says the same.
+- A failed prune is shown but does not stop the variant opening.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
