@@ -43,13 +43,18 @@ PinaxCV makes no network requests of its own except these:
 
    What the provider does with that data is governed by its own privacy
    policy. A local provider such as Ollama keeps everything on your machine.
-2. **Links you click.** Links in the app open in your normal web browser.
+2. **HTTPS links you click.** Only `https://` web links (and `mailto:`
+   email links) are made clickable in your exported PDF and HTML files.
+   Clicking one opens it in your normal web browser; PinaxCV itself never
+   opens a link or any other kind of address.
 
 There is no telemetry, no crash upload and no tracking. Exported PDF and HTML
 files load nothing from the internet: fonts and styles are built in.
 
-A check for new versions on GitHub Releases is planned. When it comes, it
-will be off unless you turn it on.
+A check for new versions on GitHub Releases is planned. When it comes,
+PinaxCV will ask you about it on first run with "off" already selected, and
+you can change your answer later in Settings. Until you turn it on, it makes
+no request.
 
 ## Backups and exports
 
