@@ -142,8 +142,12 @@ pub fn verify_summary(
     };
     let known = numbers(cv_text);
     for (token, value) in number_tokens(summary) {
-        let years = max_years
-            .is_some_and(|m| value >= 1.0 && value <= f64::from(m) && value.fract() == 0.0);
+        let years = max_years.is_some_and(|m| {
+            value >= 1.0
+                && value <= f64::from(m)
+                && value.fract() == 0.0
+                && is_year_count(summary, &token)
+        });
         if !years && !known.iter().any(|k| same_number(*k, value)) {
             found.push(finding(VerificationKind::NewNumber, Severity::Error, token));
         }
@@ -425,6 +429,29 @@ fn spelled(word: &str) -> Option<f64> {
         .or_else(|| german_compound(word))
 }
 
+/// Whether every whole-word use of `token` in `text` counts years:
+/// "8 years", "8+ yrs", "acht Jahre".
+fn is_year_count(text: &str, token: &str) -> bool {
+    let lower = text.to_lowercase();
+    let token = token.to_lowercase();
+    let mut found = false;
+    for (i, _) in lower.match_indices(&token) {
+        let before = lower[..i].chars().next_back();
+        let rest = &lower[i + token.len()..];
+        if before.is_some_and(char::is_alphanumeric)
+            || rest.chars().next().is_some_and(char::is_alphanumeric)
+        {
+            continue;
+        }
+        let rest = rest.trim_start_matches(['+', ' ', '-', '\u{a0}']);
+        if !["year", "yr", "jahr"].iter().any(|w| rest.starts_with(w)) {
+            return false;
+        }
+        found = true;
+    }
+    found
+}
+
 /// The technology dictionary (spec section 11.8), one term per line.
 static TERMS: LazyLock<Vec<&'static str>> = LazyLock::new(|| {
     include_str!("../data/tech_terms.txt")
@@ -524,6 +551,19 @@ mod tests {
             kinds(&verify_summary(&long, None, cv, None)),
             [VerificationKind::LengthOutOfRange]
         );
+        // Only year counts are exempt: "5 engineers" is not in the CV.
+        let v = verify_summary(
+            "Backend engineer who led 5 engineers on a billing migration to Rust.",
+            None,
+            cv,
+            Some(8),
+        );
+        assert!(matches!(&v, Verdict::Drop(_)));
+        assert_eq!(kinds(&v), [VerificationKind::NewNumber]);
+        assert!(is_year_count("8+ years of Rust", "8"));
+        assert!(is_year_count("acht Jahre Erfahrung", "acht"));
+        assert!(!is_year_count("8 years and 8 teams", "8"));
+        assert!(is_year_count("18 teams, 8 years", "8"));
         assert_eq!(verify_summary(ok, Some(ok), cv, Some(8)), Verdict::Same);
         assert_eq!(verify_summary("  ", None, cv, None), Verdict::Same);
     }
