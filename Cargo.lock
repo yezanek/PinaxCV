@@ -1342,6 +1342,7 @@ dependencies = [
  "cv-import",
  "cv-render",
  "cv-store",
+ "serde",
  "serde_json",
  "tempfile",
  "tokio",

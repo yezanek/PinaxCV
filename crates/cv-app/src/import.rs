@@ -145,7 +145,7 @@ impl App {
                         .unwrap_or_else(|| "Imported CV".into()),
                     t => t.to_owned(),
                 };
-                let mut cv = blank_cv(self.next_id(), &title);
+                let mut cv = self.with_defaults(blank_cv(self.next_id(), &title))?;
                 merge(&mut cv, partial, &MergePlan::default());
                 let issues = validate::for_save(&mut cv);
                 if validate::has_errors(&issues) {

@@ -7,8 +7,8 @@ use std::fmt;
 
 use crate::ApiError;
 use cv_core::{
-    AtsReport, Cv, Diagnostic, Id, JobTarget, Link, Section, StoredCv, StoredVariant, Suggestion,
-    TemplateId, Timestamp, Variant, VerificationWarning,
+    AtsReport, Cv, DateStyle, Diagnostic, Id, JobTarget, Link, Locale, Paper, Section, StoredCv,
+    StoredVariant, Suggestion, TemplateId, Timestamp, Variant, VerificationWarning,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -316,6 +316,29 @@ pub enum KeyStorage {
     Keychain,
     /// Only in memory until the app closes: no keychain is available.
     Memory,
+}
+
+// App settings (spec section 12.2, screen 5)
+
+/// What a new CV starts with: a new blank CV and a CV created by an import.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub struct CvDefaults {
+    pub paper: Paper,
+    pub locale: Locale,
+    pub date_style: DateStyle,
+}
+
+/// The settings screen apart from AI, which has its own [`AiStatus`].
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct AppSettings {
+    pub defaults: CvDefaults,
+    /// The folder holding the database and the log; `None` when the app
+    /// keeps its data in memory (tests).
+    pub data_dir: Option<String>,
+    /// The app's version, from its build.
+    pub version: String,
+    /// The app's SPDX licence identifier.
+    pub license: String,
 }
 
 /// The AI settings and whether the feature may be used.

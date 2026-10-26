@@ -40,6 +40,9 @@ const COMMANDS: &[&str] = &[
     "import_parse",
     "import_match",
     "import_commit",
+    "get_settings",
+    "set_cv_defaults",
+    "open_data_dir",
 ];
 
 fn main() {

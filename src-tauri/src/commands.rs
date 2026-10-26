@@ -5,11 +5,12 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use cv_api::{
-    AiConfig, AiImport, AiReview, AiStatus, AiTailor, ApiError, DuplicateCv, DuplicateVariant,
-    ErrorCode, ExportHtmlRequest, ExportPdfRequest, ExportResult, FitOutcome, FitVariant,
-    ImportCommit, ImportMatch, ImportMatchRequest, ImportPreview, ImportText, ImportTextSource,
-    JobId, NewCv, NewVariant, PreviewRequest, PreviewResponse, PruneResult, ReviewDecide,
-    ReviewDecided, ReviewSession, SaveCv, SaveVariant, Target, TemplateManifest,
+    AiConfig, AiImport, AiReview, AiStatus, AiTailor, ApiError, AppSettings, CvDefaults,
+    DuplicateCv, DuplicateVariant, ErrorCode, ExportHtmlRequest, ExportPdfRequest, ExportResult,
+    FitOutcome, FitVariant, ImportCommit, ImportMatch, ImportMatchRequest, ImportPreview,
+    ImportText, ImportTextSource, JobId, NewCv, NewVariant, PreviewRequest, PreviewResponse,
+    PruneResult, ReviewDecide, ReviewDecided, ReviewSession, SaveCv, SaveVariant, Target,
+    TemplateManifest,
 };
 use cv_app::App;
 use cv_core::{AtsReport, CvSummary, Id, LintIssue, StoredCv, StoredVariant, VariantSummary};
@@ -503,5 +504,52 @@ mod tests {
         );
         // An unknown or finished job is not an error.
         invoke(&w, "ai_cancel", json!({ "jobId": id })).expect("again");
+    }
+}
+
+#[tauri::command]
+pub async fn get_settings(app: Shared<'_>) -> Reply<AppSettings> {
+    run(app, "get_settings", App::get_settings).await
+}
+
+#[tauri::command]
+pub async fn set_cv_defaults(app: Shared<'_>, defaults: CvDefaults) -> Reply<AppSettings> {
+    run(app, "set_cv_defaults", move |a| a.set_cv_defaults(defaults)).await
+}
+
+/// Opens the data folder in the system's file manager.
+#[tauri::command]
+pub async fn open_data_dir(app: Shared<'_>) -> Reply<()> {
+    run(app, "open_data_dir", |a| {
+        let dir = a
+            .data_dir()
+            .ok_or_else(|| ApiError::new(ErrorCode::NotFound, "There is no data folder."))?;
+        open_folder(dir)
+    })
+    .await
+}
+
+fn open_folder(dir: &std::path::Path) -> Reply<()> {
+    let program = if cfg!(windows) {
+        "explorer"
+    } else if cfg!(target_os = "macos") {
+        "open"
+    } else {
+        "xdg-open"
+    };
+    let failed = || ApiError::new(ErrorCode::Io, "The data folder could not be opened.");
+    let mut command = std::process::Command::new(program);
+    command.arg(dir);
+    if cfg!(windows) {
+        // Explorer exits with 1 even when it opened the folder, so only a
+        // failure to start counts.
+        command.spawn().map(drop).map_err(|_| failed())
+    } else {
+        // `open` and `xdg-open` hand the folder to the file manager and
+        // exit; a non-zero status means it was not opened.
+        match command.status() {
+            Ok(status) if status.success() => Ok(()),
+            _ => Err(failed()),
+        }
     }
 }

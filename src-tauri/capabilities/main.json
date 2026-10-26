@@ -42,6 +42,9 @@
     "allow-list-templates",
     "allow-import-parse",
     "allow-import-match",
-    "allow-import-commit"
+    "allow-import-commit",
+    "allow-get-settings",
+    "allow-set-cv-defaults",
+    "allow-open-data-dir"
   ]
 }

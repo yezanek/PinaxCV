@@ -70,7 +70,8 @@ fn main() {
                 Box::new(UlidIds),
                 preview::BASE_URL,
             )
-            .with_secrets(Box::new(keychain::Keychain));
+            .with_secrets(Box::new(keychain::Keychain))
+            .with_data_dir(dir);
             tauri_app.manage(Arc::new(app));
             Ok(())
         })
@@ -112,6 +113,9 @@ fn main() {
             commands::import_parse,
             commands::import_match,
             commands::import_commit,
+            commands::get_settings,
+            commands::set_cv_defaults,
+            commands::open_data_dir,
         ])
         .run(context)
         .unwrap_or_else(|e| panic!("PinaxCV could not start: {e}"));

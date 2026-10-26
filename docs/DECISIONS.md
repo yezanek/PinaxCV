@@ -569,6 +569,12 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - The option stays off by default (spec section 11.6): recruiters and ATS expect newest first. The tailor panel's checkbox says so, and turning it on only adds a pending `Reorder` suggestion for each Experience section, reviewed, accepted or rejected like any other; nothing moves until it is accepted, and accepting writes the variant's `order`, never the base CV.
 - An entry moves ahead of an earlier one only when it scores at least 10 points more (`selection::REORDER_MIN_LEAD`), so close scores keep chronology and a near tie never produces a suggestion. Unscored entries stay where they are. The suggestion says it puts the most relevant experience first instead of newest first.
 
+## ADR-079 — Settings screen: new CV defaults, data folder, about (M8)
+
+- Settings keeps the AI section and adds "New CVs" (paper, CV language, date style), "Your data" and "About PinaxCV". The defaults are stored as `defaults.paper`, `defaults.locale` and `defaults.date_style` (serde names such as `letter`) and apply to a new blank CV and to a CV created by an import; existing CVs keep their own settings in the Style tab. An unknown stored value (from a newer version, say) falls back to the built-in default.
+- `get_settings` returns the defaults, the data folder (the app data directory holding the database), the version and the SPDX licence from the build. `set_cv_defaults` saves the defaults; `open_data_dir` opens the folder in the system file manager (`xdg-open`, `open` or `explorer`, started from Rust; the webview gets no shell or opener permission).
+- About names the version, the app licence and the Inter font's licence. The full third-party licence list is issue #72. Backup and restore (#66) and "Delete all data" / "Clear AI cache" (#67) get their own sections in later changes.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

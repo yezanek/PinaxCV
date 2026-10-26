@@ -303,6 +303,12 @@
           "markdownDescription": "Enables the get_review command without any pre-configured scope."
         },
         {
+          "description": "Enables the get_settings command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-settings",
+          "markdownDescription": "Enables the get_settings command without any pre-configured scope."
+        },
+        {
           "description": "Enables the get_variant command without any pre-configured scope.",
           "type": "string",
           "const": "allow-get-variant",
@@ -363,6 +369,12 @@
           "markdownDescription": "Enables the list_variants command without any pre-configured scope."
         },
         {
+          "description": "Enables the open_data_dir command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-open-data-dir",
+          "markdownDescription": "Enables the open_data_dir command without any pre-configured scope."
+        },
+        {
           "description": "Enables the preview command without any pre-configured scope.",
           "type": "string",
           "const": "allow-preview",
@@ -397,6 +409,12 @@
           "type": "string",
           "const": "allow-save-variant",
           "markdownDescription": "Enables the save_variant command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the set_cv_defaults command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-set-cv-defaults",
+          "markdownDescription": "Enables the set_cv_defaults command without any pre-configured scope."
         },
         {
           "description": "Denies the ai_cancel command without any pre-configured scope.",
@@ -525,6 +543,12 @@
           "markdownDescription": "Denies the get_review command without any pre-configured scope."
         },
         {
+          "description": "Denies the get_settings command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-settings",
+          "markdownDescription": "Denies the get_settings command without any pre-configured scope."
+        },
+        {
           "description": "Denies the get_variant command without any pre-configured scope.",
           "type": "string",
           "const": "deny-get-variant",
@@ -585,6 +609,12 @@
           "markdownDescription": "Denies the list_variants command without any pre-configured scope."
         },
         {
+          "description": "Denies the open_data_dir command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-open-data-dir",
+          "markdownDescription": "Denies the open_data_dir command without any pre-configured scope."
+        },
+        {
           "description": "Denies the preview command without any pre-configured scope.",
           "type": "string",
           "const": "deny-preview",
@@ -619,6 +649,12 @@
           "type": "string",
           "const": "deny-save-variant",
           "markdownDescription": "Denies the save_variant command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the set_cv_defaults command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-set-cv-defaults",
+          "markdownDescription": "Denies the set_cv_defaults command without any pre-configured scope."
         },
         {
           "description": "Default core plugins set.\n#### This default permission set includes:\n\n- `core:path:default`\n- `core:event:default`\n- `core:window:default`\n- `core:webview:default`\n- `core:app:default`\n- `core:image:default`\n- `core:resources:default`\n- `core:menu:default`\n- `core:tray:default`",
