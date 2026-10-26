@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-use serde_json::Value;
+use serde::de::DeserializeOwned;
 use sha2::{Digest, Sha256};
 
 use crate::prompts::Kind;
@@ -31,14 +31,16 @@ pub fn cache_key(kind: Kind, model: &str, input: &str) -> String {
 }
 
 /// Sends `request` unless a response for the same kind, prompt version,
-/// model and user prompt is cached. Only successful responses are stored.
-pub async fn generate_cached(
+/// model and user prompt is cached, and reads it as a `T`. Only responses
+/// that read as a `T` are stored, and a cached one that no longer does is
+/// asked for again.
+pub async fn generate_cached<T: DeserializeOwned>(
     llm: &dyn Llm,
     cache: &dyn ResponseCache,
     kind: Kind,
     model: &str,
     request: LlmRequest,
-) -> Result<Value, LlmError> {
+) -> Result<T, LlmError> {
     if request.cancel.is_cancelled() {
         return Err(LlmError::Cancelled);
     }
@@ -47,8 +49,10 @@ pub async fn generate_cached(
         return Ok(hit);
     }
     let value = llm.generate_json(request).await?;
+    let out = T::deserialize(&value)
+        .map_err(|_| LlmError::InvalidOutput("the answer did not match the schema".into()))?;
     cache.put(&key, kind.as_str(), &value.to_string());
-    Ok(value)
+    Ok(out)
 }
 
 /// An in-memory cache, for tests and for running without a store.
@@ -83,6 +87,7 @@ impl ResponseCache for MemoryCache {
 mod tests {
     use super::*;
     use crate::FakeLlm;
+    use serde_json::Value;
 
     fn request(user: &str) -> LlmRequest {
         LlmRequest::new(
@@ -111,20 +116,53 @@ mod tests {
     async fn a_cached_response_is_not_requested_again() {
         let llm = FakeLlm::new().reply("JobRequirements", serde_json::json!({ "n": 1 }));
         let cache = MemoryCache::default();
-        let first = generate_cached(&llm, &cache, Kind::JobParse, "m", request("jd"))
+        let first: Value = generate_cached(&llm, &cache, Kind::JobParse, "m", request("jd"))
             .await
             .expect("first");
         // The queue is empty now: a second request would fail.
-        let again = generate_cached(&llm, &cache, Kind::JobParse, "m", request("jd"))
+        let again: Value = generate_cached(&llm, &cache, Kind::JobParse, "m", request("jd"))
             .await
             .expect("cached");
         assert_eq!(first, again);
         assert_eq!(cache.len(), 1);
         assert!(
-            generate_cached(&llm, &cache, Kind::JobParse, "other", request("jd"))
+            generate_cached::<Value>(&llm, &cache, Kind::JobParse, "other", request("jd"))
                 .await
                 .is_err()
         );
         assert_eq!(cache.len(), 1, "failures are not cached");
+    }
+
+    #[derive(serde::Deserialize, Debug)]
+    struct N {
+        #[allow(dead_code)]
+        n: u32,
+    }
+
+    #[tokio::test]
+    async fn answers_of_the_wrong_shape_are_not_cached() {
+        let llm = FakeLlm::new()
+            .reply("JobRequirements", serde_json::json!({ "n": "one" }))
+            .reply("JobRequirements", serde_json::json!({ "n": 1 }));
+        let cache = MemoryCache::default();
+        let bad = generate_cached::<N>(&llm, &cache, Kind::JobParse, "m", request("jd")).await;
+        assert!(matches!(bad, Err(LlmError::InvalidOutput(_))));
+        assert!(cache.is_empty());
+        generate_cached::<N>(&llm, &cache, Kind::JobParse, "m", request("jd"))
+            .await
+            .expect("second answer");
+        assert_eq!(cache.len(), 1);
+
+        // A stored answer that does not read as the type is asked for again.
+        let llm = FakeLlm::new().reply("JobRequirements", serde_json::json!({ "n": 2 }));
+        let cache = MemoryCache::default();
+        cache.put(
+            &cache_key(Kind::JobParse, "m", "jd"),
+            "JOB_PARSE",
+            "{\"n\":\"x\"}",
+        );
+        generate_cached::<N>(&llm, &cache, Kind::JobParse, "m", request("jd"))
+            .await
+            .expect("asked again");
     }
 }
