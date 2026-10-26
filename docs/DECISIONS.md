@@ -505,6 +505,14 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - `generate_cached` keys responses by `sha256(kind, prompt version, model, user prompt)` with NUL separators and stores only successful answers. The store is behind a `ResponseCache` trait, so `cv-ai` still never reads the database; `cv-app` adapts it to the `ai_cache` table when the pipeline lands.
 - `tests/no_contact_details.rs` builds every stage's prompt from a CV hiding contact details in its free text and checks, through a recording `Llm`, that only `IMPORT_EXTRACT` sends them.
 
+## ADR-071 — AI jobs, cancellation and progress events (M7a)
+
+- Long AI work (tailoring, review, text import) runs as a job. `App::start_job` registers a cancellation token under a fresh ULID and returns the ID together with a future; the shell spawns the future on Tauri's async runtime, so the command that starts a job answers with the ID at once (spec section 10.2).
+- The job's work gets a `JobContext` with its ID, the token (passed on to every `LlmRequest`, so provider calls stop too) and `progress(stage, pct)`. Progress is clamped to 100 and never goes back, and a job always starts with `starting` at 0.
+- Every job ends with exactly one `ai://done { job_id, result }` or `ai://error { job_id, error }`. `ai_cancel(job_id)` cancels at once, whatever the work is waiting on, and the job ends with `ai://error` and code `ai_cancelled`; a job cancelled while finishing reports the cancellation too. Cancelling an unknown or finished job is not an error, since the job may have just ended.
+- The job's future owns a guard. If the future is dropped before it finishes, or the work panics, the guard still removes the job from the registry and reports `ai://error` with code `internal`. On a normal end the guard is marked finished before the terminal event is sent, so no job reports twice.
+- `cv-app` stays free of Tauri: events go through a `JobEvents` trait that the shell implements with `AppHandle::emit`, and tests record them. Events go to every window; there is only one.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

@@ -130,6 +130,12 @@ pub async fn ai_consent(app: Shared<'_>) -> Reply<AiStatus> {
     run(app, "ai_consent", App::ai_consent).await
 }
 
+/// Cancels a running AI job; its `ai://error` event says `ai_cancelled`.
+#[tauri::command]
+pub async fn ai_cancel(app: Shared<'_>, job_id: String) -> Reply<()> {
+    app.ai_cancel(&job_id)
+}
+
 /// The settings and keychain reads run on the blocking pool; only the
 /// provider call runs on the async runtime.
 #[tauri::command]
@@ -242,6 +248,7 @@ mod tests {
                 super::lint,
                 super::list_templates,
                 super::import_parse,
+                super::ai_cancel,
             ])
             .build(mock_context(noop_assets()))
             .expect("app");
@@ -363,5 +370,48 @@ mod tests {
         let w = window();
         let err = invoke(&w, "import_parse", json!({})).expect_err("cancelled");
         assert_eq!(err["code"], json!(cv_api::ErrorCode::Cancelled));
+    }
+
+    #[test]
+    fn jobs_send_events_and_cancel_through_ipc() {
+        use std::sync::mpsc;
+        use std::time::Duration;
+        use tauri::{Listener, Manager};
+
+        let w = window();
+        let (tx, rx) = mpsc::channel::<(&str, Value)>();
+        for name in [crate::jobs::PROGRESS, crate::jobs::DONE, crate::jobs::ERROR] {
+            let tx = tx.clone();
+            w.app_handle().listen(name, move |e| {
+                let payload = serde_json::from_str(e.payload()).expect("json");
+                let _ = tx.send((name, payload));
+            });
+        }
+        let app = Arc::clone(w.state::<Arc<App>>().inner());
+        let next = || rx.recv_timeout(Duration::from_secs(10)).expect("event");
+
+        let id = crate::jobs::spawn(w.app_handle(), &app, |_, _| async { Ok(json!(42)) });
+        let (name, start) = next();
+        assert_eq!(
+            (name, &start["job_id"], &start["stage"]),
+            (crate::jobs::PROGRESS, &json!(id), &json!("starting"))
+        );
+        let (name, done) = next();
+        assert_eq!((name, &done["result"]), (crate::jobs::DONE, &json!(42)));
+
+        let id = crate::jobs::spawn(w.app_handle(), &app, |_, ctx| async move {
+            ctx.cancel.cancelled().await;
+            Ok(json!(null))
+        });
+        assert_eq!(next().0, crate::jobs::PROGRESS);
+        invoke(&w, "ai_cancel", json!({ "jobId": id })).expect("cancel");
+        let (name, failed) = next();
+        assert_eq!(name, crate::jobs::ERROR);
+        assert_eq!(
+            failed["error"]["code"],
+            json!(cv_api::ErrorCode::AiCancelled)
+        );
+        // An unknown or finished job is not an error.
+        invoke(&w, "ai_cancel", json!({ "jobId": id })).expect("again");
     }
 }

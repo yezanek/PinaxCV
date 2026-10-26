@@ -24,6 +24,7 @@ Representative operations:
 - `list_templates`
 - `import_parse`, `import_match` and `import_commit` (the import wizard, ADR-058)
 - `ai_status`, `ai_configure`, `ai_forget_key`, `ai_consent` and `ai_test_connection` (ADR-069)
+- `ai_cancel(job_id)`; long AI work runs as a job that reports `ai://progress`, `ai://done` and `ai://error` events (ADR-071)
 - `generate_tailoring_suggestions`
 - `accept_suggestion`
 - `reject_suggestion`
