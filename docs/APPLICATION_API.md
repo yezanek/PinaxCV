@@ -15,6 +15,7 @@ Representative operations:
 - `save_variant`
 - `delete_variant`
 - `resolve_variant`
+- `prune_variant` and `fit_variant` (fit-to-length cuts as pending suggestions, ADR-065)
 - `preview`
 - `export_pdf`
 - `export_html`

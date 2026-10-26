@@ -231,6 +231,12 @@
           "markdownDescription": "Enables the export_pdf command without any pre-configured scope."
         },
         {
+          "description": "Enables the fit_variant command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-fit-variant",
+          "markdownDescription": "Enables the fit_variant command without any pre-configured scope."
+        },
+        {
           "description": "Enables the get_cv command without any pre-configured scope.",
           "type": "string",
           "const": "allow-get-cv",
@@ -367,6 +373,12 @@
           "type": "string",
           "const": "deny-export-pdf",
           "markdownDescription": "Denies the export_pdf command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the fit_variant command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-fit-variant",
+          "markdownDescription": "Denies the fit_variant command without any pre-configured scope."
         },
         {
           "description": "Denies the get_cv command without any pre-configured scope.",

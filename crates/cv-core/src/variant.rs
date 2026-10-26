@@ -5,7 +5,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{Id, JobRequirements, Suggestion};
+use crate::{
+    Id, JobRequirements, Suggestion, SuggestionAction, SuggestionSource, SuggestionStatus,
+    SuggestionTarget,
+};
 
 /// Current version of the [`Variant`] JSON shape.
 pub const VARIANT_SCHEMA_VERSION: u32 = 1;
@@ -110,6 +113,58 @@ impl Variant {
         self.summary_override.take().is_some()
     }
 
+    /// Accepts pending suggestion `id` and applies its hide, collapse or
+    /// show action. Returns false, changing nothing, when there is no such
+    /// pending suggestion or it is not one of those actions on a bullet,
+    /// entry or section.
+    pub fn accept_suggestion(&mut self, id: &Id) -> bool {
+        let Some(s) = self
+            .suggestions
+            .iter_mut()
+            .find(|s| s.id == *id && s.status == SuggestionStatus::Pending)
+        else {
+            return false;
+        };
+        let target = match &s.target {
+            SuggestionTarget::Bullet { id }
+            | SuggestionTarget::Entry { id }
+            | SuggestionTarget::Section { id } => id.clone(),
+            SuggestionTarget::Summary | SuggestionTarget::Skills => return false,
+        };
+        match s.action {
+            Some(SuggestionAction::Hide) => self.hidden.insert(target),
+            Some(SuggestionAction::Collapse) => self.collapsed.insert(target),
+            Some(SuggestionAction::Show) => self.hidden.remove(&target),
+            Some(SuggestionAction::Reorder { .. }) | None => return false,
+        };
+        s.status = SuggestionStatus::Accepted;
+        true
+    }
+
+    /// Rejects pending suggestion `id`. Returns whether it was pending.
+    pub fn reject_suggestion(&mut self, id: &Id) -> bool {
+        match self
+            .suggestions
+            .iter_mut()
+            .find(|s| s.id == *id && s.status == SuggestionStatus::Pending)
+        {
+            Some(s) => {
+                s.status = SuggestionStatus::Rejected;
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// Replaces the pending fit-to-length cuts with `cuts`; accepted and
+    /// rejected ones, and other suggestions, are kept.
+    pub fn replace_fit_cuts(&mut self, cuts: Vec<Suggestion>) {
+        self.suggestions.retain(|s| {
+            !(s.source == SuggestionSource::Fit && s.status == SuggestionStatus::Pending)
+        });
+        self.suggestions.extend(cuts);
+    }
+
     /// The order this variant shows `base` (the children of `parent` in base
     /// order) in: the variant's list for `parent` first, skipping unknown and
     /// repeated IDs, then the rest in base order. Resolving uses the same rule.
@@ -183,6 +238,75 @@ fn toggle(set: &mut BTreeSet<Id>, id: &Id) -> bool {
 mod tests {
     use super::*;
     use crate::test_ids::id;
+
+    fn cut(n: u32, target: SuggestionTarget, action: SuggestionAction) -> Suggestion {
+        Suggestion {
+            id: id(n),
+            kind: crate::SuggestionKind::LengthCut,
+            target,
+            before: None,
+            after: None,
+            action: Some(action),
+            reason: "Removed to fit 1 page".into(),
+            confidence: 1.0,
+            warnings: Vec::new(),
+            status: SuggestionStatus::Pending,
+            source: SuggestionSource::Fit,
+        }
+    }
+
+    #[test]
+    fn accepting_a_cut_applies_it_once() {
+        let mut v = Variant::empty(id(1), id(2), "v");
+        v.suggestions = vec![
+            cut(
+                20,
+                SuggestionTarget::Bullet { id: id(10) },
+                SuggestionAction::Hide,
+            ),
+            cut(
+                21,
+                SuggestionTarget::Entry { id: id(11) },
+                SuggestionAction::Collapse,
+            ),
+            cut(22, SuggestionTarget::Summary, SuggestionAction::Hide),
+        ];
+        assert!(v.accept_suggestion(&id(20)));
+        assert!(v.hidden.contains(&id(10)));
+        assert!(!v.accept_suggestion(&id(20)));
+        assert!(v.accept_suggestion(&id(21)));
+        assert!(v.collapsed.contains(&id(11)));
+        assert!(!v.accept_suggestion(&id(22)));
+        assert_eq!(v.suggestions[2].status, SuggestionStatus::Pending);
+        assert!(v.reject_suggestion(&id(22)));
+        assert!(!v.reject_suggestion(&id(20)));
+        assert_eq!(v.suggestions[2].status, SuggestionStatus::Rejected);
+    }
+
+    #[test]
+    fn new_fit_cuts_replace_only_pending_ones() {
+        let mut v = Variant::empty(id(1), id(2), "v");
+        v.suggestions = vec![
+            cut(
+                20,
+                SuggestionTarget::Bullet { id: id(10) },
+                SuggestionAction::Hide,
+            ),
+            cut(
+                21,
+                SuggestionTarget::Bullet { id: id(11) },
+                SuggestionAction::Hide,
+            ),
+        ];
+        v.accept_suggestion(&id(20));
+        v.replace_fit_cuts(vec![cut(
+            23,
+            SuggestionTarget::Bullet { id: id(12) },
+            SuggestionAction::Hide,
+        )]);
+        let ids: Vec<Id> = v.suggestions.iter().map(|s| s.id.clone()).collect();
+        assert_eq!(ids, [id(20), id(23)]);
+    }
 
     #[test]
     fn summary_overrides_follow_the_base_when_equal() {

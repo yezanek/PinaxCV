@@ -86,6 +86,7 @@ fn main() {
             commands::delete_variant,
             commands::duplicate_variant,
             commands::prune_variant,
+            commands::fit_variant,
             commands::preview,
             commands::export_pdf,
             commands::export_html,

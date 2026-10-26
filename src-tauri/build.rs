@@ -17,6 +17,7 @@ const COMMANDS: &[&str] = &[
     "delete_variant",
     "duplicate_variant",
     "prune_variant",
+    "fit_variant",
     "preview",
     "export_pdf",
     "export_html",
