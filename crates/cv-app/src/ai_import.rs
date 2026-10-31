@@ -124,6 +124,7 @@ pub fn to_partial(
         sections: Vec::new(),
         // The AI import does not read personal details (ADR-088).
         personal: Default::default(),
+        photo: None,
     };
     for s in cv.sections {
         let entries: Vec<Entry> = s

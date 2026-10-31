@@ -113,6 +113,7 @@ pub struct App {
     next_preview: AtomicU64,
     preview_base: String,
     data_dir: Option<PathBuf>,
+    log_dir: Option<PathBuf>,
 }
 
 impl App {
@@ -139,6 +140,7 @@ impl App {
             next_preview: AtomicU64::new(0),
             preview_base: preview_base.into(),
             data_dir: None,
+            log_dir: None,
         }
     }
 

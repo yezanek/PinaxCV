@@ -16,6 +16,18 @@ pub struct CvPartial {
     pub sections: Vec<Section>,
     /// Optional personal details (ADR-088). An import never switches them on.
     pub personal: PersonalDetails,
+    /// A profile photo as the file carried it: JPEG or PNG bytes, at most
+    /// [`MAX_PHOTO`]. Not yet decoded or cleaned of metadata; the app does
+    /// that before showing or storing it.
+    pub photo: Option<Vec<u8>>,
+}
+
+/// Largest imported photo, decoded (the photo dialog's limit, ADR-083).
+pub const MAX_PHOTO: usize = 5 * 1024 * 1024;
+
+/// Whether `bytes` start like a JPEG or PNG file.
+pub fn is_jpeg_or_png(bytes: &[u8]) -> bool {
+    bytes.starts_with(&[0xFF, 0xD8, 0xFF]) || bytes.starts_with(b"\x89PNG\r\n\x1a\n")
 }
 
 /// Something the importer skipped or had to guess, in words for the user.
@@ -46,5 +58,13 @@ mod tests {
     fn warning_keeps_its_message() {
         assert_eq!(ImportWarning::new("skipped").message, "skipped");
         assert!(ImportResult::default().warnings.is_empty());
+    }
+
+    #[test]
+    fn photos_are_recognised_by_their_signature() {
+        assert!(is_jpeg_or_png(&[0xFF, 0xD8, 0xFF, 0xE0]));
+        assert!(is_jpeg_or_png(b"\x89PNG\r\n\x1a\n...."));
+        assert!(!is_jpeg_or_png(b"GIF89a"));
+        assert!(!is_jpeg_or_png(b""));
     }
 }

@@ -5,8 +5,10 @@ use cv_core::{
     PartialDate, Period, PersonalDetails, PersonalField, Section,
 };
 
-use crate::europass_xml::{EuropassCv, EuropassLanguage, EuropassPerson};
-use crate::partial::{CvPartial, ImportResult, ImportWarning};
+use base64::Engine as _;
+
+use crate::europass_xml::{EuropassCv, EuropassLanguage, EuropassPerson, EuropassPhoto};
+use crate::partial::{CvPartial, ImportResult, ImportWarning, MAX_PHOTO, is_jpeg_or_png};
 
 /// Maps a parsed Europass CV. `fresh` makes a new ID for every item.
 pub fn to_partial(cv: &EuropassCv, fresh: &mut dyn FnMut() -> Id) -> ImportResult {
@@ -34,6 +36,12 @@ pub fn to_partial(cv: &EuropassCv, fresh: &mut dyn FnMut() -> Id) -> ImportResul
             .collect(),
         ..CvPartial::default()
     };
+    if let Some(photo) = &cv.photo {
+        match photo_bytes(photo) {
+            Ok(bytes) => partial.photo = Some(bytes),
+            Err(why) => warnings.push(ImportWarning::new(why)),
+        }
+    }
     if p.emails.len() > 1 {
         warnings.push(ImportWarning::new(
             "More than one email address was found; the first one was used.",
@@ -349,6 +357,31 @@ fn language_name(code: &str) -> String {
     name.to_owned()
 }
 
+/// The photo's bytes, or why it was left out. The base64 text is measured
+/// before decoding, so an oversized photo is never decoded.
+fn photo_bytes(photo: &EuropassPhoto) -> Result<Vec<u8>, &'static str> {
+    const TOO_LARGE: &str = "The profile photo is larger than 5 MB and was not imported.";
+    const NOT_AN_IMAGE: &str = "The profile photo is not a JPEG or PNG image and was not imported.";
+    let text: Vec<u8> = photo
+        .base64
+        .bytes()
+        .filter(|b| !b.is_ascii_whitespace())
+        .collect();
+    if text.len() > MAX_PHOTO.div_ceil(3) * 4 {
+        return Err(TOO_LARGE);
+    }
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(&text)
+        .map_err(|_| NOT_AN_IMAGE)?;
+    if bytes.len() > MAX_PHOTO {
+        return Err(TOO_LARGE);
+    }
+    if !is_jpeg_or_png(&bytes) {
+        return Err(NOT_AN_IMAGE);
+    }
+    Ok(bytes)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -399,6 +432,7 @@ mod tests {
                     ("c".into(), "C1".into()),
                 ],
             }],
+            photo: None,
         }
     }
 
@@ -501,6 +535,47 @@ mod tests {
             assert!(seen.insert(s.id().clone()));
         }
         assert!(seen.insert(r.cv_partial.links[0].id.clone()));
+    }
+
+    #[test]
+    fn the_photo_is_decoded_or_refused_with_a_warning() {
+        let png = b"\x89PNG\r\n\x1a\nrest";
+        let encoded = base64::engine::general_purpose::STANDARD.encode(png);
+        let with = |base64: String| EuropassCv {
+            photo: Some(EuropassPhoto {
+                mime: Some("image/png".into()),
+                base64,
+            }),
+            ..EuropassCv::default()
+        };
+        let wrapped = format!("\n  {}\n  {}\n", &encoded[..8], &encoded[8..]);
+        let r = to_partial(&with(wrapped), &mut ids());
+        assert_eq!(r.cv_partial.photo.as_deref(), Some(&png[..]));
+        assert!(r.warnings.is_empty());
+
+        let gif = base64::engine::general_purpose::STANDARD.encode(b"GIF89a....");
+        for bad in [gif, "not base64!".into()] {
+            let r = to_partial(&with(bad), &mut ids());
+            assert_eq!(r.cv_partial.photo, None);
+            assert!(r.warnings[0].message.contains("not a JPEG or PNG"));
+        }
+
+        let mut big = vec![0u8; MAX_PHOTO + 1];
+        big[..3].copy_from_slice(&[0xFF, 0xD8, 0xFF]);
+        let big = base64::engine::general_purpose::STANDARD.encode(&big);
+        let r = to_partial(&with(big), &mut ids());
+        assert_eq!(r.cv_partial.photo, None);
+        assert!(r.warnings[0].message.contains("larger than 5 MB"));
+        // Exactly 5 MB is accepted.
+        let mut max = vec![0u8; MAX_PHOTO];
+        max[..3].copy_from_slice(&[0xFF, 0xD8, 0xFF]);
+        let max = base64::engine::general_purpose::STANDARD.encode(&max);
+        assert!(
+            to_partial(&with(max), &mut ids())
+                .cv_partial
+                .photo
+                .is_some()
+        );
     }
 
     #[test]

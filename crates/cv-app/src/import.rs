@@ -18,7 +18,9 @@ use cv_import::{
     CvPartial, EntryDecision, Field, ImportError, ImportResult, MAX_INPUT, MergePlan,
     field_conflicts, import_any, merge, suggest_matches,
 };
+use cv_store::StoredPhoto;
 
+use crate::photo::{data_url, imported};
 use crate::{App, Result, blank_cv, store_error, validation_error};
 
 /// File extensions the open dialog offers.
@@ -27,14 +29,18 @@ pub const IMPORT_EXTENSIONS: &[&str] = &["pdf", "xml", "json", "zip"];
 /// Previews kept at once; opening another drops the oldest.
 const KEPT_PREVIEWS: usize = 4;
 
+/// A parsed import: the partial CV (its `photo` already taken out) and the
+/// photo, cleaned and cropped, ready to store.
+type Parsed = (CvPartial, Option<StoredPhoto>);
+
 /// Parsed imports waiting for `import_commit`, by preview ID.
 #[derive(Default)]
 pub struct ImportCache {
-    inner: Mutex<(u64, Vec<(u64, CvPartial)>)>,
+    inner: Mutex<(u64, Vec<(u64, Parsed)>)>,
 }
 
 impl ImportCache {
-    fn put(&self, partial: CvPartial) -> u64 {
+    fn put(&self, partial: Parsed) -> u64 {
         let mut inner = self.inner.lock().unwrap_or_else(PoisonError::into_inner);
         inner.0 += 1;
         let id = inner.0;
@@ -45,7 +51,7 @@ impl ImportCache {
         id
     }
 
-    fn get(&self, id: u64) -> Result<CvPartial> {
+    fn get(&self, id: u64) -> Result<Parsed> {
         let inner = self.inner.lock().unwrap_or_else(PoisonError::into_inner);
         inner
             .1
@@ -90,9 +96,19 @@ impl App {
         needs_review: Vec<Id>,
     ) -> ImportPreview {
         let ImportResult {
-            cv_partial: p,
-            warnings,
+            cv_partial: mut p,
+            mut warnings,
         } = result;
+        // Cleaned and cropped now, so the preview shows what will be stored.
+        let photo = p.photo.take().and_then(|bytes| match imported(&bytes) {
+            Ok(photo) => Some(photo),
+            Err(_) => {
+                warnings.push(cv_import::ImportWarning::new(
+                    "The profile photo could not be read and was not imported.",
+                ));
+                None
+            }
+        });
         let preview = ImportPreview {
             preview_id: 0,
             full_name: p.full_name.clone(),
@@ -106,17 +122,24 @@ impl App {
             personal: p.personal.clone(),
             warnings: warnings.into_iter().map(|w| w.message).collect(),
             needs_review,
+            photo: photo.as_ref().map(|ph| data_url(&ph.image)),
         };
         ImportPreview {
-            preview_id: self.imports.put(p),
+            preview_id: self.imports.put((p, photo)),
             ..preview
         }
     }
 
     /// The conflicting fields and the suggested entry matches against `cv_id`.
     pub fn import_match(&self, req: ImportMatchRequest) -> Result<ImportMatch> {
-        let partial = self.imports.get(req.preview_id)?;
+        let (partial, photo) = self.imports.get(req.preview_id)?;
         let base = self.store.get_cv(&req.cv_id).map_err(store_error)?.cv;
+        let photo_conflict = photo.is_some()
+            && self
+                .store
+                .photo_get(&req.cv_id)
+                .map_err(store_error)?
+                .is_some();
         let conflicts = field_conflicts(&base, &partial)
             .into_iter()
             .map(|c| ImportConflict {
@@ -130,14 +153,23 @@ impl App {
             .map(|(imported, base)| EntryMatch { imported, base })
             .collect();
         matches.sort_by(|a, b| a.imported.cmp(&b.imported));
-        Ok(ImportMatch { conflicts, matches })
+        Ok(ImportMatch {
+            conflicts,
+            matches,
+            photo_conflict,
+        })
     }
 
     /// Saves the preview as a new CV, or merges it into an existing one after
     /// taking a snapshot of it. The preview is dropped once saved.
+    ///
+    /// An imported photo goes to a new CV, to a CV without one, or replaces
+    /// the CV's photo when `use_imported_photo` is set; `show_photo` stays as
+    /// it is (off for a new CV). Snapshots hold the CV document only, so
+    /// undoing the merge does not bring a replaced photo back.
     pub fn import_commit(&self, req: ImportCommit) -> Result<StoredCv> {
-        let partial = self.imports.get(req.preview_id)?;
-        let stored = match req.target {
+        let (partial, photo) = self.imports.get(req.preview_id)?;
+        let (stored, take_photo) = match req.target {
             ImportTarget::New { title } => {
                 let title = match title.trim() {
                     "" => partial
@@ -152,7 +184,7 @@ impl App {
                 if validate::has_errors(&issues) {
                     return Err(validation_error(&issues));
                 }
-                self.store.create_cv(&cv).map_err(store_error)?
+                (self.store.create_cv(&cv).map_err(store_error)?, true)
             }
             ImportTarget::Merge {
                 cv_id,
@@ -182,13 +214,38 @@ impl App {
                 }
                 self.with_ids(|ids| self.store.add_snapshot(&cv_id, SnapshotReason::Import, ids))
                     .map_err(store_error)?;
-                self.store
+                let take_photo = photo.is_some()
+                    && (req.use_imported_photo
+                        || self.store.photo_get(&cv_id).map_err(store_error)?.is_none());
+                let stored = self
+                    .store
                     .save_cv(&cv, expected_revision)
-                    .map_err(store_error)?
+                    .map_err(store_error)?;
+                (stored, take_photo)
             }
         };
+        // Dropped before the photo is stored, so a failed photo cannot lead
+        // to the same import being saved twice.
         self.imports.remove(req.preview_id);
+        if let Some(photo) = photo.filter(|_| take_photo) {
+            self.put_imported_photo(&stored.cv.id, &photo)?;
+        }
         Ok(stored)
+    }
+}
+
+impl App {
+    /// Stores an imported photo once its CV is saved. The CV is not rolled
+    /// back on failure; the message says so.
+    fn put_imported_photo(&self, cv_id: &Id, photo: &StoredPhoto) -> Result<()> {
+        self.store.photo_put(cv_id, photo).map_err(|e| {
+            let mut err = store_error(e);
+            err.message = format!(
+                "The CV was saved, but its photo was not: {} Add the photo again from the editor.",
+                err.message
+            );
+            err
+        })
     }
 }
 
@@ -273,7 +330,7 @@ mod tests {
     fn the_cache_keeps_the_latest_previews() {
         let cache = ImportCache::default();
         let ids: Vec<u64> = (0..=KEPT_PREVIEWS)
-            .map(|_| cache.put(CvPartial::default()))
+            .map(|_| cache.put((CvPartial::default(), None)))
             .collect();
         assert!(cache.get(ids[0]).is_err());
         assert!(cache.get(ids[KEPT_PREVIEWS]).is_ok());
