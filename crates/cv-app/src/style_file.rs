@@ -377,7 +377,9 @@ impl App {
             ExportKind::Style,
             xml.as_bytes(),
         )?;
-        Ok(StyleSaved { path })
+        Ok(StyleSaved {
+            path: path.display().to_string(),
+        })
     }
 
     /// Asks for a style file and reads it. The UI applies it to the CV as
