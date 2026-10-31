@@ -18,6 +18,7 @@ mod i18n;
 mod ids;
 mod import;
 mod ipc;
+mod layout;
 mod list;
 mod lists;
 mod order;
