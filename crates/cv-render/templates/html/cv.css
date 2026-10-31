@@ -1,4 +1,4 @@
-/* PinaxCV HTML export: single column, system fonts, light and dark, print. */
+/* PinaxCV HTML export: one column or two (ADR-084), system fonts, light and dark, print. */
 :root {
   color-scheme: light dark;
   --text: #1a1a1a;
@@ -41,8 +41,16 @@ header::after { content: ""; display: block; clear: both; }
 .entry { margin: 0 0 1.25rem; }
 .entry p { margin: 0.25rem 0; }
 .entry ul, .skills, .languages { margin: 0.25rem 0; padding-left: 1.25rem; }
+body.two { max-width: 62rem; }
+.columns { display: grid; grid-template-columns: var(--cols); gap: 2.5rem; }
+.columns > * { min-width: 0; }
+.sidebar .contact { flex-direction: column; }
+.sidebar .photo { float: none; display: block; margin: 0 0 1rem; }
 a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 2px; }
 a:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+@media (max-width: 37.5rem) {
+  .columns { grid-template-columns: 1fr; gap: 0; }
+}
 @media (max-width: 30rem) {
   body { padding-top: 1.5rem; }
   h1 { font-size: 1.6rem; }

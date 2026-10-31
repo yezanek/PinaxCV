@@ -72,5 +72,6 @@ pub fn sample_cv() -> Cv {
             }),
         ],
         closing: Default::default(),
+        layout: Layout::default(),
     }
 }

@@ -8,7 +8,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    Basics, Bullet, Closing, Id, LanguageItem, Locale, Paper, Period, SkillGroup, TemplateId,
+    Basics, Bullet, Closing, Id, LanguageItem, Layout, Locale, Paper, Period, SkillGroup,
+    TemplateId,
     TemplateOptions,
 };
 
@@ -35,6 +36,10 @@ pub struct ResolvedCv {
     /// The closing block with only the parts the variant (or, without one,
     /// the base CV) shows; `closing.show` is that set (ADR-089).
     pub closing: Closing,
+    /// The base CV's layout, with placements of sections that no longer
+    /// exist dropped. Renderers put each section in `layout.column_of`.
+    #[serde(default)]
+    pub layout: Layout,
 }
 
 /// A visible section. Serialized with an explicit `"kind"` tag.
