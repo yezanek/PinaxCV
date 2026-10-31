@@ -242,6 +242,45 @@ fn two_column_pdf_export_also_writes_a_one_column_ats_copy() {
 }
 
 #[test]
+fn the_ats_copy_never_replaces_someone_elses_file() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let app = app(Some(dir.path()));
+    let stored = filled(&app, "two_column");
+    let export = || {
+        app.export_pdf(ExportPdfRequest {
+            target: base(&stored),
+            ats_copy: true,
+        })
+        .expect("export")
+    };
+    // A new PDF next to an unrelated file with the copy's name: kept.
+    let other = dir.path().join("Jane-Doe-CV-ats.pdf");
+    std::fs::write(&other, b"not ours").expect("write");
+    let second = dir.path().join("Jane-Doe-CV-ats-2.pdf");
+    assert_eq!(export().ats_copy_path, Some(second.display().to_string()));
+    assert_eq!(std::fs::read(&other).expect("read"), b"not ours");
+}
+
+#[test]
+fn exporting_again_replaces_the_earlier_ats_copy() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let app = app(Some(dir.path()));
+    let stored = filled(&app, "two_column");
+    let export = || {
+        app.export_pdf(ExportPdfRequest {
+            target: base(&stored),
+            ats_copy: true,
+        })
+        .expect("export")
+    };
+    let copy = dir.path().join("Jane-Doe-CV-ats.pdf");
+    assert_eq!(export().ats_copy_path, Some(copy.display().to_string()));
+    // The dialog asked before replacing the PDF; its copy goes with it.
+    assert_eq!(export().ats_copy_path, Some(copy.display().to_string()));
+    assert!(!dir.path().join("Jane-Doe-CV-ats-2.pdf").exists());
+}
+
+#[test]
 fn cancelled_dialog_writes_nothing() {
     let app = app(None);
     let stored = filled(&app, "typical");

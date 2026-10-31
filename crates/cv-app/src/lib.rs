@@ -353,9 +353,14 @@ impl App {
         .export(&resolved, &self.pdf_options(&resolved)?)
         .map_err(render_error)?;
         let report = ats::ats_report(&doc.bytes, &resolved);
-        let path = self.save_file(&doc.suggested_file_name, ExportKind::Pdf, &doc.bytes)?;
+        let path = self.choose_save_path(&doc.suggested_file_name, ExportKind::Pdf)?;
+        // The dialog asked before replacing the PDF, which also covers the
+        // copy beside it from the earlier export; otherwise an existing
+        // `-ats.pdf` is someone else's file and is kept.
+        let replaced = path.exists();
+        write_file(&path, &doc.bytes)?;
         let ats_copy_path = if req.ats_copy && resolved.layout.columns == Columns::Two {
-            Some(self.write_ats_copy(&resolved, &path)?)
+            Some(self.write_ats_copy(&resolved, &path, replaced)?)
         } else {
             None
         };
@@ -369,8 +374,10 @@ impl App {
     }
 
     /// Writes the one-column copy of a two-column CV next to `pdf`, as
-    /// `<name>-ats.pdf` (ADR-084). Returns its path for display.
-    fn write_ats_copy(&self, resolved: &ResolvedCv, pdf: &Path) -> Result<String> {
+    /// `<name>-ats.pdf` (ADR-084). An existing copy is replaced only when
+    /// `replace` (the user just replaced `pdf`); otherwise the first free
+    /// `<name>-ats-<n>.pdf` is used. Returns its path for display.
+    fn write_ats_copy(&self, resolved: &ResolvedCv, pdf: &Path, replace: bool) -> Result<String> {
         let mut one = resolved.clone();
         one.layout.columns = Columns::One;
         let doc = PdfExporter {
@@ -378,7 +385,7 @@ impl App {
         }
         .export(&one, &self.pdf_options(&one)?)
         .map_err(render_error)?;
-        let path = ats_copy_path(pdf);
+        let path = ats_copy_path(pdf, replace);
         write_file(&path, &doc.bytes)?;
         Ok(path.display().to_string())
     }
@@ -495,12 +502,15 @@ impl App {
 
     /// Asks the shell for a path, then writes the file there.
     fn save_file(&self, suggested: &str, kind: ExportKind, bytes: &[u8]) -> Result<PathBuf> {
-        let path = self
-            .dialog
-            .choose_save_path(suggested, kind)
-            .ok_or_else(|| ApiError::new(ErrorCode::Cancelled, "Export cancelled."))?;
+        let path = self.choose_save_path(suggested, kind)?;
         write_file(&path, bytes)?;
         Ok(path)
+    }
+
+    fn choose_save_path(&self, suggested: &str, kind: ExportKind) -> Result<PathBuf> {
+        self.dialog
+            .choose_save_path(suggested, kind)
+            .ok_or_else(|| ApiError::new(ErrorCode::Cancelled, "Export cancelled."))
     }
 
     /// Export snapshots are best effort: the file is already written, and the
@@ -522,13 +532,21 @@ fn write_file(path: &Path, bytes: &[u8]) -> Result<()> {
     })
 }
 
-/// `<dir>/<stem>-ats.pdf` beside `pdf`.
-pub fn ats_copy_path(pdf: &Path) -> PathBuf {
+/// `<dir>/<stem>-ats.pdf` beside `pdf`. Unless `replace`, an existing file
+/// is kept and the first free `<stem>-ats-<n>.pdf` is returned instead.
+pub fn ats_copy_path(pdf: &Path, replace: bool) -> PathBuf {
     let stem = pdf
         .file_stem()
         .map(|s| s.to_string_lossy().into_owned())
         .unwrap_or_else(|| "CV".to_owned());
-    pdf.with_file_name(format!("{stem}-ats.pdf"))
+    let first = pdf.with_file_name(format!("{stem}-ats.pdf"));
+    if replace || !first.exists() {
+        return first;
+    }
+    (2u32..)
+        .map(|n| pdf.with_file_name(format!("{stem}-ats-{n}.pdf")))
+        .find(|p| !p.exists())
+        .unwrap_or(first)
 }
 
 /// Parses the embedded template manifests.
