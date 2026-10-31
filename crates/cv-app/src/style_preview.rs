@@ -260,7 +260,9 @@ impl App {
                 ErrorCode::Cancelled => ApiError::new(ErrorCode::Cancelled, "Preview cancelled."),
                 _ => e,
             })?;
-        Ok(StyleSaved { path })
+        Ok(StyleSaved {
+            path: path.display().to_string(),
+        })
     }
 }
 
