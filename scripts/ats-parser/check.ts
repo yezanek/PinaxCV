@@ -62,6 +62,11 @@ const KNOWN_LIMITS: Record<string, { fields: Field[]; reason: string }> = {
   },
   long: { fields: ["job"], reason: "OpenResume ignores job titles that contain digits (\"Engineer level 6\")" },
   unicode: { fields: ["job"], reason: "OpenResume recognises job titles from an English word list only" },
+  two_column_long: {
+    fields: ["job"],
+    reason:
+      "two columns over two pages: the sidebar's text comes after page 1 of the main column, so page 2's jobs land under the sidebar's last heading; the one-column ATS copy is the remedy (ADR-084), and the titles contain digits as in \"long\"",
+  },
   special_chars: {
     fields: ["name", "job"],
     reason: "OpenResume's name pattern allows letters, spaces and full stops only, and its job titles come from an English word list",

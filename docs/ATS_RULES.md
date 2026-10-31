@@ -8,7 +8,7 @@ Users should still verify the final document through the employer's application 
 
 ## Template rules (enforced by the golden ATS suite)
 
-1. Single column; no side-by-side layout. Exception: the optional profile photo (ADR-083) may sit beside the contact block, as a PDF artifact with no text, so extraction and reading order are the same with and without it.
+1. Single column by default; no side-by-side layout. Exceptions: the optional profile photo (ADR-083) may sit beside the contact block, as a PDF artifact with no text, so extraction and reading order are the same with and without it; and a CV may choose two columns (ADR-084). With two columns the column holding the name is drawn on the left, because PDF text is read left column first; each column must read in order on its own, bullets and descriptions never break across pages, and on a CV longer than a page the right column's text comes after page 1 of the left column. Some ATS read straight across the page, so the ATS check warns and export offers a one-column ATS copy.
 2. Reading order equals source order; no floating or absolutely positioned content.
 3. Standard headings, printed as written (not upper-cased).
 4. Contact block is body text at the top of page 1, with no icons. Email and phone should appear within the first five extracted lines; lines six to eight still pass, and the check fails only if either appears after line eight.

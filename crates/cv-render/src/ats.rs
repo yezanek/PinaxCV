@@ -6,7 +6,7 @@
 
 use cv_core::{AtsCheck, AtsReport, ResolvedCv};
 
-use crate::data::{SectionData, to_typst_data};
+use crate::data::{BlockData, SectionData, to_typst_data};
 use crate::{ExportOptions, RenderError, TextExtractor};
 
 /// Check names, stable for the UI and tests.
@@ -82,6 +82,15 @@ pub fn ats_report_with_options(
 struct Expected {
     name: String,
     contacts: Vec<String>,
+    /// One part per column, in reading order. Each column must read in
+    /// order on its own; a long main column may continue after the other
+    /// column's text at a page break (ADR-084).
+    parts: Vec<Part>,
+}
+
+/// The sections of one column.
+#[derive(Default)]
+struct Part {
     headings: Vec<String>,
     entries: Vec<ExpectedEntry>,
     bullets: Vec<String>,
@@ -103,15 +112,29 @@ impl Expected {
                 .flatten()
                 .map(|s| norm(s))
                 .collect(),
-            headings: Vec::new(),
-            entries: Vec::new(),
-            bullets: Vec::new(),
-            order: Vec::new(),
+            parts: Vec::new(),
         };
-        if data.summary.is_some() {
-            e.add_heading(data.labels.summary);
+        for column in data.layout.reading_columns() {
+            let mut part = Part::default();
+            part.add_blocks(&data, column);
+            e.parts.push(part);
         }
-        for section in &data.sections {
+        e
+    }
+}
+
+impl Part {
+    fn add_blocks(&mut self, data: &crate::data::TypstData, blocks: &[BlockData]) {
+        let e = self;
+        for block in blocks {
+            let section = match *block {
+                BlockData::Summary if data.summary.is_some() => {
+                    e.add_heading(data.labels.summary);
+                    continue;
+                }
+                BlockData::Section { index } => &data.sections[index],
+                _ => continue,
+            };
             match section {
                 SectionData::Experience(s)
                 | SectionData::Education(s)
@@ -139,7 +162,6 @@ impl Expected {
                 }
             }
         }
-        e
     }
 
     fn add_heading(&mut self, heading: &str) {
@@ -154,14 +176,23 @@ impl Expected {
 fn run_checks(text: &str, expected: &Expected) -> Vec<AtsCheck> {
     let lines: Vec<String> = text.lines().map(norm).filter(|l| !l.is_empty()).collect();
     let joined = lines.join(" ");
+    // A check over the columns fails with the first column that fails it.
+    let each = |check: &dyn Fn(&Part) -> AtsCheck| {
+        expected
+            .parts
+            .iter()
+            .map(check)
+            .find(|c| !c.passed)
+            .unwrap_or_else(|| check(&Part::default()))
+    };
     vec![
         check_name(&lines, expected),
         check_contacts(&lines, expected),
-        check_headings(&lines, expected),
-        check_entries(&lines, expected),
+        each(&|p| check_headings(&lines, p)),
+        each(&|p| check_entries(&lines, p)),
         check_characters(text),
-        check_bullets(&joined, expected),
-        check_order(&joined, expected),
+        each(&|p| check_bullets(&joined, p)),
+        each(&|p| check_order(&joined, p)),
     ]
 }
 
@@ -202,7 +233,7 @@ fn check_contacts(lines: &[String], expected: &Expected) -> AtsCheck {
 }
 
 /// Each heading is a line of its own, in CV order.
-fn check_headings(lines: &[String], expected: &Expected) -> AtsCheck {
+fn check_headings(lines: &[String], expected: &Part) -> AtsCheck {
     let mut next = 0;
     let mut missing = Vec::new();
     for heading in &expected.headings {
@@ -222,7 +253,7 @@ fn check_headings(lines: &[String], expected: &Expected) -> AtsCheck {
     }
 }
 
-fn check_entries(lines: &[String], expected: &Expected) -> AtsCheck {
+fn check_entries(lines: &[String], expected: &Part) -> AtsCheck {
     let mut next = 0;
     let mut failed = Vec::new();
     for entry in &expected.entries {
@@ -284,7 +315,7 @@ fn is_bad_char(c: char) -> bool {
 
 /// A bullet passes when its words appear in order, or, for wraps inside a
 /// long word such as a URL, when its characters appear with whitespace removed.
-fn check_bullets(joined: &str, expected: &Expected) -> AtsCheck {
+fn check_bullets(joined: &str, expected: &Part) -> AtsCheck {
     let squashed = squash(joined);
     let missing: Vec<&str> = expected
         .bullets
@@ -306,7 +337,7 @@ fn check_bullets(joined: &str, expected: &Expected) -> AtsCheck {
     }
 }
 
-fn check_order(joined: &str, expected: &Expected) -> AtsCheck {
+fn check_order(joined: &str, expected: &Part) -> AtsCheck {
     let mut from = 0;
     for item in &expected.order {
         match joined[from..].find(item.as_str()) {
@@ -482,9 +513,7 @@ mod tests {
 
     #[test]
     fn wrapped_long_word_still_counts_as_present() {
-        let e = Expected {
-            name: String::new(),
-            contacts: vec![],
+        let e = Part {
             headings: vec![],
             entries: vec![],
             bullets: vec!["see https://example.com/a/very/long/path".into()],

@@ -3,7 +3,7 @@
 use cv_core::Cv;
 
 /// Every fixture name, in the spec's order.
-pub const FIXTURES: [&str; 10] = [
+pub const FIXTURES: [&str; 12] = [
     "minimal",
     "typical",
     "long",
@@ -14,6 +14,8 @@ pub const FIXTURES: [&str; 10] = [
     "current_job",
     "special_chars",
     "unsafe_links",
+    "two_column",
+    "two_column_long",
 ];
 
 /// Parses the fixture `name`. Panics on an unknown name or broken JSON.
@@ -29,6 +31,8 @@ pub fn fixture(name: &str) -> Cv {
         "current_job" => include_str!("../../../testdata/cvs/current_job.json"),
         "special_chars" => include_str!("../../../testdata/cvs/special_chars.json"),
         "unsafe_links" => include_str!("../../../testdata/cvs/unsafe_links.json"),
+        "two_column" => include_str!("../../../testdata/cvs/two_column.json"),
+        "two_column_long" => include_str!("../../../testdata/cvs/two_column_long.json"),
         other => panic!("unknown fixture {other}"),
     };
     serde_json::from_str(json).unwrap_or_else(|e| panic!("fixture {name}: {e}"))
