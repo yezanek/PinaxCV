@@ -51,8 +51,9 @@ pub fn to_partial(cv: &EuropassCv, fresh: &mut dyn FnMut() -> Id) -> ImportResul
         .any(|f| partial.personal.is_filled(*f))
     {
         warnings.push(ImportWarning::new(
-            "Personal details such as the date of birth or nationality were imported but are not \
-             shown. Switch on the ones an application expects under Personal details.",
+            "Personal details such as the date of birth or nationality were imported. Each prints \
+             only where its Show switch is on, so check the switches under Personal details \
+             before you export.",
         ));
     }
 
@@ -189,12 +190,15 @@ fn personal(p: &EuropassPerson, warnings: &mut Vec<ImportWarning>) -> PersonalDe
     PersonalDetails {
         nationality,
         birth_date,
-        gender: p.gender.as_deref().and_then(|g| match g {
-            "Male" | "M" => Some("Male".to_owned()),
-            "Female" | "F" => Some("Female".to_owned()),
-            // NotKnown, NotSpecified and anything else.
-            _ => None,
-        }),
+        gender: p
+            .gender
+            .as_deref()
+            .and_then(|g| match g.trim().to_ascii_lowercase().as_str() {
+                "male" | "m" => Some("Male".to_owned()),
+                "female" | "f" => Some("Female".to_owned()),
+                // NotKnown, NotSpecified and anything else.
+                _ => None,
+            }),
         address: (!p.address.is_empty()).then(|| p.address.join("\n")),
         driving_licence,
         ..PersonalDetails::default()
@@ -420,7 +424,7 @@ mod tests {
             "{messages:?}"
         );
         assert!(
-            messages.iter().any(|m| m.contains("not shown")),
+            messages.iter().any(|m| m.contains("Show switch")),
             "{messages:?}"
         );
 
@@ -430,10 +434,20 @@ mod tests {
         assert_eq!(r.cv_partial.personal.gender.as_deref(), Some("Female"));
         assert_eq!(r.cv_partial.personal.birth_date, None);
         assert!(r.warnings.iter().any(|w| w.message.contains("1990-02-30")));
+        // Current exports write the code in lower case.
+        for (code, want) in [
+            ("male", Some("Male")),
+            ("F", Some("Female")),
+            ("NotKnown", None),
+        ] {
+            cv.person.gender = Some(code.into());
+            let r = to_partial(&cv, &mut ids());
+            assert_eq!(r.cv_partial.personal.gender.as_deref(), want, "{code}");
+        }
 
-        // Nothing personal: no "not shown" note.
+        // Nothing personal: no note about the switches.
         let r = to_partial(&sample(), &mut ids());
-        assert!(!r.warnings.iter().any(|w| w.message.contains("not shown")));
+        assert!(!r.warnings.iter().any(|w| w.message.contains("Show switch")));
     }
 
     #[test]

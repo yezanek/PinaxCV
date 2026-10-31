@@ -127,12 +127,25 @@ fn person(p: Node) -> EuropassPerson {
         out.given_name = child_text(name, "GivenName").unwrap_or_default();
         out.family_name = child_text(name, "FamilyName").unwrap_or_default();
     }
+    // The postal address: a home one first, then any but a business one,
+    // then the first (rank 0, 1, 2).
+    let mut address_rank = u8::MAX;
     for c in children(p, "Communication") {
         if let Some(address) = child(c, "Address") {
             out.city = out.city.or_else(|| child_text(address, "CityName"));
             out.country = out.country.or_else(|| child_text(address, "CountryCode"));
-            if out.address.is_empty() {
-                out.address = address_lines(address);
+            let use_code = child_text(c, "UseCode")
+                .or_else(|| address.attribute("type").map(str::to_owned))
+                .map(|u| u.to_ascii_lowercase());
+            let rank = match use_code.as_deref() {
+                Some("home" | "personal" | "private") => 0,
+                Some("business" | "work") => 2,
+                _ => 1,
+            };
+            let lines = address_lines(address);
+            if rank < address_rank && !lines.is_empty() {
+                out.address = lines;
+                address_rank = rank;
             }
             continue;
         }
@@ -502,6 +515,25 @@ mod tests {
         let main = parse_candidate(XML.as_bytes()).expect("parse").person;
         assert!(main.address.is_empty());
         assert_eq!(main.birth_date.as_deref(), Some("1990-01-01"));
+    }
+
+    #[test]
+    fn the_home_address_wins_over_a_business_one() {
+        let xml = r#"<Candidate xmlns="http://www.europass.eu/1.0"><CandidatePerson>
+            <Communication><UseCode>Business</UseCode><Address><AddressLine>Corso Ufficio 9</AddressLine><PostalCode>20100</PostalCode><CityName>Milano</CityName></Address></Communication>
+            <Communication><UseCode>home</UseCode><Address><AddressLine>Via Esempio 1</AddressLine><PostalCode>10100</PostalCode><CityName>Torino</CityName></Address></Communication>
+            </CandidatePerson></Candidate>"#;
+        let p = parse_candidate(xml.as_bytes()).expect("parses").person;
+        assert_eq!(p.address, ["Via Esempio 1", "10100 Torino"]);
+        // Without a home one, a business address is still better than none.
+        let only_work = xml.replace(
+            "<Communication><UseCode>home</UseCode><Address><AddressLine>Via Esempio 1</AddressLine><PostalCode>10100</PostalCode><CityName>Torino</CityName></Address></Communication>",
+            "",
+        );
+        let p = parse_candidate(only_work.as_bytes())
+            .expect("parses")
+            .person;
+        assert_eq!(p.address, ["Corso Ufficio 9", "20100 Milano"]);
     }
 
     #[test]
