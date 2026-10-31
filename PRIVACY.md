@@ -14,6 +14,9 @@ sends, and how to remove it.
   exported. It is off unless you switch it on. "Remove photo" removes it from
   the database. Deleting the CV only hides the photo along with the CV (see
   below).
+- **Personal details** such as your date of birth, nationality or postal
+  address are optional and kept with the CV. Each one is printed only on the
+  CV or variant where you switch it on. They are never sent to an AI provider.
 - **Cached AI answers.** When you use AI features, PinaxCV keeps the answers
   in the same database so the same request is not sent twice. They contain
   text from your CV. Settings → Your data → "Clear AI cache" removes them.
@@ -39,7 +42,8 @@ PinaxCV makes no network requests of its own except these:
    asks for your consent and names the host it will send to; changing the
    provider asks again. What is sent:
    - **Tailoring** sends your CV's text and the job description. Email,
-     phone, links and street addresses are taken out first, and anything that
+     phone, links and street addresses (including the postal address in your
+     personal details) are taken out first, and anything that
      looks like an email address, a link or a phone number is replaced by
      `[redacted]`. Your name is left out unless you turn on "Send my name".
      Locations are cut to city and country, and are left out entirely when

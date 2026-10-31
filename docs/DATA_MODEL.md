@@ -19,6 +19,7 @@ Core entities include:
 - AI suggestion/review state (on the variant, or per CV in `review_sessions` for reviews without a variant)
 - The parsed job requirements and gap questions from tailoring (on the variant)
 - Profile photo (one per CV, stored beside the CV document rather than in it; shown only when `show_photo` is on for the CV or variant)
+- Personal details (nationality, date and place of birth, gender, marital status, postal address, driving licence, right to work; in `Basics.personal`, each printed only when switched on in `show_personal` for the CV or variant, ADR-088)
 - Settings (AI provider, consent, defaults for new CVs) and the AI response cache
 
 Use stable ULIDs rather than database-local integer identities.

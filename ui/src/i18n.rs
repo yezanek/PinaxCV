@@ -42,6 +42,8 @@ pub struct Strings {
     pub import_no_name: &'static str,
     /// `{section}` and `{n}`, the number of items read into it.
     pub import_section_line: &'static str,
+    /// `{fields}`: the personal details an import read.
+    pub import_personal_line: &'static str,
     pub import_warnings: &'static str,
     pub import_check_bullets: &'static str,
     pub import_text: &'static str,
@@ -514,6 +516,7 @@ pub static EN: Strings = Strings {
     import_title: "Import a CV",
     import_no_name: "No name found",
     import_section_line: "{section}: {n}",
+    import_personal_line: "Personal details (not shown until you switch them on): {fields}",
     import_warnings: "Check these after importing",
     import_check_bullets: "Not found word for word in your text: check these bullets",
     import_text: "Import text…",
@@ -1092,6 +1095,7 @@ mod tests {
         ("main.rs", include_str!("main.rs")),
         ("settings.rs", include_str!("settings.rs")),
         ("order.rs", include_str!("order.rs")),
+        ("personal.rs", include_str!("personal.rs")),
         ("photo.rs", include_str!("photo.rs")),
         ("preview.rs", include_str!("preview.rs")),
         ("review.rs", include_str!("review.rs")),

@@ -1,11 +1,11 @@
 //! Turns Europass records into a [`CvPartial`] with fresh IDs.
 
 use cv_core::{
-    Bullet, Entry, EntrySection, Id, LanguageItem, LanguagesSection, Link, PartialDate, Period,
-    Section,
+    Bullet, CalendarDate, Entry, EntrySection, Id, LanguageItem, LanguagesSection, Link,
+    PartialDate, Period, PersonalDetails, PersonalField, Section,
 };
 
-use crate::europass_xml::{EuropassCv, EuropassLanguage};
+use crate::europass_xml::{EuropassCv, EuropassLanguage, EuropassPerson};
 use crate::partial::{CvPartial, ImportResult, ImportWarning};
 
 /// Maps a parsed Europass CV. `fresh` makes a new ID for every item.
@@ -42,6 +42,17 @@ pub fn to_partial(cv: &EuropassCv, fresh: &mut dyn FnMut() -> Id) -> ImportResul
     if p.phones.len() > 1 {
         warnings.push(ImportWarning::new(
             "More than one phone number was found; the first one was used.",
+        ));
+    }
+
+    partial.personal = personal(p, &mut warnings);
+    if PersonalField::ALL
+        .iter()
+        .any(|f| partial.personal.is_filled(*f))
+    {
+        warnings.push(ImportWarning::new(
+            "Personal details such as the date of birth or nationality were imported but are not \
+             shown. Switch on the ones an application expects under Personal details.",
         ));
     }
 
@@ -140,6 +151,135 @@ pub fn to_partial(cv: &EuropassCv, fresh: &mut dyn FnMut() -> Id) -> ImportResul
     }
 }
 
+/// Nationality, birth date, gender, postal address and driving licence.
+/// Europass has no place of birth, marital status or right to work.
+fn personal(p: &EuropassPerson, warnings: &mut Vec<ImportWarning>) -> PersonalDetails {
+    let birth_date = p.birth_date.as_deref().and_then(|value| {
+        // `YYYY-MM-DDThh:mm:ss` is allowed too; the time is dropped.
+        let parsed = CalendarDate::parse(value.split('T').next().unwrap_or(value));
+        if parsed.is_none() {
+            warnings.push(ImportWarning::new(format!(
+                "The date of birth \"{value}\" could not be read and was left empty."
+            )));
+        }
+        parsed
+    });
+    let mut nationality: Vec<String> = Vec::new();
+    for code in &p.nationalities {
+        let name = match nationality_name(code) {
+            Some(n) => n.to_owned(),
+            None => {
+                warnings.push(ImportWarning::new(format!(
+                    "The nationality code \"{code}\" is not one PinaxCV knows; it was kept as written."
+                )));
+                code.to_uppercase()
+            }
+        };
+        if !nationality.contains(&name) {
+            nationality.push(name);
+        }
+    }
+    let mut driving_licence: Vec<String> = Vec::new();
+    for code in &p.licences {
+        let category = code.trim().to_uppercase();
+        if is_licence_category(&category) && !driving_licence.contains(&category) {
+            driving_licence.push(category);
+        }
+    }
+    PersonalDetails {
+        nationality,
+        birth_date,
+        gender: p.gender.as_deref().and_then(|g| match g {
+            "Male" | "M" => Some("Male".to_owned()),
+            "Female" | "F" => Some("Female".to_owned()),
+            // NotKnown, NotSpecified and anything else.
+            _ => None,
+        }),
+        address: (!p.address.is_empty()).then(|| p.address.join("\n")),
+        driving_licence,
+        ..PersonalDetails::default()
+    }
+}
+
+/// The driving licence categories of EU Directive 2006/126/EC.
+fn is_licence_category(c: &str) -> bool {
+    matches!(
+        c,
+        "AM" | "A1"
+            | "A2"
+            | "A"
+            | "B1"
+            | "B"
+            | "BE"
+            | "C1"
+            | "C1E"
+            | "C"
+            | "CE"
+            | "D1"
+            | "D1E"
+            | "D"
+            | "DE"
+    )
+}
+
+/// English nationality for an ISO 3166-1 alpha-2 country code: the EU and
+/// EEA countries, Switzerland, the UK and other common ones.
+fn nationality_name(code: &str) -> Option<&'static str> {
+    Some(match code.trim().to_ascii_lowercase().as_str() {
+        "at" => "Austrian",
+        "be" => "Belgian",
+        "bg" => "Bulgarian",
+        "hr" => "Croatian",
+        "cy" => "Cypriot",
+        "cz" => "Czech",
+        "dk" => "Danish",
+        "ee" => "Estonian",
+        "fi" => "Finnish",
+        "fr" => "French",
+        "de" => "German",
+        "gr" | "el" => "Greek",
+        "hu" => "Hungarian",
+        "ie" => "Irish",
+        "it" => "Italian",
+        "lv" => "Latvian",
+        "lt" => "Lithuanian",
+        "lu" => "Luxembourgish",
+        "mt" => "Maltese",
+        "nl" => "Dutch",
+        "pl" => "Polish",
+        "pt" => "Portuguese",
+        "ro" => "Romanian",
+        "sk" => "Slovak",
+        "si" => "Slovenian",
+        "es" => "Spanish",
+        "se" => "Swedish",
+        "is" => "Icelandic",
+        "li" => "Liechtensteiner",
+        "no" => "Norwegian",
+        "ch" => "Swiss",
+        "gb" | "uk" => "British",
+        "al" => "Albanian",
+        "ba" => "Bosnian",
+        "me" => "Montenegrin",
+        "mk" => "North Macedonian",
+        "rs" => "Serbian",
+        "md" => "Moldovan",
+        "ua" => "Ukrainian",
+        "tr" => "Turkish",
+        "us" => "American",
+        "ca" => "Canadian",
+        "au" => "Australian",
+        "nz" => "New Zealander",
+        "br" => "Brazilian",
+        "ar" => "Argentinian",
+        "mx" => "Mexican",
+        "in" => "Indian",
+        "cn" => "Chinese",
+        "jp" => "Japanese",
+        _ => return None,
+    })
+}
+
 /// "City, CC", or whichever of the two is known.
 fn place(city: &Option<String>, country: &Option<String>) -> Option<String> {
     match (city, country) {
@@ -229,6 +369,7 @@ mod tests {
                 city: Some("Berlin".into()),
                 country: Some("de".into()),
                 summary: Some("Engineer.".into()),
+                ..EuropassPerson::default()
             },
             positions: vec![EuropassPosition {
                 organisation: "Acme GmbH".into(),
@@ -255,6 +396,44 @@ mod tests {
                 ],
             }],
         }
+    }
+
+    #[test]
+    fn maps_personal_details_without_showing_them() {
+        let mut cv = sample();
+        cv.person.nationalities = vec!["it".into(), "IT".into(), "zz".into()];
+        cv.person.birth_date = Some("1990-03-12T00:00:00".into());
+        cv.person.gender = Some("NotSpecified".into());
+        cv.person.address = vec!["Via Esempio 1".into(), "10100 Torino".into()];
+        cv.person.licences = vec!["b".into(), "B".into(), "Forklift".into(), "C1E".into()];
+        let r = to_partial(&cv, &mut ids());
+        let p = &r.cv_partial.personal;
+        assert_eq!(p.nationality, ["Italian", "ZZ"]);
+        assert_eq!(p.birth_date, CalendarDate::parse("1990-03-12"));
+        assert_eq!(p.gender, None);
+        assert_eq!(p.address.as_deref(), Some("Via Esempio 1\n10100 Torino"));
+        assert_eq!(p.driving_licence, ["B", "C1E"]);
+        assert_eq!(p.birth_place, None);
+        let messages: Vec<&str> = r.warnings.iter().map(|w| w.message.as_str()).collect();
+        assert!(
+            messages.iter().any(|m| m.contains("\"zz\"")),
+            "{messages:?}"
+        );
+        assert!(
+            messages.iter().any(|m| m.contains("not shown")),
+            "{messages:?}"
+        );
+
+        cv.person.gender = Some("Female".into());
+        cv.person.birth_date = Some("1990-02-30".into());
+        let r = to_partial(&cv, &mut ids());
+        assert_eq!(r.cv_partial.personal.gender.as_deref(), Some("Female"));
+        assert_eq!(r.cv_partial.personal.birth_date, None);
+        assert!(r.warnings.iter().any(|w| w.message.contains("1990-02-30")));
+
+        // Nothing personal: no "not shown" note.
+        let r = to_partial(&sample(), &mut ids());
+        assert!(!r.warnings.iter().any(|w| w.message.contains("not shown")));
     }
 
     #[test]

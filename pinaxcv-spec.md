@@ -178,6 +178,9 @@ pub struct Basics {
     pub phone: Option<String>,
     pub location: Option<String>,    // "Berlin, Germany"
     pub links: Vec<Link>,            // Link { id, label, url }  (url printed visibly)
+    pub show_photo: bool,            // ADR-083
+    pub personal: PersonalDetails,   // optional European personal details, empty by default (ADR-088)
+    pub show_personal: BTreeSet<PersonalField>, // which of them the base CV prints; variants have their own set
 }
 
 pub enum Section {
@@ -640,6 +643,7 @@ Signature: `lint(cv: &ResolvedCv, page_count: Option<u32>) -> Vec<LintIssue { co
 | `unsafe_link` | Warning | link URL scheme is not `https:` or `mailto:` (it will be printed as plain text) |
 | `missing_glyphs` | Warning | characters the embedded fonts cannot display |
 | `page_count` | Info | more than 2 pages (only when `page_count` is provided) |
+| `personal_detail_shown` | Info | a personal detail (date of birth, nationality, …) is printed; whether to show it depends on the target country (ADR-088) |
 
 ### 7.2 ATS check on the real PDF (`cv_render::ats`)
 
@@ -682,6 +686,7 @@ Fixtures (create as JSON, each valid against the schema):
 - `current_job` (`current: true`)
 - `special_chars` (ampersands, quotes, `#`, `$`, `@`, backslashes, Typst-significant characters like `*`, `_`, `` ` ``, to prove data cannot inject markup)
 - `unsafe_links` (`javascript:`, `data:`, `http:` and `tel:` URLs: assert none becomes a link in PDF or HTML, and `unsafe_link` lint fires)
+- `european` (every optional personal detail filled and shown, ADR-088: they print as plain lines after the contact details and the ATS check still passes)
 
 ### 8.2 Other tests
 
