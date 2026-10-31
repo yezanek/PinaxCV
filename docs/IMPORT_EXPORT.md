@@ -24,3 +24,37 @@ V1 exports:
 The HTML export is intended for personal websites and should be directly uploadable without copying an asset directory. Email (default on) and phone (default off) are optional per export.
 
 Future exporters such as DOCX/ODT remain possible through the exporter seam but are not v1 requirements.
+
+## Style files
+
+The Style tab's **Save style…** and **Load style…** write and read a style file (`.pinaxstyle.xml`, ADR-084): the CV's template, paper, options and layout, never its content. Sections are named by kind, and custom sections also by title, so a style fits any CV. Saving writes the CV's current settings; loading is one edit, so Undo puts the previous look back.
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<pinaxcv-style xmlns="urn:pinaxcv:style:1" version="1">
+  <template id="classic"/>
+  <paper size="a4"/>
+  <options font-size-pt="10" line-spacing="1.1" margin-mm="18" date-style="month_name_year" accent="#2B5CAB"/>
+  <layout columns="two" sidebar-width-pct="32">
+    <block kind="name" column="sidebar"/>
+    <block kind="contact" column="sidebar"/>
+    <block kind="summary" column="main"/>
+    <block kind="experience" column="main"/>
+    <block kind="education" column="main"/>
+    <block kind="languages" column="sidebar"/>
+    <block kind="custom" title="Volunteering" column="main"/>
+  </layout>
+</pinaxcv-style>
+```
+
+- `paper size`: `a4` or `letter`. `date-style`: `month_name_year`, `numeric_month_year` or `year_only`. `accent` is optional (`#RRGGBB`; none means black).
+- `columns`: `one` or `two`; `sidebar-width-pct` 25 to 40.
+- `<block>`: `kind` is `name`, `contact`, `summary`, `experience`, `education`, `projects`, `skills`, `languages`, `certifications` or `custom` (with `title`); `column` is `sidebar` or `main` (the default). The blocks are one list: the top blocks in their order, then the sections in the CV's order. One list rather than a `<sidebar>` and a `<main>` list keeps the order across columns, which a one-column page shows. Placements are written in one-column mode too, as the layout keeps them.
+- The name's column is drawn on the left, so there is no side setting.
+
+Reading:
+
+- Files over 256 KB are refused. The XML is parsed with `roxmltree`, which refuses DTDs, so entities cannot expand. The root must be `pinaxcv-style` in the `urn:pinaxcv:style:1` namespace with `version="1"`; a higher version is refused with a message to update PinaxCV.
+- Unknown elements and attributes are ignored, so later additions to version 1 still load. Unknown block kinds are skipped, a repeated top block is dropped, and out-of-range or unknown values are clamped or replaced by defaults; each is reported in the summary. Missing parts use the defaults.
+- A template this build does not have is reported, and the CV keeps its own.
+- Matching: custom blocks first take a custom section with the same title (ignoring case and outer spaces), then every remaining block takes the next unused section of its kind, in order. Matched sections take the style's order and column; the CV's other sections follow in their own order, in the main column. The summary counts blocks with no section and sections the style did not name.

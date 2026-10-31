@@ -15,6 +15,7 @@ mod records;
 mod report;
 mod resolve;
 mod resolved;
+mod style;
 mod suggestion;
 mod variant;
 
@@ -40,6 +41,7 @@ pub use resolved::{
     ResolvedCv, ResolvedEntry, ResolvedEntrySection, ResolvedLanguagesSection, ResolvedSection,
     ResolvedSkillsSection,
 };
+pub use style::{PlacedBlock, SectionKind, Style, StyleApplied, StyleBlock};
 pub use suggestion::{
     GapQuestion, GapSeverity, Severity, Suggestion, SuggestionAction, SuggestionKind,
     SuggestionSource, SuggestionStatus, SuggestionTarget, VerificationKind, VerificationWarning,

@@ -10,7 +10,8 @@ use cv_api::{
     ExportResult, FitOutcome, FitVariant, ImportCommit, ImportMatch, ImportMatchRequest,
     ImportPreview, ImportText, ImportTextSource, JobId, NewCv, NewVariant, PhotoApply, PhotoInfo,
     PhotoSource, PreviewRequest, PreviewResponse, PruneResult, RestoreResult, ReviewDecide,
-    ReviewDecided, ReviewSession, SaveCv, SaveVariant, Target, TemplateManifest,
+    ReviewDecided, ReviewSession, SaveCv, SaveVariant, StyleOpened, StyleSave, StyleSaved, Target,
+    TemplateManifest,
 };
 use cv_app::App;
 use cv_core::{AtsReport, CvSummary, Id, LintIssue, StoredCv, StoredVariant, VariantSummary};
@@ -559,6 +560,18 @@ pub async fn photo_apply(app: Shared<'_>, req: PhotoApply) -> Reply<PhotoInfo> {
 #[tauri::command]
 pub async fn photo_remove(app: Shared<'_>, id: Id) -> Reply<()> {
     run(app, "photo_remove", move |a| a.photo_remove(&id)).await
+}
+
+/// Asks where to save and writes the style as a `.pinaxstyle.xml` file.
+#[tauri::command]
+pub async fn style_save(app: Shared<'_>, req: StyleSave) -> Reply<StyleSaved> {
+    run(app, "style_save", move |a| a.style_save(req)).await
+}
+
+/// Asks for a style file and returns it for the UI to apply.
+#[tauri::command]
+pub async fn style_open(app: Shared<'_>) -> Reply<StyleOpened> {
+    run(app, "style_open", App::style_open).await
 }
 
 /// The licences of the fonts and crates the app ships

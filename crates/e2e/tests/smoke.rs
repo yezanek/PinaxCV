@@ -124,5 +124,22 @@ fn create_edit_preview_and_export() {
     s.wait_for("//div[@data-drop-zone='sidebar']//li[@data-drop-key='top:summary']")
         .expect("summary card dragged to the sidebar");
 
+    // The style is saved as a style file with the new layout.
+    s.click(&s.wait_for(&button("Save style…")).expect("Save style"))
+        .expect("save style");
+    s.wait_for("//fieldset[contains(@class,'style-file')]//li[starts-with(normalize-space(),'Style saved')]")
+        .expect("style saved message");
+    let style = fs::read_dir(&export_dir)
+        .expect("export dir")
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .find(|p| p.to_string_lossy().ends_with(".pinaxstyle.xml"))
+        .expect("a style file");
+    let xml = fs::read_to_string(&style).expect("read style");
+    assert!(xml.contains("<layout columns=\"two\""), "{xml}");
+    assert!(
+        xml.contains("<block kind=\"summary\" column=\"sidebar\"/>"),
+        "{xml}"
+    );
+
     s.quit().expect("quit");
 }

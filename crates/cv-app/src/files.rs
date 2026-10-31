@@ -10,6 +10,8 @@ pub enum ExportKind {
     Html,
     /// A copy of the whole database (spec section 13).
     Backup,
+    /// A style file (ADR-084).
+    Style,
 }
 
 impl ExportKind {
@@ -18,6 +20,7 @@ impl ExportKind {
             Self::Pdf => "pdf",
             Self::Html => "html",
             Self::Backup => BACKUP_EXTENSION,
+            Self::Style => "xml",
         }
     }
 }

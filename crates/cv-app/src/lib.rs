@@ -20,6 +20,7 @@ mod photo;
 mod preview;
 mod review;
 mod settings;
+mod style_file;
 mod tailor;
 
 use std::path::PathBuf;
@@ -50,6 +51,10 @@ pub use import::{IMPORT_EXTENSIONS, ImportCache};
 pub use jobs::{JobContext, JobEvent, JobEvents, JobRegistry};
 pub use photo::{MAX_PHOTO_FILE, PHOTO_EXTENSIONS, PhotoSources};
 pub use preview::PreviewCache;
+pub use style_file::{
+    MAX_STYLE_FILE, STYLE_EXTENSIONS, STYLE_NAMESPACE, STYLE_SUFFIX, STYLE_VERSION, style_from_xml,
+    style_to_xml,
+};
 
 /// Counts pages as the PDF export draws them, with the CV's photo when the
 /// resolved CV shows it.
