@@ -245,3 +245,34 @@ fn the_signature_adds_an_image_but_no_text() {
             .is_none()
     );
 }
+
+/// A closing block taller than a page breaks across pages instead of
+/// overflowing one; a short one is never split (ADR-089).
+#[test]
+fn a_closing_block_taller_than_a_page_may_break() {
+    use cv_core::ClosingPart;
+    let mut cv = fixture("minimal");
+    let renderer = Renderer::new();
+    let pages = |cv: &Cv| {
+        renderer
+            .compile(&cv.resolve(None), &ExportOptions::default())
+            .expect("compiles")
+            .page_count()
+    };
+    let base = pages(&cv);
+    cv.closing.show = [ClosingPart::Consent].into();
+    cv.closing.consent = Some("I consent to the processing of my personal data. ".repeat(400));
+    let long = pages(&cv);
+    assert!(long >= base + 2, "{base} -> {long}");
+    let text = LopdfExtractor
+        .extract(
+            &renderer
+                .compile(&cv.resolve(None), &ExportOptions::default())
+                .expect("compiles")
+                .to_pdf()
+                .expect("pdf"),
+        )
+        .expect("extracts");
+    let text = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    assert_eq!(text.matches("consent to the processing").count(), 400);
+}
