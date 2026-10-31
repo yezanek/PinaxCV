@@ -1,15 +1,18 @@
 //! The Style tab (spec section 12.8): template, paper size, locale, date
 //! style and the template's layout options. Sliders use the ranges from the
-//! template manifest; the backend still clamps whatever is saved.
+//! template manifest; the backend still clamps whatever is saved. Styles can
+//! be saved to and loaded from `.pinaxstyle.xml` files (ADR-084).
 
-use cv_api::{OptionRange, TemplateManifest};
-use cv_core::{Cv, DateStyle, Locale, Paper, StoredVariant, TemplateId, TemplateOptions};
+use cv_api::{ErrorCode, OptionRange, StyleOpened, StyleSave, StyleSaved, TemplateManifest};
+use cv_core::{
+    Cv, DateStyle, Locale, Paper, StoredVariant, Style, StyleApplied, TemplateId, TemplateOptions,
+};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 
 use crate::entries::Edit;
-use crate::i18n::{error_message, t};
-use crate::ipc::{NoArgs, call};
+use crate::i18n::{error_message, fill, t};
+use crate::ipc::{NoArgs, ReqArg, call};
 use crate::layout::LayoutPanel;
 
 /// The value shown next to a slider: at most two decimals, no trailing zeros.
@@ -32,6 +35,112 @@ pub fn colour_value(accent: Option<&str>) -> String {
         .filter(|a| a.len() == 7 && a.starts_with('#'))
         .unwrap_or("#000000")
         .to_ascii_lowercase()
+}
+
+/// Applies an opened style file to `cv`, keeping the CV's template when
+/// the style's is not available.
+pub fn apply_opened(cv: &mut Cv, opened: &StyleOpened) -> StyleApplied {
+    let template = cv.template.clone();
+    let applied = cv.apply_style(&opened.style);
+    if opened.keep_template {
+        cv.template = template;
+    }
+    applied
+}
+
+/// The lines shown after a style was loaded.
+pub fn load_summary(opened: &StyleOpened, applied: &StyleApplied) -> Vec<String> {
+    let s = t();
+    let mut lines = vec![s.style_loaded.to_owned()];
+    lines.extend(opened.warnings.iter().cloned());
+    let unmatched = applied.unmatched_blocks.len();
+    if unmatched > 0 {
+        lines.push(fill(
+            s.style_unmatched,
+            &[("count", &unmatched.to_string())],
+        ));
+    }
+    if applied.unplaced_sections > 0 {
+        lines.push(fill(
+            s.style_unplaced,
+            &[("count", &applied.unplaced_sections.to_string())],
+        ));
+    }
+    lines
+}
+
+/// Save and load buttons for style files.
+#[component]
+fn StyleFile(
+    cv: RwSignal<Option<Cv>>,
+    edit: Edit,
+    error: RwSignal<Option<String>>,
+) -> impl IntoView {
+    let s = t();
+    let busy = RwSignal::new(false);
+    let message: RwSignal<Vec<String>> = RwSignal::new(Vec::new());
+    let save = move |_| {
+        let Some(req) = cv.with_untracked(|c| {
+            c.as_ref().map(|c| StyleSave {
+                style: Style::from_cv(c),
+                name: c.title.clone(),
+            })
+        }) else {
+            return;
+        };
+        if busy.get_untracked() {
+            return;
+        }
+        busy.set(true);
+        message.set(Vec::new());
+        spawn_local(async move {
+            let result = call::<_, StyleSaved>("style_save", &ReqArg { req: &req }).await;
+            // `Some` hands the value back: the tab was closed meanwhile.
+            if busy.try_set(false).is_some() {
+                return;
+            }
+            match result {
+                Ok(r) => message.set(vec![fill(t().style_saved, &[("path", &r.path)])]),
+                Err(e) if e.code == ErrorCode::Cancelled => {}
+                Err(e) => error.set(Some(error_message(&e))),
+            }
+        });
+    };
+    let load = move |_| {
+        if busy.get_untracked() {
+            return;
+        }
+        busy.set(true);
+        message.set(Vec::new());
+        spawn_local(async move {
+            let result = call::<_, StyleOpened>("style_open", &NoArgs {}).await;
+            // `Some` hands the value back: the tab was closed meanwhile.
+            if busy.try_set(false).is_some() {
+                return;
+            }
+            match result {
+                Ok(opened) => edit.run(Box::new(move |c| {
+                    let applied = apply_opened(c, &opened);
+                    message.set(load_summary(&opened, &applied));
+                })),
+                Err(e) if e.code == ErrorCode::Cancelled => {}
+                Err(e) => error.set(Some(error_message(&e))),
+            }
+        });
+    };
+    view! {
+        <fieldset class="style-file">
+            <legend>{s.style_file}</legend>
+            <p class="hint">{s.style_file_hint}</p>
+            <div class="actions">
+                <button prop:disabled=move || busy.get() on:click=save>{s.style_save}</button>
+                <button prop:disabled=move || busy.get() on:click=load>{s.style_load}</button>
+            </div>
+            <ul class="status" aria-live="polite">
+                {move || message.get().into_iter().map(|line| view! { <li>{line}</li> }).collect_view()}
+            </ul>
+        </fieldset>
+    }
 }
 
 /// The ranges for the CV's template, or `TemplateOptions`' own ranges while
@@ -180,6 +289,7 @@ pub fn StyleTab(
             <button prop:disabled=move || cv.with(|c| c.as_ref().is_none_or(|c| c.options.accent.is_none()))
                 on:click=move |_| edit.run(Box::new(|c| c.options.accent = None))>{s.accent_reset}</button>
         </div>
+        <StyleFile cv=cv edit=edit error=error />
     }
 }
 
@@ -216,6 +326,42 @@ mod tests {
         assert_eq!(colour_value(None), "#000000");
         assert_eq!(colour_value(Some("#2B5CAB")), "#2b5cab");
         assert_eq!(colour_value(Some("blue")), "#000000");
+    }
+
+    fn opened(template: &str, keep_template: bool) -> StyleOpened {
+        let mut style = Style::from_cv(&crate::layout::tests::cv());
+        style.template = TemplateId(template.into());
+        style.paper = Paper::Letter;
+        StyleOpened {
+            style,
+            warnings: vec!["The margin was out of range and was adjusted.".into()],
+            keep_template,
+        }
+    }
+
+    #[test]
+    fn an_unknown_template_is_not_applied() {
+        let mut cv = crate::layout::tests::cv();
+        apply_opened(&mut cv, &opened("fancy", true));
+        assert_eq!(cv.template, TemplateId::default());
+        assert_eq!(cv.paper, Paper::Letter);
+        apply_opened(&mut cv, &opened("fancy", false));
+        assert_eq!(cv.template.0, "fancy");
+    }
+
+    #[test]
+    fn the_load_summary_lists_warnings_and_counts() {
+        let applied = StyleApplied {
+            unmatched_blocks: vec![cv_core::StyleBlock::Section {
+                section: cv_core::SectionKind::Languages,
+                title: None,
+            }],
+            unplaced_sections: 2,
+        };
+        let lines = load_summary(&opened("classic", false), &applied);
+        assert_eq!(lines.len(), 4, "{lines:?}");
+        assert_eq!(lines[0], t().style_loaded);
+        assert!(lines[2].contains('1') && lines[3].contains('2'));
     }
 
     #[test]
