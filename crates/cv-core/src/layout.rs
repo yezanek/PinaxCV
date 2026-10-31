@@ -89,8 +89,34 @@ impl Layout {
         }
     }
 
-    /// Places `block` in `column`. Returns whether anything changed.
+    /// Places `block` in `column`. The name and the contact details move
+    /// together: PDF text is read one column at a time, so contact details
+    /// in the other column could land after a long column and miss the ATS
+    /// check for contacts at the top of page 1. Returns whether anything
+    /// changed.
     pub fn set_column(&mut self, block: BlockRef, column: Column) -> bool {
+        if let BlockRef::Top {
+            block: TopBlock::Name | TopBlock::Contact,
+        } = block
+        {
+            let name = self.set_one(
+                BlockRef::Top {
+                    block: TopBlock::Name,
+                },
+                column,
+            );
+            let contact = self.set_one(
+                BlockRef::Top {
+                    block: TopBlock::Contact,
+                },
+                column,
+            );
+            return name || contact;
+        }
+        self.set_one(block, column)
+    }
+
+    fn set_one(&mut self, block: BlockRef, column: Column) -> bool {
         let present = self.sidebar.contains(&block);
         match column {
             Column::Sidebar if !present => {
@@ -142,8 +168,9 @@ impl Layout {
 
     /// Repairs the layout against the CV's sections: every top block once
     /// (missing ones appended in default order), no sidebar entry for a
-    /// section that does not exist or for the same block twice, and the
-    /// width clamped. Returns whether the width had to be clamped.
+    /// section that does not exist or for the same block twice, the contact
+    /// details in the name's column, and the width clamped. Returns whether
+    /// the width had to be clamped.
     pub fn normalize(&mut self, section_ids: &[Id]) -> bool {
         let mut top = Vec::new();
         for b in self.top.iter().chain(TopBlock::ALL.iter()) {
@@ -163,6 +190,15 @@ impl Layout {
             }
         }
         self.sidebar = sidebar;
+        let name = self.placement(&BlockRef::Top {
+            block: TopBlock::Name,
+        });
+        self.set_one(
+            BlockRef::Top {
+                block: TopBlock::Contact,
+            },
+            name,
+        );
         let (min, max) = Self::SIDEBAR_WIDTH_PCT;
         let width = self.sidebar_width_pct.clamp(min, max);
         let clamped = width != self.sidebar_width_pct;
@@ -218,11 +254,11 @@ mod tests {
         l.columns = Columns::Two;
         assert_eq!(l.column_of(&section(3)), Column::Sidebar);
         assert_eq!(l.first_column(), Column::Sidebar);
-        assert_eq!(l.top_in(Column::Sidebar), [TopBlock::Name]);
         assert_eq!(
-            l.top_in(Column::Main),
-            [TopBlock::Contact, TopBlock::Summary]
+            l.top_in(Column::Sidebar),
+            [TopBlock::Name, TopBlock::Contact]
         );
+        assert_eq!(l.top_in(Column::Main), [TopBlock::Summary]);
         assert!(l.set_column(section(3), Column::Main));
         assert!(!l.set_column(section(3), Column::Main));
         assert_eq!(l.column_of(&section(3)), Column::Main);
@@ -253,13 +289,42 @@ mod tests {
             l.top,
             [TopBlock::Summary, TopBlock::Name, TopBlock::Contact]
         );
-        assert_eq!(l.sidebar, [section(3), NAME]);
+        let contact = BlockRef::Top {
+            block: TopBlock::Contact,
+        };
+        assert_eq!(l.sidebar, [section(3), NAME, contact.clone()]);
         assert_eq!(l.sidebar_width_pct, 40);
         assert!(!l.normalize(&[id(3), id(6)]), "idempotent");
         l.sidebar_width_pct = 0;
         assert!(l.normalize(&[]));
         assert_eq!(l.sidebar_width_pct, 25);
-        assert_eq!(l.sidebar, [NAME]);
+        assert_eq!(l.sidebar, [NAME, contact]);
+    }
+
+    #[test]
+    fn name_and_contact_share_a_column() {
+        let name = BlockRef::Top {
+            block: TopBlock::Name,
+        };
+        let contact = BlockRef::Top {
+            block: TopBlock::Contact,
+        };
+        let mut l = Layout {
+            columns: Columns::Two,
+            ..Layout::default()
+        };
+        assert!(l.set_column(contact.clone(), Column::Sidebar));
+        assert_eq!(l.placement(&name), Column::Sidebar);
+        assert!(l.set_column(name.clone(), Column::Main));
+        assert_eq!(l.placement(&contact), Column::Main);
+
+        // A stored layout with them apart is repaired to the name's column.
+        l.sidebar = vec![contact.clone()];
+        l.normalize(&[]);
+        assert_eq!(l.placement(&contact), Column::Main);
+        l.sidebar = vec![name.clone()];
+        l.normalize(&[]);
+        assert_eq!(l.placement(&contact), Column::Sidebar);
     }
 
     #[test]
