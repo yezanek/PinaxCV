@@ -485,7 +485,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                 </div>
                 <p class="error">{move || error.get()}</p>
                 <div id="panel-style" role="tabpanel" aria-labelledby="tab-style" hidden=move || tab.get() != Tab::Style>
-                    <StyleTab cv=cv edit=edit error=error />
+                    <StyleTab cv=cv variant=variant edit=edit error=error />
                 </div>
                 <div id="panel-checks" role="tabpanel" aria-labelledby="tab-checks" hidden=move || tab.get() != Tab::Checks>
                     <Show when=move || tab.get() == Tab::Checks>
