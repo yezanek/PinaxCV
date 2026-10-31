@@ -54,6 +54,7 @@ const COMMANDS: &[&str] = &[
     "photo_remove",
     "style_save",
     "style_open",
+    "style_preview",
 ];
 
 fn main() {

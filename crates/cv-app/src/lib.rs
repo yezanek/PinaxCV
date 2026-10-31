@@ -21,6 +21,7 @@ mod preview;
 mod review;
 mod settings;
 mod style_file;
+mod style_preview;
 mod tailor;
 
 use std::path::PathBuf;

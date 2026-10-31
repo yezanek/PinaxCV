@@ -178,6 +178,9 @@ pub struct Strings {
     pub style_loaded: &'static str,
     pub style_unmatched: &'static str,
     pub style_unplaced: &'static str,
+    pub style_preview: &'static str,
+    pub style_preview_hint: &'static str,
+    pub style_preview_saved: &'static str,
 
     // Section kinds
     pub experience: &'static str,
@@ -654,6 +657,9 @@ pub static EN: Strings = Strings {
     style_loaded: "Style loaded. Undo puts the previous look back.",
     style_unmatched: "{count} block(s) in the style have no matching section in this CV.",
     style_unplaced: "{count} section(s) were not in the style and went to the main column.",
+    style_preview: "Export style preview…",
+    style_preview_hint: "A web page of a made-up sample CV in this style, to look at or share without your details.",
+    style_preview_saved: "Style preview saved to {path}.",
 
     experience: "Experience",
     work_experience: "Work experience",
