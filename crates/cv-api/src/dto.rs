@@ -354,9 +354,13 @@ pub struct CvDefaults {
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
 pub struct AppSettings {
     pub defaults: CvDefaults,
-    /// The folder holding the database and the log; `None` when the app
-    /// keeps its data in memory (tests).
+    /// The folder holding the database; `None` when the app keeps its data
+    /// in memory (tests).
     pub data_dir: Option<String>,
+    /// The folder holding the log file. It is inside the data folder on
+    /// Linux and elsewhere on macOS and Windows; `None` without a log.
+    #[serde(default)]
+    pub log_dir: Option<String>,
     /// The app's version, from its build.
     pub version: String,
     /// The app's SPDX licence identifier.
