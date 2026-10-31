@@ -457,6 +457,11 @@ fn special_chars(cv: &ResolvedCv, out: &mut Lints) {
         check(Some(&link.id), "link label", &link.label);
         check(Some(&link.id), "link", &link.url);
     }
+    // The personal details as printed (ADR-088).
+    for (field, value) in b.personal.lines(cv.options.date_style, cv.locale) {
+        let label = crate::locale::personal_label(field, cv.locale).to_lowercase();
+        check(None, &label, &value);
+    }
     for section in &cv.sections {
         let heading = match section {
             ResolvedSection::Experience(s)
@@ -896,6 +901,28 @@ mod tests {
             (codes::PAGE_COUNT, Severity::Info)
         );
     }
+    #[test]
+    fn shown_personal_details_are_checked_for_special_characters() {
+        let mut cv = clean_cv();
+        cv.basics.personal.nationality = vec!["Italian \u{1F1EE}\u{1F1F9}".into()];
+        cv.basics.personal.address = Some("Via Esempio 1\u{E000}".into());
+        // Hidden: not printed, so not checked.
+        assert!(lint(&cv.resolve(None), None).is_empty());
+        cv.basics.show_personal = [PersonalField::Nationality, PersonalField::Address].into();
+        let special: Vec<String> = lint(&cv.resolve(None), None)
+            .into_iter()
+            .filter(|i| i.code == codes::SPECIAL_CHARS)
+            .map(|i| i.message)
+            .collect();
+        assert_eq!(
+            special,
+            [
+                "The nationality contains U+1F1EE, which applicant tracking systems may garble.",
+                "The address contains U+E000, which applicant tracking systems may garble.",
+            ]
+        );
+    }
+
     #[test]
     fn shown_personal_details_are_info_notes() {
         let mut cv = clean_cv();

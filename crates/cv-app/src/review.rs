@@ -5,7 +5,9 @@
 use std::sync::{Arc, PoisonError};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use cv_ai::{CheckedSummary, NoteCategory, PayloadOptions, StageContext, build_cv_payload};
+use cv_ai::{
+    CheckedSummary, NoteCategory, PayloadOptions, StageContext, build_cv_payload_redacting,
+};
 use cv_api::{
     AiReview, AiStage, ApiError, DiscardedRewrite, ErrorCode, JobId, ReviewDecide, ReviewDecided,
     ReviewNote, ReviewNoteCategory, ReviewSession, SaveCv, Target,
@@ -120,8 +122,9 @@ impl App {
         let mut cv = self.blocking(move |app| app.get_cv(&cv_id)).await?.cv;
         let _ = validate::for_save(&mut cv);
         let base = cv.resolve(None);
-        let payload = build_cv_payload(
+        let payload = build_cv_payload_redacting(
             &base,
+            &cv.basics.personal,
             PayloadOptions {
                 send_name: status.send_name,
                 send_location: status.send_location,

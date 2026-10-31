@@ -392,7 +392,12 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
         match action {
             Shortcut::Undo => step(true),
             Shortcut::Redo => step(false),
-            Shortcut::Save => save_now(),
+            Shortcut::Save => {
+                // Fields that commit on change (the birth date and the
+                // comma-separated lists) are saved with what was typed.
+                commit_focused();
+                save_now();
+            }
             Shortcut::Export => {
                 commit_focused();
                 flush_then(AfterSave::Export(true));
