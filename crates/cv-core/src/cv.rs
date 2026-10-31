@@ -3,7 +3,9 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{Id, IdSource, SuggestionTarget};
+use std::collections::BTreeSet;
+
+use crate::{Id, IdSource, PersonalDetails, PersonalField, SuggestionTarget};
 
 /// Current version of the [`Cv`] JSON shape. Bumped together with a migration step.
 pub const CV_SCHEMA_VERSION: u32 = 1;
@@ -143,6 +145,13 @@ pub struct Basics {
     /// variant has its own switch (`Variant::show_photo`).
     #[serde(default)]
     pub show_photo: bool,
+    /// Optional European personal details (ADR-088). Empty by default.
+    #[serde(default)]
+    pub personal: PersonalDetails,
+    /// The personal details the base CV prints. Empty by default; each
+    /// variant has its own set (`Variant::show_personal`).
+    #[serde(default)]
+    pub show_personal: BTreeSet<PersonalField>,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]

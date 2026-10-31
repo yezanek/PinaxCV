@@ -18,6 +18,8 @@ pub mod codes {
     pub const DUPLICATE_ID: &str = "duplicate_id";
     /// A partial date has a month outside 1..=12.
     pub const INVALID_MONTH: &str = "invalid_month";
+    /// The birth date is not a real calendar date (ADR-088).
+    pub const INVALID_DATE: &str = "invalid_date";
     /// A template option was out of range and has been clamped.
     pub const OPTION_CLAMPED: &str = "option_clamped";
     /// The accent colour was not `#RRGGBB` and has been reset to black.
@@ -80,6 +82,16 @@ fn structure(cv: &Cv) -> Vec<ValidationIssue> {
                 "Schema version {} is not the current version {CV_SCHEMA_VERSION}.",
                 cv.schema_version
             ),
+        ));
+    }
+
+    if let Some(date) = cv.basics.personal.birth_date
+        && !date.is_valid()
+    {
+        issues.push(error(
+            codes::INVALID_DATE,
+            "/basics/personal/birth_date",
+            &format!("The date of birth {} is not a real date.", date.iso()),
         ));
     }
 
@@ -334,6 +346,23 @@ mod tests {
                 ),
             ]
         );
+    }
+
+    #[test]
+    fn impossible_birth_dates_are_errors() {
+        let mut cv = sample_cv();
+        cv.basics.personal.birth_date = Some(crate::CalendarDate {
+            year: 1990,
+            month: Some(2),
+            day: Some(30),
+        });
+        let issues = for_save(&mut cv);
+        assert_eq!(
+            codes_of(&issues),
+            [(codes::INVALID_DATE, "/basics/personal/birth_date")]
+        );
+        cv.basics.personal.birth_date = crate::CalendarDate::parse("1990-02-28");
+        assert!(for_save(&mut cv).is_empty());
     }
 
     #[test]

@@ -8,7 +8,8 @@
 use std::collections::BTreeSet;
 
 use crate::{
-    Id, LintIssue, PartialDate, Period, ResolvedCv, ResolvedEntry, ResolvedSection, Severity,
+    Id, LintIssue, PartialDate, Period, PersonalField, ResolvedCv, ResolvedEntry, ResolvedSection,
+    Severity,
 };
 
 /// Stable codes for [`LintIssue::code`], in the order of the spec's table.
@@ -34,6 +35,8 @@ pub mod codes {
     pub const PAGE_COUNT: &str = "page_count";
     /// Added by the app, which knows whether a photo is stored (ADR-083).
     pub const PHOTO: &str = "photo";
+    /// A personal detail such as the date of birth is printed (ADR-088).
+    pub const PERSONAL_DETAIL_SHOWN: &str = "personal_detail_shown";
 }
 
 /// Bullets longer than this many characters get `bullet_too_long`.
@@ -108,7 +111,39 @@ pub fn lint(cv: &ResolvedCv, page_count: Option<u32>) -> Vec<LintIssue> {
             Some("Most roles expect one or two pages. Try \"Fit to 2 pages\"."),
         );
     }
+    personal_details(cv, &mut out);
     out.sort_by_rule()
+}
+
+/// One note per printed personal detail. Whether to show them depends on the
+/// target country, so this is never more than information: common advice,
+/// not a standard (ADR-088).
+fn personal_details(cv: &ResolvedCv, out: &mut Lints) {
+    let style = cv.options.date_style;
+    for (field, _) in cv.basics.personal.lines(style, cv.locale) {
+        let label = crate::locale::personal_label(field, cv.locale);
+        let hint = match field {
+            PersonalField::Nationality
+            | PersonalField::BirthDate
+            | PersonalField::BirthPlace
+            | PersonalField::Gender
+            | PersonalField::MaritalStatus => {
+                "Many European employers expect it, but UK and US equality guidance \
+                 (Equality Act 2010, EEOC) advises leaving it out. It depends on the \
+                 country you apply in; show it only where it is expected or asked for."
+            }
+            PersonalField::Address | PersonalField::DrivingLicence | PersonalField::WorkPermit => {
+                "Show it only when the job or the application asks for it."
+            }
+        };
+        out.push(
+            codes::PERSONAL_DETAIL_SHOWN,
+            Severity::Info,
+            None,
+            format!("{label} is shown on this CV."),
+            Some(hint),
+        );
+    }
 }
 
 /// Returns the entries of an entry-shaped section, or nothing.
@@ -539,7 +574,7 @@ impl Lints {
 
     /// Stable sort by the rule's position in [`codes`]; document order is kept within a rule.
     fn sort_by_rule(mut self) -> Vec<LintIssue> {
-        const ORDER: [&str; 19] = [
+        const ORDER: [&str; 20] = [
             codes::MISSING_NAME,
             codes::MISSING_CONTACT,
             codes::INVALID_EMAIL,
@@ -559,6 +594,7 @@ impl Lints {
             codes::LONG_URL,
             codes::UNSAFE_LINK,
             codes::PAGE_COUNT,
+            codes::PERSONAL_DETAIL_SHOWN,
         ];
         self.0
             .sort_by_key(|i| ORDER.iter().position(|c| *c == i.code));
@@ -858,6 +894,56 @@ mod tests {
         assert_eq!(
             (issues[0].code.as_str(), issues[0].severity),
             (codes::PAGE_COUNT, Severity::Info)
+        );
+    }
+    #[test]
+    fn shown_personal_details_are_info_notes() {
+        let mut cv = clean_cv();
+        cv.basics.personal.birth_date = crate::CalendarDate::parse("1990-03-12");
+        cv.basics.personal.driving_licence = vec!["B".into()];
+        cv.basics.personal.gender = Some(" ".into());
+        // Filled but switched off: no note.
+        assert_eq!(lint(&cv.resolve(None), None), vec![]);
+
+        cv.basics.show_personal = [
+            PersonalField::BirthDate,
+            PersonalField::DrivingLicence,
+            PersonalField::Gender,
+        ]
+        .into();
+        let issues = lint(&cv.resolve(None), Some(3));
+        let got: Vec<(&str, Severity, &str)> = issues
+            .iter()
+            .map(|i| (i.code.as_str(), i.severity, i.message.as_str()))
+            .collect();
+        // Blank gender prints nothing, so it gets no note.
+        assert_eq!(
+            got,
+            [
+                (codes::PAGE_COUNT, Severity::Info, "The CV is 3 pages long."),
+                (
+                    codes::PERSONAL_DETAIL_SHOWN,
+                    Severity::Info,
+                    "Date of birth is shown on this CV."
+                ),
+                (
+                    codes::PERSONAL_DETAIL_SHOWN,
+                    Severity::Info,
+                    "Driving licence is shown on this CV."
+                ),
+            ]
+        );
+        assert!(
+            issues[1]
+                .fix_hint
+                .as_deref()
+                .is_some_and(|h| h.contains("Equality Act"))
+        );
+        assert!(
+            !issues[2]
+                .fix_hint
+                .as_deref()
+                .is_some_and(|h| h.contains("Equality Act"))
         );
     }
 }

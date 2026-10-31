@@ -271,6 +271,10 @@ impl Redactor {
                 known.push(l.clone());
             }
         }
+        // The postal address (ADR-088) never goes, whole or line by line.
+        if let Some(address) = &basics.personal.address {
+            known.extend(address.lines().map(str::to_owned));
+        }
         known.retain(|k| k.trim().chars().count() >= 3);
         known.iter_mut().for_each(|k| *k = k.trim().to_owned());
         // Longest first, so a value containing another one goes whole.
@@ -397,6 +401,17 @@ mod tests {
         let r = Redactor::new(&cv.basics, PayloadOptions::default());
         let out = r.text("Code at github.com/janedoe and GitHub.com/JaneDoe/x.");
         assert!(!out.to_lowercase().contains("janedoe"), "{out}");
+    }
+
+    #[test]
+    fn the_postal_address_is_redacted_line_by_line() {
+        let mut cv = typical();
+        cv.basics.personal.address = Some("Via Esempio 1\n10100 Torino\n".into());
+        let r = Redactor::new(&cv.basics, PayloadOptions::default());
+        let out = r.text("Write to via esempio 1, 10100 Torino, or visit Turin.");
+        assert!(!out.to_lowercase().contains("esempio"), "{out}");
+        assert!(!out.contains("10100"), "{out}");
+        assert!(out.contains("Turin"), "{out}");
     }
 
     #[test]

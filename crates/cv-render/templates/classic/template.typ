@@ -40,6 +40,10 @@
   for l in d.basics.links {
     block(below: 0.4em)[#if l.label != none [#l.label: ]#url-text(l)~]
   }
+  // Personal details switched on for this CV (ADR-088), as plain lines.
+  for p in d.basics.personal {
+    block(below: 0.4em)[#p.label: #p.value~]
+  }
 }
 // The optional photo (ADR-083) sits to the right of the contact block. It is
 // a PDF artifact: no text, so text extraction and the reading order are the

@@ -530,6 +530,8 @@ pub fn blank_cv(id: Id, title: &str) -> Cv {
             location: None,
             links: Vec::new(),
             show_photo: false,
+            personal: Default::default(),
+            show_personal: Default::default(),
         },
         summary: None,
         sections: Vec::new(),

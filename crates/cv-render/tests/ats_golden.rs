@@ -10,7 +10,7 @@ use cv_render::{ExportOptions, MISSING_GLYPHS, Renderer, TextExtractor};
 
 const TEMPLATES: [&str; 1] = ["classic"];
 
-const FIXTURES: [&str; 10] = [
+const FIXTURES: [&str; 11] = [
     "minimal",
     "typical",
     "long",
@@ -21,6 +21,7 @@ const FIXTURES: [&str; 10] = [
     "current_job",
     "special_chars",
     "unsafe_links",
+    "european",
 ];
 
 fn fixture(name: &str) -> Cv {

@@ -28,6 +28,8 @@ pub fn sample_cv() -> Cv {
                 url: "https://example.com".into(),
             }],
             show_photo: false,
+            personal: Default::default(),
+            show_personal: Default::default(),
         },
         summary: None,
         sections: vec![

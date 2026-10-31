@@ -22,6 +22,8 @@ pub struct ResolvedCv {
     pub paper: Paper,
     pub template: TemplateId,
     pub options: TemplateOptions,
+    /// The base CV's basics, except that `personal` keeps only the fields in
+    /// `show_personal`, which is the variant's set (ADR-088).
     pub basics: Basics,
     /// Whether to show the CV's profile photo: the variant's switch, or the
     /// base CV's without a variant. The image is attached at export time.

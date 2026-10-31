@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use cv_core::Cv;
 use cv_render::{ExportOptions, to_html};
 
-const FIXTURES: [&str; 10] = [
+const FIXTURES: [&str; 11] = [
     "minimal",
     "typical",
     "long",
@@ -17,6 +17,7 @@ const FIXTURES: [&str; 10] = [
     "current_job",
     "special_chars",
     "unsafe_links",
+    "european",
 ];
 
 fn fixture(name: &str) -> Cv {
