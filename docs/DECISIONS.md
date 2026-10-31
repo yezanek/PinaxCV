@@ -607,6 +607,13 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - PDF (#123): `data.json` gains `layout` (`two`, `sidebar_width_pct`, `sidebar_first`, and the `sidebar` and `main` block lists, sections by index). The classic template draws one column exactly as before; two columns are one `grid` row (sidebar 25 to 40% wide, 1.5em gutter) that breaks across pages. In the sidebar the contact items are stacked one per line and the photo sits above the name. With two columns, bullets, descriptions and the summary are unbreakable blocks, so a page break never lands inside one and the other column's text never splits it. The ATS check expects each column in order on its own (headings, entries, bullets, order). Golden fixtures `two_column` (name and contact in a left sidebar with skills and languages) and `two_column_long` (two pages, name in main, skills, languages and certifications in a right sidebar). OpenResume (#47) reads `two_column` fully; `two_column_long` is a known limit: page 2's jobs land under the sidebar's last heading, which is why the one-column ATS copy exists.
 - Two columns go against spec G1, the "no multi-column templates" non-goal, spec 6.4 rule 1 and `docs/ATS_RULES.md` rule 1. Dan decided on 2026-10-30 to allow them with safeguards: a golden reading-order test, a warning in the ATS check, and a one-column ATS copy saved by default when exporting a two-column CV. The spec and ATS rules are amended with the template change (#123).
 
+## ADR-085 — Purging deleted CVs after 30 days (M8, issue #113)
+
+- Spec section 5.2 keeps a soft-deleted CV for 30 days. `cv-app` names the period `DELETED_CV_RETENTION` and `App::purge_deleted_cvs` removes older deleted CVs for good with `Store::purge_deleted`; foreign keys cascade to their variants, snapshots and photo.
+- The shell runs it once per start, after the database opens, on its own thread, so the window never waits for it. The log line carries only the number of CVs removed (or the error code), never titles.
+- The 8-second undo toast is unaffected: it restores a CV deleted seconds ago.
+- Purged rows are deleted with SQL `DELETE`, not `VACUUM`; their text may stay in free pages of the database file until SQLite reuses them. "Delete all data" remains the way to erase everything from the file (ADR-081).
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
