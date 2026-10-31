@@ -19,6 +19,7 @@ use crate::entries::{AddSection, Sections};
 use crate::history::{History, Shortcut, shortcut};
 use crate::i18n::{error_message, fill, t};
 use crate::ipc::{IdArg, ReqArg, call};
+use crate::personal::PersonalSection;
 use crate::photo::PhotoSection;
 use crate::preview::{DiagnosticsStrip, Zoom, ZoomControls, diagnostics_from, page_width};
 use crate::style::StyleTab;
@@ -503,6 +504,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                 {field(t().phone, None, |c| c.basics.phone.clone().unwrap_or_default(), |c, v| c.basics.phone = opt(v))}
                 {field(t().location, None, |c| c.basics.location.clone().unwrap_or_default(), |c, v| c.basics.location = opt(v))}
                 <PhotoSection cv_id=id.clone() cv=cv edit=edit error=error changed=variant_changed />
+                <PersonalSection cv=cv edit=edit />
                 <label>{t().summary}
                     <textarea id=SUMMARY_FIELD aria-describedby="summary-count"
                         prop:value=move || cv.with(|c| c.as_ref().and_then(|c| c.summary.clone()).unwrap_or_default())

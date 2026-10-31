@@ -14,6 +14,7 @@ use crate::drag::DragHandle;
 use crate::fit::{EditFn, FitPanel};
 use crate::i18n::{error_message, fill, t};
 use crate::ipc::{IdArg, ReqArg, call};
+use crate::personal::VariantPersonal;
 use crate::review::SuggestionReview;
 use crate::tailor::TailorPanel;
 
@@ -601,6 +602,7 @@ pub fn VariantBar(
                         } />
                     {t().photo_show_variant}
                 </label>
+                <VariantPersonal cv=cv variant=variant edit=edit_cb disabled=tailoring.into() />
                 <button prop:disabled=move || busy.get() || duplicating.get() || tailoring.get() on:click=move |_| duplicate.run(())>{t().duplicate_variant}</button>
                 <Show when=move || confirming.with(Option::is_none)
                     fallback=move || view! {

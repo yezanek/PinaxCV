@@ -20,6 +20,7 @@ mod ipc;
 mod list;
 mod lists;
 mod order;
+mod personal;
 mod photo;
 mod preview;
 mod review;
