@@ -375,6 +375,7 @@ fn import_into_a_new_cv() {
             target: ImportTarget::New { title: " ".into() },
             use_imported: Vec::new(),
             entries: Vec::new(),
+            use_imported_photo: false,
         })
         .expect("commit");
     assert_eq!(stored.cv.title, "Alex Sample");
@@ -427,6 +428,7 @@ fn import_merges_into_an_existing_cv_after_a_snapshot() {
         },
         use_imported: Vec::new(),
         entries: Vec::new(),
+        use_imported_photo: false,
     });
     assert_eq!(stale.map_err(|e| e.code), Err(ErrorCode::Conflict));
 
@@ -444,6 +446,7 @@ fn import_merges_into_an_existing_cv_after_a_snapshot() {
                     base: m.base.clone(),
                 },
             }],
+            use_imported_photo: false,
         })
         .expect("merge");
     assert_eq!(merged.cv.basics.full_name, "Jane Doe");
