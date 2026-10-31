@@ -56,6 +56,7 @@
     "allow-photo-apply",
     "allow-photo-remove",
     "allow-style-save",
-    "allow-style-open"
+    "allow-style-open",
+    "allow-style-preview"
   ]
 }

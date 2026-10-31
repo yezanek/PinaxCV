@@ -52,6 +52,8 @@ The Style tab's **Save style…** and **Load style…** write and read a style f
 - `<block>`: `kind` is `name`, `contact`, `summary`, `experience`, `education`, `projects`, `skills`, `languages`, `certifications` or `custom` (with `title`); `column` is `sidebar` or `main` (the default). The blocks are one list: the top blocks in their order, then the sections in the CV's order. One list rather than a `<sidebar>` and a `<main>` list keeps the order across columns, which a one-column page shows. Placements are written in one-column mode too, as the layout keeps them.
 - The name's column is drawn on the left, so there is no side setting.
 
+**Export style preview…** writes an HTML page of a built-in, made-up sample CV (`cv_app` `style_preview.rs`) with the style applied, to look at or share a style without any personal details. Custom sections the style names appear with their title and a sample entry. The page is export only: the XML file is what loads back.
+
 Reading:
 
 - Files over 256 KB are refused. The XML is parsed with `roxmltree`, which refuses DTDs, so entities cannot expand. The root must be `pinaxcv-style` in the `urn:pinaxcv:style:1` namespace with `version="1"`; a higher version is refused with a message to update PinaxCV.

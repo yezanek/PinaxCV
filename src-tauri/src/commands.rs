@@ -574,6 +574,13 @@ pub async fn style_open(app: Shared<'_>) -> Reply<StyleOpened> {
     run(app, "style_open", App::style_open).await
 }
 
+/// Asks where to save and writes the style applied to a built-in sample
+/// CV as an HTML page.
+#[tauri::command]
+pub async fn style_preview(app: Shared<'_>, req: StyleSave) -> Reply<StyleSaved> {
+    run(app, "style_preview", move |a| a.style_preview(req)).await
+}
+
 /// The licences of the fonts and crates the app ships
 /// (`THIRD_PARTY_LICENSES.md`, generated from `Cargo.lock`).
 #[tauri::command]
