@@ -479,6 +479,8 @@ mod tests {
             include_email: false,
             include_phone: false,
             photo: None,
+            signature: None,
+            date: None,
         };
         let pdf = crate::Renderer::new()
             .compile(&cv, &options)

@@ -53,6 +53,9 @@ const COMMANDS: &[&str] = &[
     "photo_get",
     "photo_apply",
     "photo_remove",
+    "signature_choose",
+    "signature_get",
+    "signature_remove",
 ];
 
 fn main() {

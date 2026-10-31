@@ -85,6 +85,27 @@ pub fn to_html(cv: &ResolvedCv, options: &ExportOptions) -> String {
         write_blocks(&mut out, &d, &l.main[lead..], photo);
         out.push_str("</main>\n");
     }
+    // The optional closing block (ADR-089), after the last section and
+    // below the columns.
+    if let Some(c) = &d.closing {
+        out.push_str("<footer class=\"closing\">\n");
+        if let Some(consent) = &c.consent {
+            let _ = writeln!(out, "<p class=\"consent\">{}</p>", esc(consent));
+        }
+        if let Some(line) = &c.place_date {
+            let _ = writeln!(out, "<p>{}</p>", esc(line));
+        }
+        // Decorative (empty alt), so the page's text is the same with and
+        // without the signature (ADR-090).
+        if let Some(png) = options.signature.as_deref().filter(|_| c.signature) {
+            let _ = writeln!(
+                out,
+                "<img class=\"signature\" src=\"data:image/png;base64,{}\" alt=\"\">",
+                base64(png)
+            );
+        }
+        out.push_str("</footer>\n");
+    }
     out.push_str("</body>\n</html>\n");
     out
 }
@@ -226,6 +247,14 @@ fn contact(out: &mut String, d: &TypstData) {
         out.push_str("<ul class=\"contact\">\n");
         for item in items {
             let _ = writeln!(out, "<li>{item}</li>");
+        }
+        out.push_str("</ul>\n");
+    }
+    // Personal details switched on for this CV (ADR-088), one per line.
+    if !b.personal.is_empty() {
+        out.push_str("<ul class=\"personal\">\n");
+        for p in &b.personal {
+            let _ = writeln!(out, "<li>{}: {}</li>", esc(p.label), esc(&p.value));
         }
         out.push_str("</ul>\n");
     }
@@ -579,6 +608,67 @@ mod tests {
     }
 
     #[test]
+    fn shown_personal_details_are_escaped_lines_in_the_header() {
+        let mut cv = testdata::fixture("european");
+        cv.basics.personal.birth_place = Some("<Turin & Co>".into());
+        let doc = to_html(&cv.resolve(None), &ExportOptions::html_default());
+        let header =
+            &doc[doc.find("<header>").expect("header")..doc.find("</header>").expect("end")];
+        assert!(
+            header.contains("<ul class=\"personal\">\n<li>Nationality: Italian, German</li>\n")
+        );
+        assert!(header.contains("<li>Place of birth: &lt;Turin &amp; Co&gt;</li>"));
+        assert!(header.contains("<li>Right to work: EU citizen</li>\n</ul>"));
+        cv.basics.show_personal.clear();
+        assert!(
+            !to_html(&cv.resolve(None), &ExportOptions::html_default()).contains("personal\">")
+        );
+    }
+
+    #[test]
+    fn the_closing_block_follows_the_main_content() {
+        use cv_core::ClosingPart;
+        let mut cv = testdata::fixture("typical");
+        cv.closing.consent = Some("Autorizzo il trattamento <dei> dati.".into());
+        cv.closing.place = Some("Torino".into());
+        cv.closing.show = [ClosingPart::Consent, ClosingPart::PlaceDate].into();
+        let options = ExportOptions {
+            date: cv_core::CalendarDate::parse("2026-10-30"),
+            ..ExportOptions::html_default()
+        };
+        let doc = to_html(&cv.resolve(None), &options);
+        assert!(doc.contains(
+            "</main>\n<footer class=\"closing\">\n<p class=\"consent\">Autorizzo il trattamento &lt;dei&gt; dati.</p>\n<p>Torino, 30 Oct 2026</p>\n</footer>\n</body>"
+        ), "{doc}");
+        cv.closing.show.clear();
+        assert!(!to_html(&cv.resolve(None), &options).contains("<footer"));
+    }
+
+    #[test]
+    fn a_shown_signature_is_an_embedded_decorative_image() {
+        use cv_core::ClosingPart;
+        let mut cv = testdata::fixture("typical");
+        cv.closing.show = [ClosingPart::Signature].into();
+        let png: std::sync::Arc<[u8]> = vec![0x89, b'P', b'N', b'G'].into();
+        let with = ExportOptions {
+            signature: Some(png),
+            ..ExportOptions::html_default()
+        };
+        let doc = to_html(&cv.resolve(None), &with);
+        assert!(
+            doc.contains(
+                "<img class=\"signature\" src=\"data:image/png;base64,iVBORw==\" alt=\"\">"
+            ),
+            "{doc}"
+        );
+        // No image without the switch, and no empty block without an image.
+        cv.closing.show.clear();
+        assert!(!to_html(&cv.resolve(None), &with).contains("<footer"));
+        cv.closing.show = [ClosingPart::Signature].into();
+        assert!(!to_html(&cv.resolve(None), &ExportOptions::html_default()).contains("<footer"));
+    }
+
+    #[test]
     fn a_shown_photo_is_an_embedded_decorative_image() {
         let jpeg: std::sync::Arc<[u8]> = vec![0xff, 0xd8, 0xff, 0xd9].into();
         let options = ExportOptions {
@@ -618,6 +708,8 @@ mod tests {
                 include_email: true,
                 include_phone: true,
                 photo: None,
+                signature: None,
+                date: None,
             },
         );
         assert!(both.contains("mailto:jane@example.com") && both.contains("+49 30 1234 5678"));
@@ -627,6 +719,8 @@ mod tests {
                 include_email: false,
                 include_phone: false,
                 photo: None,
+                signature: None,
+                date: None,
             },
         );
         assert!(!neither.contains("jane@example.com") && !neither.contains("+49 30"));

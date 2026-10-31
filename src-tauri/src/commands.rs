@@ -10,7 +10,7 @@ use cv_api::{
     ExportResult, FitOutcome, FitVariant, ImportCommit, ImportMatch, ImportMatchRequest,
     ImportPreview, ImportText, ImportTextSource, JobId, NewCv, NewVariant, PhotoApply, PhotoInfo,
     PhotoSource, PreviewRequest, PreviewResponse, PruneResult, RestoreResult, ReviewDecide,
-    ReviewDecided, ReviewSession, SaveCv, SaveVariant, Target, TemplateManifest,
+    ReviewDecided, ReviewSession, SaveCv, SaveVariant, SignatureInfo, Target, TemplateManifest,
 };
 use cv_app::App;
 use cv_core::{AtsReport, CvSummary, Id, LintIssue, StoredCv, StoredVariant, VariantSummary};
@@ -559,6 +559,22 @@ pub async fn photo_apply(app: Shared<'_>, req: PhotoApply) -> Reply<PhotoInfo> {
 #[tauri::command]
 pub async fn photo_remove(app: Shared<'_>, id: Id) -> Reply<()> {
     run(app, "photo_remove", move |a| a.photo_remove(&id)).await
+}
+
+/// Asks for an image of a signature and stores it for the CV (ADR-090).
+#[tauri::command]
+pub async fn signature_choose(app: Shared<'_>, id: Id) -> Reply<SignatureInfo> {
+    run(app, "signature_choose", move |a| a.signature_choose(&id)).await
+}
+
+#[tauri::command]
+pub async fn signature_get(app: Shared<'_>, id: Id) -> Reply<Option<SignatureInfo>> {
+    run(app, "signature_get", move |a| a.signature_get(&id)).await
+}
+
+#[tauri::command]
+pub async fn signature_remove(app: Shared<'_>, id: Id) -> Reply<()> {
+    run(app, "signature_remove", move |a| a.signature_remove(&id)).await
 }
 
 /// The licences of the fonts and crates the app ships

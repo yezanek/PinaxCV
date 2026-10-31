@@ -7,7 +7,8 @@
 use cv_core::lint::is_clickable_url;
 use cv_core::locale::{self, Labels};
 use cv_core::{
-    BlockRef, Column, Columns, Locale, Paper, ResolvedCv, ResolvedEntry, ResolvedSection, TopBlock,
+    BlockRef, ClosingPart, Column, Columns, Locale, Paper, ResolvedCv, ResolvedEntry,
+    ResolvedSection, TopBlock,
 };
 use serde::Serialize;
 
@@ -23,7 +24,22 @@ pub struct TypstData {
     pub basics: BasicsData,
     pub summary: Option<String>,
     pub sections: Vec<SectionData>,
+    /// The closing block after the last section (ADR-089), or `null` when
+    /// it prints nothing.
+    pub closing: Option<ClosingData>,
     pub layout: LayoutData,
+}
+
+/// The shown parts of the closing block, as printed.
+#[derive(Serialize, Debug, PartialEq)]
+pub struct ClosingData {
+    pub consent: Option<String>,
+    /// "Berlin, 30 Oct 2026": the place and the export date in the CV's
+    /// date style, or whichever of the two is known.
+    pub place_date: Option<String>,
+    /// Whether the template draws `signature.png`: the CV shows its
+    /// signature and the export was given one (ADR-090).
+    pub signature: bool,
 }
 
 /// Which blocks each column draws, in order (ADR-084). With one column every
@@ -98,6 +114,16 @@ pub struct BasicsData {
     /// Whether the template draws `photo.jpg`: the CV shows its photo and
     /// the export was given one.
     pub photo: bool,
+    /// Personal details switched on for this CV or variant (ADR-088), in
+    /// print order, one line each after the contact details.
+    pub personal: Vec<PersonalLineData>,
+}
+
+/// One personal detail as printed: "Nationality: Italian".
+#[derive(Serialize, Debug, PartialEq)]
+pub struct PersonalLineData {
+    pub label: &'static str,
+    pub value: String,
 }
 
 /// `clickable` is true only for `https:` and `mailto:` URLs.
@@ -207,11 +233,41 @@ pub fn to_typst_data(cv: &ResolvedCv, options: &ExportOptions) -> TypstData {
                 .filter_map(|l| link(Some(&l.label), &l.url))
                 .collect(),
             photo: cv.show_photo && options.photo.is_some(),
+            personal: b
+                .personal
+                .lines(cv.options.date_style, cv.locale)
+                .into_iter()
+                .map(|(field, value)| PersonalLineData {
+                    label: locale::personal_label(field, cv.locale),
+                    value,
+                })
+                .collect(),
         },
         summary: text(&cv.summary),
         sections: sections.into_iter().map(|(_, s)| s).collect(),
         layout,
+        closing: closing(cv, options),
     }
+}
+
+fn closing(cv: &ResolvedCv, options: &ExportOptions) -> Option<ClosingData> {
+    let c = &cv.closing;
+    let place_date = c.show.contains(&ClosingPart::PlaceDate).then(|| {
+        let date = options
+            .date
+            .map(|d| locale::format_day(d, cv.options.date_style, cv.locale));
+        [c.place_text().map(str::to_owned), date]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>()
+            .join(", ")
+    });
+    let data = ClosingData {
+        consent: c.consent_text().map(str::to_owned),
+        place_date: place_date.filter(|l| !l.is_empty()),
+        signature: c.show.contains(&ClosingPart::Signature) && options.signature.is_some(),
+    };
+    (data.consent.is_some() || data.place_date.is_some() || data.signature).then_some(data)
 }
 
 /// Puts the top blocks and the printed sections into their columns.
@@ -508,9 +564,82 @@ mod tests {
             include_email: false,
             include_phone: false,
             photo: None,
+            signature: None,
+            date: None,
         };
         let d = to_typst_data(&cv, &opts);
         assert_eq!((d.basics.email, d.basics.phone), (None, None));
+    }
+
+    #[test]
+    fn personal_details_follow_the_switches() {
+        let d = data("european");
+        let lines: Vec<String> = d["basics"]["personal"]
+            .as_array()
+            .expect("personal")
+            .iter()
+            .map(|l| {
+                format!(
+                    "{}: {}",
+                    l["label"].as_str().expect("label"),
+                    l["value"].as_str().expect("value")
+                )
+            })
+            .collect();
+        assert_eq!(
+            lines,
+            [
+                "Nationality: Italian, German",
+                "Date of birth: 12 Mar 1990",
+                "Place of birth: Turin",
+                "Gender: Female",
+                "Marital status: Married",
+                "Address: Via Esempio 1, 10100 Torino",
+                "Driving licence: B, C1",
+                "Right to work: EU citizen",
+            ]
+        );
+        // A variant that switches nothing on prints none of them.
+        let cv = testdata::fixture("european");
+        let v = cv_core::Variant::empty(cv.id.clone(), cv.id.clone(), "UK");
+        let d = to_typst_data(&cv.resolve(Some(&v)), &ExportOptions::default());
+        assert!(d.basics.personal.is_empty());
+        assert!(
+            data("typical")["basics"]["personal"]
+                .as_array()
+                .is_some_and(Vec::is_empty)
+        );
+    }
+
+    #[test]
+    fn closing_prints_the_shown_parts_with_the_export_date() {
+        use cv_core::{CalendarDate, ClosingPart};
+        let mut cv = testdata::fixture("typical");
+        assert_eq!(data("typical")["closing"], serde_json::Value::Null);
+        cv.closing.consent = Some(" I consent. ".into());
+        cv.closing.place = Some("Berlin".into());
+        cv.closing.show = [ClosingPart::Consent, ClosingPart::PlaceDate].into();
+        let mut opts = ExportOptions {
+            date: CalendarDate::parse("2026-10-30"),
+            ..ExportOptions::default()
+        };
+        let d = to_typst_data(&cv.resolve(None), &opts)
+            .closing
+            .expect("closing");
+        assert_eq!(d.consent.as_deref(), Some("I consent."));
+        assert_eq!(d.place_date.as_deref(), Some("Berlin, 30 Oct 2026"));
+
+        cv.options.date_style = cv_core::DateStyle::NumericMonthYear;
+        cv.closing.place = None;
+        let d = to_typst_data(&cv.resolve(None), &opts)
+            .closing
+            .expect("closing");
+        assert_eq!(d.place_date.as_deref(), Some("30/10/2026"));
+
+        // Without a place or a date, the line prints nothing.
+        opts.date = None;
+        cv.closing.show = [ClosingPart::PlaceDate].into();
+        assert_eq!(to_typst_data(&cv.resolve(None), &opts).closing, None);
     }
 
     #[test]

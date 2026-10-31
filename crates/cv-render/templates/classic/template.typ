@@ -48,6 +48,10 @@
   for l in d.basics.links {
     block(below: 0.4em)[#if l.label != none [#l.label: ]#url-text(l)~]
   }
+  // Personal details switched on for this CV (ADR-088), as plain lines.
+  for p in d.basics.personal {
+    block(below: 0.4em)[#p.label: #p.value~]
+  }
 }
 
 // The optional photo (ADR-083) is a PDF artifact: no text, so text
@@ -159,4 +163,22 @@
   } else {
     grid(columns: (1fr, side), column-gutter: 1.5em, main, sidebar)
   }
+}
+
+// The optional closing block (ADR-089): a consent clause, a "place,
+// date" line and a signature image, as plain text after the last section
+// and below the columns, never in a page footer (ATS rule 5). It stays
+// together on one page unless it is taller than a page, when it may break
+// rather than overflow.
+#if d.closing != none {
+  let body = [
+    #if d.closing.consent != none { block(below: 0.8em, text(size: 0.9em, d.closing.consent)) }
+    #if d.closing.place_date != none { block(d.closing.place_date) }
+    // The signature (ADR-090) is a PDF artifact, like the photo: no text.
+    #if d.closing.signature { block(above: 0.6em, pdf.artifact(image("signature.png", height: 1.6cm))) }
+  ]
+  layout(size => {
+    let height = measure(block(width: size.width, body)).height
+    block(above: 1.5em, breakable: height > size.height, body)
+  })
 }

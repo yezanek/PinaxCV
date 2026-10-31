@@ -2,7 +2,7 @@
 //!
 //! v1 ships English only; other locales are added here with their tables.
 
-use crate::{DateStyle, Locale, PartialDate, Period, ResolvedSection};
+use crate::{CalendarDate, DateStyle, Locale, PartialDate, Period, PersonalField, ResolvedSection};
 
 /// Fixed labels the template prints.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -71,6 +71,44 @@ pub fn format_date(date: PartialDate, style: DateStyle, locale: Locale) -> Strin
             format!("{} {}", names[usize::from(m - 1)], date.year)
         }
         (DateStyle::NumericMonthYear, Some(m)) => format!("{m:02}/{}", date.year),
+    }
+}
+
+/// Formats a full date such as a birth date (ADR-088): "12 Mar 1990" or,
+/// in [`DateStyle::NumericMonthYear`], "12/03/1990". [`DateStyle::YearOnly`]
+/// prints like `MonthNameYear`, since a birth date is never shortened to a
+/// year. A date without a day prints as [`format_date`] would.
+pub fn format_day(date: CalendarDate, style: DateStyle, locale: Locale) -> String {
+    let style = match style {
+        DateStyle::YearOnly => DateStyle::MonthNameYear,
+        s => s,
+    };
+    let month = PartialDate {
+        year: date.year,
+        month: date.month,
+    };
+    match (date.month.filter(|m| (1..=12).contains(m)), date.day) {
+        (Some(_), Some(d)) => match style {
+            DateStyle::NumericMonthYear => format!("{d:02}/{}", format_date(month, style, locale)),
+            _ => format!("{d} {}", format_date(month, style, locale)),
+        },
+        _ => format_date(month, style, locale),
+    }
+}
+
+/// The label printed before a personal detail, for example "Nationality".
+pub fn personal_label(field: PersonalField, locale: Locale) -> &'static str {
+    match locale {
+        Locale::En => match field {
+            PersonalField::Nationality => "Nationality",
+            PersonalField::BirthDate => "Date of birth",
+            PersonalField::BirthPlace => "Place of birth",
+            PersonalField::Gender => "Gender",
+            PersonalField::MaritalStatus => "Marital status",
+            PersonalField::Address => "Address",
+            PersonalField::DrivingLicence => "Driving licence",
+            PersonalField::WorkPermit => "Right to work",
+        },
     }
 }
 
@@ -157,6 +195,42 @@ mod tests {
         assert_eq!(
             format_date(d(2021, Some(13)), DateStyle::MonthNameYear, en),
             "2021"
+        );
+    }
+
+    #[test]
+    fn full_dates() {
+        let en = Locale::En;
+        let day = CalendarDate {
+            year: 1990,
+            month: Some(3),
+            day: Some(2),
+        };
+        assert_eq!(format_day(day, DateStyle::MonthNameYear, en), "2 Mar 1990");
+        assert_eq!(format_day(day, DateStyle::YearOnly, en), "2 Mar 1990");
+        assert_eq!(
+            format_day(day, DateStyle::NumericMonthYear, en),
+            "02/03/1990"
+        );
+        let month = CalendarDate { day: None, ..day };
+        assert_eq!(format_day(month, DateStyle::MonthNameYear, en), "Mar 1990");
+        let year = CalendarDate {
+            month: None,
+            day: None,
+            ..day
+        };
+        assert_eq!(format_day(year, DateStyle::NumericMonthYear, en), "1990");
+    }
+
+    #[test]
+    fn personal_labels() {
+        assert_eq!(
+            personal_label(PersonalField::BirthDate, Locale::En),
+            "Date of birth"
+        );
+        assert_eq!(
+            personal_label(PersonalField::WorkPermit, Locale::En),
+            "Right to work"
         );
     }
 

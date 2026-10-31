@@ -119,6 +119,7 @@ impl App {
             links: p.links.clone(),
             summary: p.summary.clone(),
             sections: p.sections.clone(),
+            personal: p.personal.clone(),
             warnings: warnings.into_iter().map(|w| w.message).collect(),
             needs_review,
             photo: photo.as_ref().map(|ph| data_url(&ph.image)),
@@ -297,6 +298,7 @@ fn api_field(f: Field) -> ImportField {
         Field::Phone => ImportField::Phone,
         Field::Location => ImportField::Location,
         Field::Summary => ImportField::Summary,
+        Field::Personal(p) => ImportField::Personal(p),
     }
 }
 
@@ -308,6 +310,7 @@ fn core_field(f: ImportField) -> Field {
         ImportField::Phone => Field::Phone,
         ImportField::Location => Field::Location,
         ImportField::Summary => Field::Summary,
+        ImportField::Personal(p) => Field::Personal(p),
     }
 }
 

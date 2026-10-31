@@ -11,7 +11,7 @@
 - The local log is `pinaxcv.log` in the app's log folder: `~/.local/share/dev.pinaxcv.app/logs` on Linux, `%LOCALAPPDATA%\dev.pinaxcv.app\logs` on Windows, and `~/Library/Logs/dev.pinaxcv.app` on macOS. It records startup, each command's name, duration and error code, and panics (location and a shortened message). It never records command arguments or error messages, which can quote CV content. A log over 1 MB is moved to `pinaxcv.1.log` at startup. Users open it with any text editor and attach it to an issue themselves; nothing is uploaded.
 - User data deletion removes database/WAL data and stored keychain credentials after confirmation.
 - Backups are written with owner-only permissions on Unix (`0600`) and never contain API keys. Restore refuses files that fail the integrity check or come from a newer schema.
-- Profile photos are decoded and re-encoded on choice, so EXIF and GPS metadata never reach the database or exports.
+- Profile photos and signatures are decoded and re-encoded on choice, so EXIF and GPS metadata never reach the database or exports.
 - Importers treat files as hostile: 20 MB input cap, ZIP read in memory with path, entry-count and unpacked-size limits, PDF stream decompression limits, capped text and list sizes.
 - Embedded templates/fonts only; no user-supplied executable templates in v1.
 - Only `https:` and `mailto:` links are clickable in exports.

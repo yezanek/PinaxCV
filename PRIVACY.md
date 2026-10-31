@@ -14,6 +14,12 @@ sends, and how to remove it.
   exported. It is off unless you switch it on. "Remove photo" removes it from
   the database. Deleting the CV only hides the photo along with the CV (see
   below).
+- **Your signature**, if you add one, is kept in the same database the same
+  way: re-encoded without metadata, its paper made transparent. It prints
+  only where you switch it on. "Remove signature" removes it.
+- **Personal details** such as your date of birth, nationality or postal
+  address are optional and kept with the CV. Each one is printed only on the
+  CV or variant where you switch it on. They are never sent to an AI provider.
 - **Cached AI answers.** When you use AI features, PinaxCV keeps the answers
   in the same database so the same request is not sent twice. They contain
   text from your CV. Settings → Your data → "Clear AI cache" removes them.
@@ -40,7 +46,8 @@ PinaxCV makes no network requests of its own except these:
    asks for your consent and names the host it will send to; changing the
    provider asks again. What is sent:
    - **Tailoring** sends your CV's text and the job description. Email,
-     phone, links and street addresses are taken out first, and anything that
+     phone, links and street addresses (including the postal address in your
+     personal details) are taken out first, and anything that
      looks like an email address, a link or a phone number is replaced by
      `[redacted]`. Your name is left out unless you turn on "Send my name".
      Locations are cut to city and country, and are left out entirely when
@@ -76,7 +83,7 @@ no request.
 ## Removing your data
 
 - **Deleting a CV** shows an Undo button for eight seconds. The CV, its
-  variants and its photo are hidden, not erased, and kept in the database
+  variants, its photo and its signature are hidden, not erased, and kept in the database
   for 30 days. After that they are removed the next time PinaxCV starts.
   Removing them deletes the rows but does not compact the database, so
   their text can stay in unused space in the file until SQLite reuses it;
@@ -84,7 +91,7 @@ no request.
   before the removal still contain them.
 - **Clear AI cache** removes every cached AI answer and keeps your CVs.
 - **Delete all data…** (after you confirm) deletes every CV, variant,
-  photo, snapshot, setting and cached answer, compacts the database so the deleted text is not
+  photo, signature, snapshot, setting and cached answer, compacts the database so the deleted text is not
   left in the file, removes the safety copies made by a restore, and deletes
   your API keys from the keychain. Files you saved elsewhere (exports and
   backups) and the log file are not touched; delete them yourself if you

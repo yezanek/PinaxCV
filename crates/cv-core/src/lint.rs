@@ -8,7 +8,8 @@
 use std::collections::BTreeSet;
 
 use crate::{
-    Id, LintIssue, PartialDate, Period, ResolvedCv, ResolvedEntry, ResolvedSection, Severity,
+    Id, LintIssue, PartialDate, Period, PersonalField, ResolvedCv, ResolvedEntry, ResolvedSection,
+    Severity,
 };
 
 /// Stable codes for [`LintIssue::code`], in the order of the spec's table.
@@ -36,6 +37,8 @@ pub mod codes {
     pub const PHOTO: &str = "photo";
     /// The layout has two columns (ADR-084).
     pub const TWO_COLUMNS: &str = "two_columns";
+    /// A personal detail such as the date of birth is printed (ADR-088).
+    pub const PERSONAL_DETAIL_SHOWN: &str = "personal_detail_shown";
 }
 
 /// Bullets longer than this many characters get `bullet_too_long`.
@@ -122,7 +125,39 @@ pub fn lint(cv: &ResolvedCv, page_count: Option<u32>) -> Vec<LintIssue> {
             Some("Most roles expect one or two pages. Try \"Fit to 2 pages\"."),
         );
     }
+    personal_details(cv, &mut out);
     out.sort_by_rule()
+}
+
+/// One note per printed personal detail. Whether to show them depends on the
+/// target country, so this is never more than information: common advice,
+/// not a standard (ADR-088).
+fn personal_details(cv: &ResolvedCv, out: &mut Lints) {
+    let style = cv.options.date_style;
+    for (field, _) in cv.basics.personal.lines(style, cv.locale) {
+        let label = crate::locale::personal_label(field, cv.locale);
+        let hint = match field {
+            PersonalField::Nationality
+            | PersonalField::BirthDate
+            | PersonalField::BirthPlace
+            | PersonalField::Gender
+            | PersonalField::MaritalStatus => {
+                "Many European employers expect it, but UK and US equality guidance \
+                 (Equality Act 2010, EEOC) advises leaving it out. It depends on the \
+                 country you apply in; show it only where it is expected or asked for."
+            }
+            PersonalField::Address | PersonalField::DrivingLicence | PersonalField::WorkPermit => {
+                "Show it only when the job or the application asks for it."
+            }
+        };
+        out.push(
+            codes::PERSONAL_DETAIL_SHOWN,
+            Severity::Info,
+            None,
+            format!("{label} is shown on this CV."),
+            Some(hint),
+        );
+    }
 }
 
 /// Returns the entries of an entry-shaped section, or nothing.
@@ -436,6 +471,11 @@ fn special_chars(cv: &ResolvedCv, out: &mut Lints) {
         check(Some(&link.id), "link label", &link.label);
         check(Some(&link.id), "link", &link.url);
     }
+    // The personal details as printed (ADR-088).
+    for (field, value) in b.personal.lines(cv.options.date_style, cv.locale) {
+        let label = crate::locale::personal_label(field, cv.locale).to_lowercase();
+        check(None, &label, &value);
+    }
     for section in &cv.sections {
         let heading = match section {
             ResolvedSection::Experience(s)
@@ -553,7 +593,7 @@ impl Lints {
 
     /// Stable sort by the rule's position in [`codes`]; document order is kept within a rule.
     fn sort_by_rule(mut self) -> Vec<LintIssue> {
-        const ORDER: [&str; 20] = [
+        const ORDER: [&str; 21] = [
             codes::MISSING_NAME,
             codes::MISSING_CONTACT,
             codes::INVALID_EMAIL,
@@ -574,6 +614,7 @@ impl Lints {
             codes::UNSAFE_LINK,
             codes::PAGE_COUNT,
             codes::TWO_COLUMNS,
+            codes::PERSONAL_DETAIL_SHOWN,
         ];
         self.0
             .sort_by_key(|i| ORDER.iter().position(|c| *c == i.code));
@@ -886,6 +927,79 @@ mod tests {
         assert_eq!(
             (issues[0].code.as_str(), issues[0].severity),
             (codes::TWO_COLUMNS, Severity::Warning)
+        );
+    }
+
+    #[test]
+    fn shown_personal_details_are_checked_for_special_characters() {
+        let mut cv = clean_cv();
+        cv.basics.personal.nationality = vec!["Italian \u{1F1EE}\u{1F1F9}".into()];
+        cv.basics.personal.address = Some("Via Esempio 1\u{E000}".into());
+        // Hidden: not printed, so not checked.
+        assert!(lint(&cv.resolve(None), None).is_empty());
+        cv.basics.show_personal = [PersonalField::Nationality, PersonalField::Address].into();
+        let special: Vec<String> = lint(&cv.resolve(None), None)
+            .into_iter()
+            .filter(|i| i.code == codes::SPECIAL_CHARS)
+            .map(|i| i.message)
+            .collect();
+        assert_eq!(
+            special,
+            [
+                "The nationality contains U+1F1EE, which applicant tracking systems may garble.",
+                "The address contains U+E000, which applicant tracking systems may garble.",
+            ]
+        );
+    }
+
+    #[test]
+    fn shown_personal_details_are_info_notes() {
+        let mut cv = clean_cv();
+        cv.basics.personal.birth_date = crate::CalendarDate::parse("1990-03-12");
+        cv.basics.personal.driving_licence = vec!["B".into()];
+        cv.basics.personal.gender = Some(" ".into());
+        // Filled but switched off: no note.
+        assert_eq!(lint(&cv.resolve(None), None), vec![]);
+
+        cv.basics.show_personal = [
+            PersonalField::BirthDate,
+            PersonalField::DrivingLicence,
+            PersonalField::Gender,
+        ]
+        .into();
+        let issues = lint(&cv.resolve(None), Some(3));
+        let got: Vec<(&str, Severity, &str)> = issues
+            .iter()
+            .map(|i| (i.code.as_str(), i.severity, i.message.as_str()))
+            .collect();
+        // Blank gender prints nothing, so it gets no note.
+        assert_eq!(
+            got,
+            [
+                (codes::PAGE_COUNT, Severity::Info, "The CV is 3 pages long."),
+                (
+                    codes::PERSONAL_DETAIL_SHOWN,
+                    Severity::Info,
+                    "Date of birth is shown on this CV."
+                ),
+                (
+                    codes::PERSONAL_DETAIL_SHOWN,
+                    Severity::Info,
+                    "Driving licence is shown on this CV."
+                ),
+            ]
+        );
+        assert!(
+            issues[1]
+                .fix_hint
+                .as_deref()
+                .is_some_and(|h| h.contains("Equality Act"))
+        );
+        assert!(
+            !issues[2]
+                .fix_hint
+                .as_deref()
+                .is_some_and(|h| h.contains("Equality Act"))
         );
     }
 }

@@ -2,7 +2,7 @@
 //! field is optional and every item already has a fresh ID. It is shown in the
 //! import preview and never written to storage by this crate.
 
-use cv_core::{Link, Section};
+use cv_core::{Link, PersonalDetails, Section};
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct CvPartial {
@@ -14,6 +14,8 @@ pub struct CvPartial {
     pub links: Vec<Link>,
     pub summary: Option<String>,
     pub sections: Vec<Section>,
+    /// Optional personal details (ADR-088). An import never switches them on.
+    pub personal: PersonalDetails,
     /// A profile photo as the file carried it: JPEG or PNG bytes, at most
     /// [`MAX_PHOTO`]. Not yet decoded or cleaned of metadata; the app does
     /// that before showing or storing it.
