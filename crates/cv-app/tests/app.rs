@@ -78,6 +78,7 @@ fn filled(app: &App, name: &str) -> StoredCv {
     cv.basics = f.basics;
     cv.summary = f.summary;
     cv.sections = f.sections;
+    cv.layout = f.layout;
     app.save_cv(SaveCv {
         cv,
         expected_revision: created.revision,
@@ -196,6 +197,7 @@ fn pdf_export_writes_the_chosen_file_and_reports_ats() {
     let result = app
         .export_pdf(ExportPdfRequest {
             target: base(&stored),
+            ats_copy: true,
         })
         .expect("export");
     let path = dir.path().join("Jane-Doe-CV.pdf");
@@ -203,6 +205,79 @@ fn pdf_export_writes_the_chosen_file_and_reports_ats() {
     assert_eq!(result.page_count, Some(1));
     assert_eq!(result.ats.expect("ats").score, 100);
     assert!(std::fs::read(&path).expect("pdf").starts_with(b"%PDF"));
+    assert_eq!(result.ats_copy_path, None, "one column: no copy");
+    assert!(!dir.path().join("Jane-Doe-CV-ats.pdf").exists());
+}
+
+#[test]
+fn two_column_pdf_export_also_writes_a_one_column_ats_copy() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let app = app(Some(dir.path()));
+    let stored = filled(&app, "two_column");
+    let result = app
+        .export_pdf(ExportPdfRequest {
+            target: base(&stored),
+            ats_copy: true,
+        })
+        .expect("export");
+    let copy = dir.path().join("Jane-Doe-CV-ats.pdf");
+    assert_eq!(result.ats_copy_path, Some(copy.display().to_string()));
+    let bytes = std::fs::read(&copy).expect("copy");
+    let text =
+        cv_render::TextExtractor::extract(&cv_render::ats::LopdfExtractor, &bytes).expect("text");
+    // One column: the summary and jobs come before skills, as in the CV order.
+    let at = |s: &str| text.find(s).unwrap_or_else(|| panic!("{s} missing"));
+    assert!(at("Jane Doe") < at("Summary"));
+    assert!(at("Work Experience") < at("Skills"));
+
+    std::fs::remove_file(&copy).expect("remove");
+    let result = app
+        .export_pdf(ExportPdfRequest {
+            target: base(&stored),
+            ats_copy: false,
+        })
+        .expect("export");
+    assert_eq!(result.ats_copy_path, None);
+    assert!(!copy.exists(), "turned off");
+}
+
+#[test]
+fn the_ats_copy_never_replaces_someone_elses_file() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let app = app(Some(dir.path()));
+    let stored = filled(&app, "two_column");
+    let export = || {
+        app.export_pdf(ExportPdfRequest {
+            target: base(&stored),
+            ats_copy: true,
+        })
+        .expect("export")
+    };
+    // A new PDF next to an unrelated file with the copy's name: kept.
+    let other = dir.path().join("Jane-Doe-CV-ats.pdf");
+    std::fs::write(&other, b"not ours").expect("write");
+    let second = dir.path().join("Jane-Doe-CV-ats-2.pdf");
+    assert_eq!(export().ats_copy_path, Some(second.display().to_string()));
+    assert_eq!(std::fs::read(&other).expect("read"), b"not ours");
+}
+
+#[test]
+fn exporting_again_replaces_the_earlier_ats_copy() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let app = app(Some(dir.path()));
+    let stored = filled(&app, "two_column");
+    let export = || {
+        app.export_pdf(ExportPdfRequest {
+            target: base(&stored),
+            ats_copy: true,
+        })
+        .expect("export")
+    };
+    let copy = dir.path().join("Jane-Doe-CV-ats.pdf");
+    assert_eq!(export().ats_copy_path, Some(copy.display().to_string()));
+    // The dialog asked before replacing the PDF; its copy goes with it.
+    assert_eq!(export().ats_copy_path, Some(copy.display().to_string()));
+    assert!(!dir.path().join("Jane-Doe-CV-ats-2.pdf").exists());
 }
 
 #[test]
@@ -212,6 +287,7 @@ fn cancelled_dialog_writes_nothing() {
     let err = app
         .export_pdf(ExportPdfRequest {
             target: base(&stored),
+            ats_copy: true,
         })
         .expect_err("cancelled");
     assert_eq!(err.code, ErrorCode::Cancelled);
