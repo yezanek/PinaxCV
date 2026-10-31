@@ -122,6 +122,7 @@ pub fn to_partial(
             .collect(),
         summary: clean(cv.summary),
         sections: Vec::new(),
+        photo: None,
     };
     for s in cv.sections {
         let entries: Vec<Entry> = s
