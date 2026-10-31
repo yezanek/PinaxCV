@@ -81,7 +81,7 @@ pub const PREVIEW_PIXELS_PER_PT: f32 = 1.5;
 pub type Result<T> = std::result::Result<T, ApiError>;
 
 /// How long a deleted CV can still be restored before
-/// [`App::purge_deleted_cvs`] removes it (spec section 6: 30 days).
+/// [`App::purge_deleted_cvs`] removes it (spec section 5.2: 30 days).
 pub const DELETED_CV_RETENTION: Duration = Duration::from_secs(30 * 24 * 60 * 60);
 
 /// The services behind every command. Cheap to share behind an `Arc`.
@@ -192,7 +192,7 @@ impl App {
     }
 
     /// Removes for good the CVs deleted more than [`DELETED_CV_RETENTION`]
-    /// ago, with their variants, snapshots and photos (spec section 6). The
+    /// ago, with their variants, snapshots and photos (spec section 5.2). The
     /// shell runs it once at startup. Returns how many CVs were removed.
     pub fn purge_deleted_cvs(&self) -> Result<u64> {
         self.store
