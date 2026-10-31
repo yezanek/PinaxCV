@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use std::collections::BTreeSet;
 
-use crate::{Id, IdSource, PersonalDetails, PersonalField, SuggestionTarget};
+use crate::{Id, IdSource, Layout, PersonalDetails, PersonalField, SuggestionTarget};
 
 /// Current version of the [`Cv`] JSON shape. Bumped together with a migration step.
 pub const CV_SCHEMA_VERSION: u32 = 1;
@@ -27,6 +27,10 @@ pub struct Cv {
     pub summary: Option<String>,
     /// Sections in display order.
     pub sections: Vec<Section>,
+    /// Columns and where each block sits (ADR-084). Missing in documents
+    /// written before it existed, which load with the single-column default.
+    #[serde(default)]
+    pub layout: Layout,
 }
 
 impl Cv {
@@ -85,6 +89,7 @@ impl Cv {
         for link in &mut cv.basics.links {
             link.id = ids.next_id();
         }
+        let old_section_ids: Vec<Id> = cv.sections.iter().map(|s| s.id().clone()).collect();
         for section in &mut cv.sections {
             match section {
                 Section::Experience(s)
@@ -115,6 +120,11 @@ impl Cv {
                 }
             }
         }
+        let map: Vec<(Id, Id)> = old_section_ids
+            .into_iter()
+            .zip(cv.sections.iter().map(|s| s.id().clone()))
+            .collect();
+        cv.layout.remap_sections(&map);
         cv
     }
 }
@@ -452,9 +462,17 @@ mod tests {
                 id(self.0)
             }
         }
-        let cv = sample_cv();
+        let mut cv = sample_cv();
+        cv.layout.sidebar = vec![crate::BlockRef::Section { id: id(6) }];
         let copy = cv.with_fresh_ids(&mut Counter(500));
         assert_eq!(copy.id, id(501));
+        assert_eq!(
+            copy.layout.sidebar,
+            [crate::BlockRef::Section {
+                id: copy.sections[1].id().clone()
+            }],
+            "placements follow the copied sections"
+        );
         let old: std::collections::BTreeSet<Id> = cv.entity_ids().into_iter().collect();
         let new = copy.entity_ids();
         assert_eq!(new.len(), old.len());

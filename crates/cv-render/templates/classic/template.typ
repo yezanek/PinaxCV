@@ -26,17 +26,25 @@
 
 #let url-text(l) = if l.clickable { link(l.url, l.url) } else { l.url }
 
-// Contact block: body text at the top of page 1, one item per line. Each
-// line ends with a no-break space (`~`) so extractors that join lines still
-// see separate words (ADR-024).
-#let contact = {
+// The name block: name and headline. Each line ends with a no-break space
+// (`~`) so extractors that join lines still see separate words (ADR-024).
+#let name-block = {
   block(below: 0.5em)[#text(size: 1.8em, weight: "bold")[#d.basics.full_name~]]
   if d.basics.headline != none { block(below: 0.4em)[#d.basics.headline~] }
+}
+
+// Contact details, one item per line. In the main column email, phone and
+// location share a line; in the narrow sidebar (`stacked`) each has its own.
+#let contact-block(stacked) = {
   let parts = ()
   if d.basics.email != none { parts.push(d.basics.email) }
   if d.basics.phone != none { parts.push(d.basics.phone) }
   if d.basics.location != none { parts.push(d.basics.location) }
-  if parts.len() > 0 { block(below: 0.4em)[#parts.join(" | ")~] }
+  if stacked {
+    for p in parts { block(below: 0.4em)[#p~] }
+  } else if parts.len() > 0 {
+    block(below: 0.4em)[#parts.join(" | ")~]
+  }
   for l in d.basics.links {
     block(below: 0.4em)[#if l.label != none [#l.label: ]#url-text(l)~]
   }
@@ -45,23 +53,30 @@
     block(below: 0.4em)[#p.label: #p.value~]
   }
 }
-// The optional photo (ADR-083) sits to the right of the contact block. It is
-// a PDF artifact: no text, so text extraction and the reading order are the
-// same with and without it.
-#if d.basics.photo {
-  grid(
-    columns: (1fr, auto),
-    column-gutter: 1em,
-    contact,
-    pdf.artifact(image("photo.jpg", width: 2.8cm)),
-  )
-} else {
-  contact
+
+// The optional photo (ADR-083) is a PDF artifact: no text, so text
+// extraction and the reading order are the same with and without it. In the
+// main column it sits to the right of the name (and of the contact block
+// when that follows the name); in the sidebar it sits above the name.
+#let with-photo(body, stacked) = {
+  if not d.basics.photo {
+    body
+  } else if stacked {
+    block(below: 0.8em, pdf.artifact(image("photo.jpg", width: 2.8cm)))
+    body
+  } else {
+    grid(
+      columns: (1fr, auto),
+      column-gutter: 1em,
+      body,
+      pdf.artifact(image("photo.jpg", width: 2.8cm)),
+    )
+  }
 }
 
-#if d.summary != none [
+#let summary-block = if d.summary != none [
   = #d.labels.summary
-  #d.summary
+  #block(breakable: not d.layout.two, d.summary)
 ]
 
 // The title (bold) and the period (right-aligned) share the first line, and
@@ -83,13 +98,17 @@
     #first#if e.period != none [#h(1fr)#e.period]
     #if rest.len() > 0 [ \ #rest.join(" | ")]
   ]
-  if e.description != none { block(below: 0.5em, e.description) }
+  if e.description != none { block(below: 0.5em, breakable: not d.layout.two, e.description) }
   if e.link != none { block(below: 0.5em, url-text(e.link)) }
-  if e.bullets.len() > 0 { list(..e.bullets) }
+  if e.bullets.len() > 0 {
+    // With two columns a page break never splits a bullet: the other
+    // column's text would land inside it in the extracted text (ADR-084).
+    if d.layout.two { list(..e.bullets.map(b => block(breakable: false, b))) } else { list(..e.bullets) }
+  }
   v(0.4em)
 }
 
-#for s in d.sections {
+#let section-block(s) = {
   if s.kind in ("experience", "education", "projects", "certifications", "custom") {
     if s.heading != "" { heading(level: 1, s.heading) }
     for e in s.entries { entry(e) }
@@ -101,5 +120,47 @@
   } else if s.kind == "languages" {
     heading(level: 1, s.heading)
     s.items.map(i => if i.level != none { i.name + " (" + i.level + ")" } else { i.name }).join(", ")
+  }
+}
+
+// One column's blocks in order (ADR-084). A name directly followed by the
+// contact block is drawn as one header, with the photo beside both.
+#let column(blocks, stacked) = {
+  let i = 0
+  while i < blocks.len() {
+    let b = blocks.at(i)
+    if b.kind == "name" {
+      let next = blocks.at(i + 1, default: none)
+      if next != none and next.kind == "contact" {
+        with-photo({ name-block; contact-block(stacked) }, stacked)
+        i += 1
+      } else {
+        with-photo(name-block, stacked)
+      }
+    } else if b.kind == "contact" {
+      contact-block(stacked)
+    } else if b.kind == "summary" {
+      summary-block
+    } else if b.kind == "section" {
+      section-block(d.sections.at(b.index))
+    }
+    i += 1
+  }
+}
+
+// Two columns are one grid row that breaks across pages. The column holding
+// the name is on the left: Typst writes a grid's text left column first, so
+// the PDF text starts with the name (ADR-084).
+#let l = d.layout
+#if not l.two {
+  column(l.main, false)
+} else {
+  let side = l.sidebar_width_pct * 1%
+  let sidebar = column(l.sidebar, true)
+  let main = column(l.main, false)
+  if l.sidebar_first {
+    grid(columns: (side, 1fr), column-gutter: 1.5em, sidebar, main)
+  } else {
+    grid(columns: (1fr, side), column-gutter: 1.5em, main, sidebar)
   }
 }

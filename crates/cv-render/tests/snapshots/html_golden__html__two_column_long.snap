@@ -1,0 +1,125 @@
+---
+source: crates/cv-render/tests/html_golden.rs
+expression: body
+---
+<body class="two">
+<div class="columns" style="--cols: 68fr 32fr">
+<main>
+<header>
+<h1>Jane Doe</h1>
+<p class="headline">Staff Engineer</p>
+<ul class="contact">
+<li><a href="mailto:jane@example.com">jane@example.com</a></li>
+<li>Toronto, Canada</li>
+</ul>
+</header>
+<section class="summary">
+<h2>Summary</h2>
+<p>Engineer with two decades of experience across payments, search and infrastructure. Engineer with two decades of experience across payments, search and infrastructure. Engineer with two decades of experience across payments, search and infrastructure.</p>
+</section>
+<section>
+<h2>Work Experience</h2>
+<article class="entry">
+<h3>Engineer level 6<span class="org">, Company Number 1 Inc.</span></h3>
+<p class="meta">Jan 2020 – Present</p>
+<ul>
+<li>Delivered project 1 for team 1: designed the service, wrote the migration plan, ran the rollout across 3 regions and cut operating costs by 10% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 2 for team 1: designed the service, wrote the migration plan, ran the rollout across 4 regions and cut operating costs by 11% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 3 for team 1: designed the service, wrote the migration plan, ran the rollout across 5 regions and cut operating costs by 12% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 4 for team 1: designed the service, wrote the migration plan, ran the rollout across 6 regions and cut operating costs by 13% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 5 for team 1: designed the service, wrote the migration plan, ran the rollout across 7 regions and cut operating costs by 14% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 6 for team 1: designed the service, wrote the migration plan, ran the rollout across 8 regions and cut operating costs by 15% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 7 for team 1: designed the service, wrote the migration plan, ran the rollout across 9 regions and cut operating costs by 16% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 8 for team 1: designed the service, wrote the migration plan, ran the rollout across 10 regions and cut operating costs by 17% while keeping availability above 99.9% for every customer.</li>
+</ul>
+</article>
+<article class="entry">
+<h3>Engineer level 5<span class="org">, Company Number 2 Inc.</span></h3>
+<p class="meta">Jan 2016 – Jun 2020</p>
+<ul>
+<li>Delivered project 1 for team 2: designed the service, wrote the migration plan, ran the rollout across 3 regions and cut operating costs by 10% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 2 for team 2: designed the service, wrote the migration plan, ran the rollout across 4 regions and cut operating costs by 11% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 3 for team 2: designed the service, wrote the migration plan, ran the rollout across 5 regions and cut operating costs by 12% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 4 for team 2: designed the service, wrote the migration plan, ran the rollout across 6 regions and cut operating costs by 13% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 5 for team 2: designed the service, wrote the migration plan, ran the rollout across 7 regions and cut operating costs by 14% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 6 for team 2: designed the service, wrote the migration plan, ran the rollout across 8 regions and cut operating costs by 15% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 7 for team 2: designed the service, wrote the migration plan, ran the rollout across 9 regions and cut operating costs by 16% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 8 for team 2: designed the service, wrote the migration plan, ran the rollout across 10 regions and cut operating costs by 17% while keeping availability above 99.9% for every customer.</li>
+</ul>
+</article>
+<article class="entry">
+<h3>Engineer level 4<span class="org">, Company Number 3 Inc.</span></h3>
+<p class="meta">Jan 2012 – Jun 2016</p>
+<ul>
+<li>Delivered project 1 for team 3: designed the service, wrote the migration plan, ran the rollout across 3 regions and cut operating costs by 10% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 2 for team 3: designed the service, wrote the migration plan, ran the rollout across 4 regions and cut operating costs by 11% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 3 for team 3: designed the service, wrote the migration plan, ran the rollout across 5 regions and cut operating costs by 12% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 4 for team 3: designed the service, wrote the migration plan, ran the rollout across 6 regions and cut operating costs by 13% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 5 for team 3: designed the service, wrote the migration plan, ran the rollout across 7 regions and cut operating costs by 14% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 6 for team 3: designed the service, wrote the migration plan, ran the rollout across 8 regions and cut operating costs by 15% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 7 for team 3: designed the service, wrote the migration plan, ran the rollout across 9 regions and cut operating costs by 16% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 8 for team 3: designed the service, wrote the migration plan, ran the rollout across 10 regions and cut operating costs by 17% while keeping availability above 99.9% for every customer.</li>
+</ul>
+</article>
+<article class="entry">
+<h3>Engineer level 3<span class="org">, Company Number 4 Inc.</span></h3>
+<p class="meta">Jan 2008 – Jun 2012</p>
+<ul>
+<li>Delivered project 1 for team 4: designed the service, wrote the migration plan, ran the rollout across 3 regions and cut operating costs by 10% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 2 for team 4: designed the service, wrote the migration plan, ran the rollout across 4 regions and cut operating costs by 11% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 3 for team 4: designed the service, wrote the migration plan, ran the rollout across 5 regions and cut operating costs by 12% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 4 for team 4: designed the service, wrote the migration plan, ran the rollout across 6 regions and cut operating costs by 13% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 5 for team 4: designed the service, wrote the migration plan, ran the rollout across 7 regions and cut operating costs by 14% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 6 for team 4: designed the service, wrote the migration plan, ran the rollout across 8 regions and cut operating costs by 15% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 7 for team 4: designed the service, wrote the migration plan, ran the rollout across 9 regions and cut operating costs by 16% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 8 for team 4: designed the service, wrote the migration plan, ran the rollout across 10 regions and cut operating costs by 17% while keeping availability above 99.9% for every customer.</li>
+</ul>
+</article>
+<article class="entry">
+<h3>Engineer level 2<span class="org">, Company Number 5 Inc.</span></h3>
+<p class="meta">Jan 2004 – Jun 2008</p>
+<ul>
+<li>Delivered project 1 for team 5: designed the service, wrote the migration plan, ran the rollout across 3 regions and cut operating costs by 10% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 2 for team 5: designed the service, wrote the migration plan, ran the rollout across 4 regions and cut operating costs by 11% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 3 for team 5: designed the service, wrote the migration plan, ran the rollout across 5 regions and cut operating costs by 12% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 4 for team 5: designed the service, wrote the migration plan, ran the rollout across 6 regions and cut operating costs by 13% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 5 for team 5: designed the service, wrote the migration plan, ran the rollout across 7 regions and cut operating costs by 14% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 6 for team 5: designed the service, wrote the migration plan, ran the rollout across 8 regions and cut operating costs by 15% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 7 for team 5: designed the service, wrote the migration plan, ran the rollout across 9 regions and cut operating costs by 16% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 8 for team 5: designed the service, wrote the migration plan, ran the rollout across 10 regions and cut operating costs by 17% while keeping availability above 99.9% for every customer.</li>
+</ul>
+</article>
+<article class="entry">
+<h3>Engineer level 1<span class="org">, Company Number 6 Inc.</span></h3>
+<p class="meta">Jan 2000 – Jun 2004</p>
+<ul>
+<li>Delivered project 1 for team 6: designed the service, wrote the migration plan, ran the rollout across 3 regions and cut operating costs by 10% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 2 for team 6: designed the service, wrote the migration plan, ran the rollout across 4 regions and cut operating costs by 11% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 3 for team 6: designed the service, wrote the migration plan, ran the rollout across 5 regions and cut operating costs by 12% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 4 for team 6: designed the service, wrote the migration plan, ran the rollout across 6 regions and cut operating costs by 13% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 5 for team 6: designed the service, wrote the migration plan, ran the rollout across 7 regions and cut operating costs by 14% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 6 for team 6: designed the service, wrote the migration plan, ran the rollout across 8 regions and cut operating costs by 15% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 7 for team 6: designed the service, wrote the migration plan, ran the rollout across 9 regions and cut operating costs by 16% while keeping availability above 99.9% for every customer.</li>
+<li>Delivered project 8 for team 6: designed the service, wrote the migration plan, ran the rollout across 10 regions and cut operating costs by 17% while keeping availability above 99.9% for every customer.</li>
+</ul>
+</article>
+</section>
+<section>
+<h2>Education</h2>
+<article class="entry">
+<h3>B.Sc. Computer Science<span class="org">, University of Toronto</span></h3>
+<p class="meta">Sep 1998 – Jun 2002</p>
+</article>
+</section>
+</main>
+<div class="sidebar">
+<section>
+<h2>Skills</h2>
+<ul class="skills">
+<li>Java, Rust, Go, Python, SQL, Terraform</li>
+</ul>
+</section>
+</div>
+</div>
+</body>
+</html>

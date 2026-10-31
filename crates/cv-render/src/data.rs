@@ -6,7 +6,9 @@
 
 use cv_core::lint::is_clickable_url;
 use cv_core::locale::{self, Labels};
-use cv_core::{Locale, Paper, ResolvedCv, ResolvedEntry, ResolvedSection};
+use cv_core::{
+    BlockRef, Column, Columns, Locale, Paper, ResolvedCv, ResolvedEntry, ResolvedSection, TopBlock,
+};
 use serde::Serialize;
 
 use crate::ExportOptions;
@@ -21,6 +23,41 @@ pub struct TypstData {
     pub basics: BasicsData,
     pub summary: Option<String>,
     pub sections: Vec<SectionData>,
+    pub layout: LayoutData,
+}
+
+/// Which blocks each column draws, in order (ADR-084). With one column every
+/// block is in `main`. Sections are indices into `TypstData::sections`.
+#[derive(Serialize, Debug, PartialEq)]
+pub struct LayoutData {
+    pub two: bool,
+    pub sidebar_width_pct: u8,
+    /// Whether the sidebar is drawn on the left and read first: it holds
+    /// the name.
+    pub sidebar_first: bool,
+    pub sidebar: Vec<BlockData>,
+    pub main: Vec<BlockData>,
+}
+
+impl LayoutData {
+    /// The columns in reading order: the left one (holding the name), then
+    /// the right one. With one column the second is empty.
+    pub fn reading_columns(&self) -> [&[BlockData]; 2] {
+        if self.sidebar_first {
+            [&self.sidebar, &self.main]
+        } else {
+            [&self.main, &self.sidebar]
+        }
+    }
+}
+
+#[derive(Serialize, Debug, PartialEq, Clone, Copy)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum BlockData {
+    Name,
+    Contact,
+    Summary,
+    Section { index: usize },
 }
 
 /// PDF metadata: title "<Full name>, CV" and author = full name.
@@ -134,6 +171,18 @@ pub struct LanguageData {
 pub fn to_typst_data(cv: &ResolvedCv, options: &ExportOptions) -> TypstData {
     let labels = locale::labels(cv.locale);
     let b = &cv.basics;
+    let sections: Vec<(Column, SectionData)> = cv
+        .sections
+        .iter()
+        .filter_map(|s| {
+            let column = cv
+                .layout
+                .column_of(&BlockRef::Section { id: s.id().clone() });
+            section(s, cv).map(|data| (column, data))
+        })
+        .collect();
+    let columns: Vec<Column> = sections.iter().map(|(c, _)| *c).collect();
+    let layout = layout_data(cv, &columns);
     let name = b.full_name.trim();
     TypstData {
         meta: MetaData {
@@ -179,8 +228,41 @@ pub fn to_typst_data(cv: &ResolvedCv, options: &ExportOptions) -> TypstData {
                 .collect(),
         },
         summary: text(&cv.summary),
-        sections: cv.sections.iter().filter_map(|s| section(s, cv)).collect(),
+        sections: sections.into_iter().map(|(_, s)| s).collect(),
+        layout,
     }
+}
+
+/// Puts the top blocks and the printed sections into their columns.
+/// `sections` pairs each printed section with its column.
+fn layout_data(cv: &ResolvedCv, columns: &[Column]) -> LayoutData {
+    let l = &cv.layout;
+    let mut data = LayoutData {
+        two: l.columns == Columns::Two,
+        sidebar_width_pct: l.sidebar_width_pct,
+        sidebar_first: l.first_column() == Column::Sidebar,
+        sidebar: Vec::new(),
+        main: Vec::new(),
+    };
+    for column in [Column::Sidebar, Column::Main] {
+        let blocks = match column {
+            Column::Sidebar => &mut data.sidebar,
+            Column::Main => &mut data.main,
+        };
+        blocks.extend(l.top_in(column).into_iter().map(|b| match b {
+            TopBlock::Name => BlockData::Name,
+            TopBlock::Contact => BlockData::Contact,
+            TopBlock::Summary => BlockData::Summary,
+        }));
+        blocks.extend(
+            columns
+                .iter()
+                .enumerate()
+                .filter(|(_, c)| **c == column)
+                .map(|(index, _)| BlockData::Section { index }),
+        );
+    }
+    data
 }
 
 /// The Typst `lang` code for `locale`.
@@ -310,6 +392,65 @@ mod tests {
     fn data(name: &str) -> serde_json::Value {
         let cv = testdata::fixture(name).resolve(None);
         serde_json::to_value(to_typst_data(&cv, &ExportOptions::default())).expect("json")
+    }
+
+    #[test]
+    fn one_column_puts_every_block_in_main() {
+        let cv = testdata::fixture("typical").resolve(None);
+        let d = to_typst_data(&cv, &ExportOptions::default());
+        assert!(!d.layout.two);
+        assert!(d.layout.sidebar.is_empty());
+        assert_eq!(
+            d.layout.main,
+            [
+                BlockData::Name,
+                BlockData::Contact,
+                BlockData::Summary,
+                BlockData::Section { index: 0 },
+                BlockData::Section { index: 1 },
+                BlockData::Section { index: 2 },
+                BlockData::Section { index: 3 },
+            ]
+        );
+        let [first, second] = d.layout.reading_columns();
+        assert_eq!(first.len(), 7);
+        assert!(second.is_empty());
+    }
+
+    #[test]
+    fn two_columns_split_blocks_and_read_the_name_column_first() {
+        let cv = testdata::fixture("two_column").resolve(None);
+        let d = to_typst_data(&cv, &ExportOptions::default());
+        assert!(d.layout.two && d.layout.sidebar_first);
+        assert_eq!(d.layout.sidebar_width_pct, 32);
+        // Skills and languages (sections 2 and 3) are in the sidebar.
+        assert_eq!(
+            d.layout.sidebar,
+            [
+                BlockData::Name,
+                BlockData::Contact,
+                BlockData::Section { index: 2 },
+                BlockData::Section { index: 3 },
+            ]
+        );
+        assert_eq!(
+            d.layout.main,
+            [
+                BlockData::Summary,
+                BlockData::Section { index: 0 },
+                BlockData::Section { index: 1 },
+            ]
+        );
+        assert_eq!(d.layout.reading_columns()[0], d.layout.sidebar.as_slice());
+
+        let cv = testdata::fixture("two_column_long").resolve(None);
+        let d = to_typst_data(&cv, &ExportOptions::default());
+        assert!(!d.layout.sidebar_first, "the name stays in main");
+        assert_eq!(d.layout.reading_columns()[0], d.layout.main.as_slice());
+        let v = serde_json::to_value(&d.layout).expect("json");
+        assert_eq!(v["main"][0]["kind"], "name");
+        assert_eq!(v["sidebar"][0]["kind"], "section");
+        assert!(v["sidebar"][0]["index"].is_u64());
     }
 
     #[test]

@@ -89,6 +89,7 @@ fn cv(n: u32) -> Cv {
                 locked: false,
             }],
         })],
+        layout: cv_core::Layout::default(),
     }
 }
 

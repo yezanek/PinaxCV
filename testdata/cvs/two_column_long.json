@@ -1,0 +1,434 @@
+{
+  "schema_version": 1,
+  "id": "01J03000000000000000000001",
+  "title": "Long (two columns)",
+  "locale": "en",
+  "paper": "a4",
+  "template": "classic",
+  "options": {
+    "font_size_pt": 10.0,
+    "line_spacing": 1.1,
+    "margin_mm": 18.0,
+    "accent": null,
+    "date_style": "month_name_year"
+  },
+  "basics": {
+    "full_name": "Jane Doe",
+    "headline": "Staff Engineer",
+    "email": "jane@example.com",
+    "phone": "+1 555 0100",
+    "location": "Toronto, Canada",
+    "links": []
+  },
+  "summary": "Engineer with two decades of experience across payments, search and infrastructure. Engineer with two decades of experience across payments, search and infrastructure. Engineer with two decades of experience across payments, search and infrastructure. ",
+  "sections": [
+    {
+      "type": "experience",
+      "id": "01J03000000000000000000056",
+      "title_override": null,
+      "entries": [
+        {
+          "id": "01J03000000000000000000002",
+          "title": "Engineer level 6",
+          "org": "Company Number 1 Inc.",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2020,
+              "month": 1
+            },
+            "end": null,
+            "current": true
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000003",
+              "text": "Delivered project 1 for team 1: designed the service, wrote the migration plan, ran the rollout across 3 regions and cut operating costs by 10% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000004",
+              "text": "Delivered project 2 for team 1: designed the service, wrote the migration plan, ran the rollout across 4 regions and cut operating costs by 11% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000005",
+              "text": "Delivered project 3 for team 1: designed the service, wrote the migration plan, ran the rollout across 5 regions and cut operating costs by 12% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000006",
+              "text": "Delivered project 4 for team 1: designed the service, wrote the migration plan, ran the rollout across 6 regions and cut operating costs by 13% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000007",
+              "text": "Delivered project 5 for team 1: designed the service, wrote the migration plan, ran the rollout across 7 regions and cut operating costs by 14% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000008",
+              "text": "Delivered project 6 for team 1: designed the service, wrote the migration plan, ran the rollout across 8 regions and cut operating costs by 15% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000009",
+              "text": "Delivered project 7 for team 1: designed the service, wrote the migration plan, ran the rollout across 9 regions and cut operating costs by 16% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000010",
+              "text": "Delivered project 8 for team 1: designed the service, wrote the migration plan, ran the rollout across 10 regions and cut operating costs by 17% while keeping availability above 99.9% for every customer."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000011",
+          "title": "Engineer level 5",
+          "org": "Company Number 2 Inc.",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2016,
+              "month": 1
+            },
+            "end": {
+              "year": 2020,
+              "month": 6
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000012",
+              "text": "Delivered project 1 for team 2: designed the service, wrote the migration plan, ran the rollout across 3 regions and cut operating costs by 10% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000013",
+              "text": "Delivered project 2 for team 2: designed the service, wrote the migration plan, ran the rollout across 4 regions and cut operating costs by 11% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000014",
+              "text": "Delivered project 3 for team 2: designed the service, wrote the migration plan, ran the rollout across 5 regions and cut operating costs by 12% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000015",
+              "text": "Delivered project 4 for team 2: designed the service, wrote the migration plan, ran the rollout across 6 regions and cut operating costs by 13% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000016",
+              "text": "Delivered project 5 for team 2: designed the service, wrote the migration plan, ran the rollout across 7 regions and cut operating costs by 14% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000017",
+              "text": "Delivered project 6 for team 2: designed the service, wrote the migration plan, ran the rollout across 8 regions and cut operating costs by 15% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000018",
+              "text": "Delivered project 7 for team 2: designed the service, wrote the migration plan, ran the rollout across 9 regions and cut operating costs by 16% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000019",
+              "text": "Delivered project 8 for team 2: designed the service, wrote the migration plan, ran the rollout across 10 regions and cut operating costs by 17% while keeping availability above 99.9% for every customer."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000020",
+          "title": "Engineer level 4",
+          "org": "Company Number 3 Inc.",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2012,
+              "month": 1
+            },
+            "end": {
+              "year": 2016,
+              "month": 6
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000021",
+              "text": "Delivered project 1 for team 3: designed the service, wrote the migration plan, ran the rollout across 3 regions and cut operating costs by 10% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000022",
+              "text": "Delivered project 2 for team 3: designed the service, wrote the migration plan, ran the rollout across 4 regions and cut operating costs by 11% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000023",
+              "text": "Delivered project 3 for team 3: designed the service, wrote the migration plan, ran the rollout across 5 regions and cut operating costs by 12% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000024",
+              "text": "Delivered project 4 for team 3: designed the service, wrote the migration plan, ran the rollout across 6 regions and cut operating costs by 13% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000025",
+              "text": "Delivered project 5 for team 3: designed the service, wrote the migration plan, ran the rollout across 7 regions and cut operating costs by 14% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000026",
+              "text": "Delivered project 6 for team 3: designed the service, wrote the migration plan, ran the rollout across 8 regions and cut operating costs by 15% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000027",
+              "text": "Delivered project 7 for team 3: designed the service, wrote the migration plan, ran the rollout across 9 regions and cut operating costs by 16% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000028",
+              "text": "Delivered project 8 for team 3: designed the service, wrote the migration plan, ran the rollout across 10 regions and cut operating costs by 17% while keeping availability above 99.9% for every customer."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000029",
+          "title": "Engineer level 3",
+          "org": "Company Number 4 Inc.",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2008,
+              "month": 1
+            },
+            "end": {
+              "year": 2012,
+              "month": 6
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000030",
+              "text": "Delivered project 1 for team 4: designed the service, wrote the migration plan, ran the rollout across 3 regions and cut operating costs by 10% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000031",
+              "text": "Delivered project 2 for team 4: designed the service, wrote the migration plan, ran the rollout across 4 regions and cut operating costs by 11% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000032",
+              "text": "Delivered project 3 for team 4: designed the service, wrote the migration plan, ran the rollout across 5 regions and cut operating costs by 12% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000033",
+              "text": "Delivered project 4 for team 4: designed the service, wrote the migration plan, ran the rollout across 6 regions and cut operating costs by 13% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000034",
+              "text": "Delivered project 5 for team 4: designed the service, wrote the migration plan, ran the rollout across 7 regions and cut operating costs by 14% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000035",
+              "text": "Delivered project 6 for team 4: designed the service, wrote the migration plan, ran the rollout across 8 regions and cut operating costs by 15% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000036",
+              "text": "Delivered project 7 for team 4: designed the service, wrote the migration plan, ran the rollout across 9 regions and cut operating costs by 16% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000037",
+              "text": "Delivered project 8 for team 4: designed the service, wrote the migration plan, ran the rollout across 10 regions and cut operating costs by 17% while keeping availability above 99.9% for every customer."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000038",
+          "title": "Engineer level 2",
+          "org": "Company Number 5 Inc.",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2004,
+              "month": 1
+            },
+            "end": {
+              "year": 2008,
+              "month": 6
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000039",
+              "text": "Delivered project 1 for team 5: designed the service, wrote the migration plan, ran the rollout across 3 regions and cut operating costs by 10% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000040",
+              "text": "Delivered project 2 for team 5: designed the service, wrote the migration plan, ran the rollout across 4 regions and cut operating costs by 11% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000041",
+              "text": "Delivered project 3 for team 5: designed the service, wrote the migration plan, ran the rollout across 5 regions and cut operating costs by 12% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000042",
+              "text": "Delivered project 4 for team 5: designed the service, wrote the migration plan, ran the rollout across 6 regions and cut operating costs by 13% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000043",
+              "text": "Delivered project 5 for team 5: designed the service, wrote the migration plan, ran the rollout across 7 regions and cut operating costs by 14% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000044",
+              "text": "Delivered project 6 for team 5: designed the service, wrote the migration plan, ran the rollout across 8 regions and cut operating costs by 15% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000045",
+              "text": "Delivered project 7 for team 5: designed the service, wrote the migration plan, ran the rollout across 9 regions and cut operating costs by 16% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000046",
+              "text": "Delivered project 8 for team 5: designed the service, wrote the migration plan, ran the rollout across 10 regions and cut operating costs by 17% while keeping availability above 99.9% for every customer."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        },
+        {
+          "id": "01J03000000000000000000047",
+          "title": "Engineer level 1",
+          "org": "Company Number 6 Inc.",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 2000,
+              "month": 1
+            },
+            "end": {
+              "year": 2004,
+              "month": 6
+            },
+            "current": false
+          },
+          "bullets": [
+            {
+              "id": "01J03000000000000000000048",
+              "text": "Delivered project 1 for team 6: designed the service, wrote the migration plan, ran the rollout across 3 regions and cut operating costs by 10% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000049",
+              "text": "Delivered project 2 for team 6: designed the service, wrote the migration plan, ran the rollout across 4 regions and cut operating costs by 11% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000050",
+              "text": "Delivered project 3 for team 6: designed the service, wrote the migration plan, ran the rollout across 5 regions and cut operating costs by 12% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000051",
+              "text": "Delivered project 4 for team 6: designed the service, wrote the migration plan, ran the rollout across 6 regions and cut operating costs by 13% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000052",
+              "text": "Delivered project 5 for team 6: designed the service, wrote the migration plan, ran the rollout across 7 regions and cut operating costs by 14% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000053",
+              "text": "Delivered project 6 for team 6: designed the service, wrote the migration plan, ran the rollout across 8 regions and cut operating costs by 15% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000054",
+              "text": "Delivered project 7 for team 6: designed the service, wrote the migration plan, ran the rollout across 9 regions and cut operating costs by 16% while keeping availability above 99.9% for every customer."
+            },
+            {
+              "id": "01J03000000000000000000055",
+              "text": "Delivered project 8 for team 6: designed the service, wrote the migration plan, ran the rollout across 10 regions and cut operating costs by 17% while keeping availability above 99.9% for every customer."
+            }
+          ],
+          "description": null,
+          "url": null,
+          "locked": false
+        }
+      ]
+    },
+    {
+      "type": "education",
+      "id": "01J03000000000000000000058",
+      "title_override": null,
+      "entries": [
+        {
+          "id": "01J03000000000000000000057",
+          "title": "B.Sc. Computer Science",
+          "org": "University of Toronto",
+          "location": null,
+          "period": {
+            "start": {
+              "year": 1998,
+              "month": 9
+            },
+            "end": {
+              "year": 2002,
+              "month": 6
+            },
+            "current": false
+          },
+          "bullets": [],
+          "description": null,
+          "url": null,
+          "locked": false
+        }
+      ]
+    },
+    {
+      "type": "skills",
+      "id": "01J03000000000000000000059",
+      "title_override": null,
+      "groups": [
+        {
+          "id": "01J03000000000000000000060",
+          "label": null,
+          "skills": [
+            {
+              "id": "01J03000000000000000000061",
+              "name": "Java"
+            },
+            {
+              "id": "01J03000000000000000000062",
+              "name": "Rust"
+            },
+            {
+              "id": "01J03000000000000000000063",
+              "name": "Go"
+            },
+            {
+              "id": "01J03000000000000000000064",
+              "name": "Python"
+            },
+            {
+              "id": "01J03000000000000000000065",
+              "name": "SQL"
+            },
+            {
+              "id": "01J03000000000000000000066",
+              "name": "Terraform"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "layout": {
+    "columns": "two",
+    "sidebar_width_pct": 32,
+    "top": [
+      "name",
+      "contact",
+      "summary"
+    ],
+    "sidebar": [
+      {
+        "kind": "section",
+        "id": "01J03000000000000000000059"
+      }
+    ]
+  }
+}

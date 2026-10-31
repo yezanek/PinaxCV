@@ -9,6 +9,7 @@
 mod cv;
 mod id;
 mod job;
+mod layout;
 mod pages;
 mod personal;
 mod records;
@@ -30,6 +31,7 @@ mod test_fixtures;
 pub use cv::*;
 pub use id::{Id, IdSource, InvalidId};
 pub use job::{JobRequirements, Requirement, RequirementKind};
+pub use layout::{BlockRef, Column, Columns, Layout, TopBlock};
 pub use pages::{PageCountError, PageCounter};
 pub use personal::{CalendarDate, PersonalDetails, PersonalField};
 pub use records::{
