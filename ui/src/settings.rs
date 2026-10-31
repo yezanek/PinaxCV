@@ -184,10 +184,10 @@ fn AppSection(
             }
         });
     };
-    let open_folder = move |_| {
+    let open = move |command: &'static str| {
         error.set(None);
         spawn_local(async move {
-            if let Err(e) = call::<_, ()>("open_data_dir", &NoArgs {}).await {
+            if let Err(e) = call::<_, ()>(command, &NoArgs {}).await {
                 let _ = error.try_set(Some(error_message(&e)));
             }
         });
@@ -234,7 +234,12 @@ fn AppSection(
         {move || settings.get().and_then(|st| st.data_dir).map(|dir| view! {
             <p class="hint">{t().data_folder_intro}</p>
             <p><code class="path">{dir}</code></p>
-            <p class="actions"><button on:click=open_folder>{t().open_data_folder}</button></p>
+            <p class="actions"><button on:click=move |_| open("open_data_dir")>{t().open_data_folder}</button></p>
+        })}
+        {move || settings.get().and_then(|st| st.log_dir).map(|dir| view! {
+            <p class="hint">{t().log_folder_intro}</p>
+            <p><code class="path">{dir}</code></p>
+            <p class="actions"><button on:click=move |_| open("open_log_dir")>{t().open_log_folder}</button></p>
         })}
         <p class="hint">{s.backup_intro}</p>
         <p class="actions">

@@ -87,16 +87,21 @@ fn unknown_saved_values_fall_back_to_the_default() {
 }
 
 #[test]
-fn settings_name_the_data_folder_version_and_licence() {
+fn settings_name_the_data_and_log_folders_version_and_licence() {
     let s = app(store()).get_settings().expect("settings");
     assert_eq!(s.data_dir, None);
+    assert_eq!(s.log_dir, None);
     assert!(!s.version.is_empty());
     assert_eq!(s.license, "Apache-2.0");
 
     let dir = std::env::temp_dir().join("pinaxcv-settings-test");
+    // On macOS and Windows the log is not inside the data folder.
+    let logs = std::env::temp_dir().join("pinaxcv-settings-test-logs");
     let s = app(store())
         .with_data_dir(dir.clone())
+        .with_log_dir(logs.clone())
         .get_settings()
         .expect("settings");
     assert_eq!(s.data_dir, Some(dir.display().to_string()));
+    assert_eq!(s.log_dir, Some(logs.display().to_string()));
 }
