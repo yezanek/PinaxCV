@@ -673,9 +673,14 @@ mod tests {
 
     #[test]
     fn two_columns_keep_the_name_column_first_in_the_dom() {
+        fn cols(doc: &str) -> &str {
+            let start = doc.find("--cols: ").expect("grid style") + "--cols: ".len();
+            let len = doc[start..].find('"').expect("end of style");
+            &doc[start..start + len]
+        }
         let doc = html("two_column");
         assert!(doc.contains("<body class=\"two\">"));
-        assert!(doc.contains("--cols: 32fr 68fr"));
+        assert_eq!(cols(&doc), "32fr 68fr");
         let at = |s: &str| doc.find(s).unwrap_or_else(|| panic!("{s} missing"));
         assert!(at("<div class=\"sidebar\">") < at("<h1>"));
         assert!(at("<h1>") < at("<h2>Skills</h2>"));
@@ -683,8 +688,9 @@ mod tests {
         assert!(at("<main>") < at("<h2>Summary</h2>"));
 
         let doc = html("two_column_long");
-        assert!(doc.contains("--cols: 68fr 32fr"), "main is first and wide");
-        assert!(doc.find("<main>") < doc.find("<div class=\"sidebar\">"));
+        assert_eq!(cols(&doc), "68fr 32fr", "main is first and wide");
+        let at = |s: &str| doc.find(s).unwrap_or_else(|| panic!("{s} missing"));
+        assert!(at("<main>") < at("<div class=\"sidebar\">"));
         assert!(!html("typical").contains("<div class=\"columns\""));
     }
 
