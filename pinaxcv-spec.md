@@ -26,7 +26,7 @@ Status: v1 spec, revised 2026-10-13 with the product owner's decisions (see `doc
 
 ### 1.2 Goals
 
-- G1. PDFs whose extracted text is in correct reading order, single column, standard headings, no icons, no ligature artifacts.
+- G1. PDFs whose extracted text is in correct reading order, single column by default (an optional two-column layout keeps each column in order, ADR-084), standard headings, no icons, no ligature artifacts.
 - G2. Live preview rendered by the **same engine** as the PDF export.
 - G3. Fully offline by default. Data is a single SQLite file the user owns.
 - G4. Import from Europass, JSON Resume, LinkedIn data export (ZIP), and pasted/PDF text (LLM-assisted).
@@ -43,7 +43,7 @@ Status: v1 spec, revised 2026-10-13 with the product owner's decisions (see `doc
 - No DOCX/ODT export in v1.
 - No hosted SaaS in v1; PostgreSQL, accounts, sync, multi-tenancy, billing, and server infrastructure are deferred until product demand justifies them.
 - No rich text editing; bullets are plain text.
-- No multi-column or graphic-heavy templates.
+- No graphic-heavy templates, and no layouts beyond one or two columns (ADR-084).
 
 ### 1.4 Users
 
@@ -514,6 +514,9 @@ Rules:
   "opts": { "font_size_pt": 10.0, "line_spacing": 1.1, "margin_mm": 18.0, "accent": null },
   "basics": { "full_name": "Jane Doe", "headline": null, "email": "jane@example.com", "phone": null, "location": null, "links": [{"label":"Website","url":"https://example.com"}] },
   "summary": null,
+  "layout": { "two": false, "sidebar_width_pct": 32, "sidebar_first": false, "sidebar": [],
+              "main": [ { "kind": "name" }, { "kind": "contact" }, { "kind": "summary" },
+                        { "kind": "section", "index": 0 }, { "kind": "section", "index": 1 }, { "kind": "section", "index": 2 } ] },
   "sections": [
     { "kind": "experience", "heading": "Work Experience",
       "entries": [ { "title": "", "org": "", "location": "", "period": "Mar 2021 – Present",
@@ -524,13 +527,13 @@ Rules:
 }
 ```
 
-Absent optional fields are JSON `null` (Typst `none`), never empty strings, so the template never prints stray separators. Dates are formatted in Rust (locale + `date_style`), not in Typst. Section headings come from a locale table in Rust (`cv-core::locale`), with `title_override` taking precedence. Headings in v1: en only. Other locales fall back to English until added.
+`layout` lists the blocks each column draws, in order; `sections` holds the printed sections and blocks refer to them by index (ADR-084). With one column every block is in `main`. Absent optional fields are JSON `null` (Typst `none`), never empty strings, so the template never prints stray separators. Dates are formatted in Rust (locale + `date_style`), not in Typst. Section headings come from a locale table in Rust (`cv-core::locale`), with `title_override` taking precedence. Headings in v1: en only. Other locales fall back to English until added.
 
 ### 6.4 Template requirements (`templates/classic/template.typ`)
 
 Hard rules (document them in `docs/ATS_RULES.md` and enforce with tests):
 
-1. **Single column.** No `grid`/`columns` that place content side by side. The one exception is the optional profile photo (ADR-083), which may sit beside the contact block because it is a PDF artifact with no text, so extraction and reading order are unchanged (golden test). Dates go on the same line as title using right-aligned text via a fixed-width-safe approach: prefer `title, org` on the first line and `period · location` on the second line. Do **not** use `h(1fr)` with dates if extraction tests show dates are detached; keep the layout that passes the tests.
+1. **Single column by default.** No `grid`/`columns` that place content side by side, with two exceptions. The optional profile photo (ADR-083) may sit beside the contact block because it is a PDF artifact with no text, so extraction and reading order are unchanged (golden test). A CV whose layout has two columns (ADR-084) is drawn as one grid row with the column holding the name on the left, so the extracted text reads that column first; each column reads in order on its own (golden test), a page break never splits a bullet, the ATS check warns, and export offers a one-column ATS copy. Dates go on the same line as title using right-aligned text via a fixed-width-safe approach: prefer `title, org` on the first line and `period · location` on the second line. Do **not** use `h(1fr)` with dates if extraction tests show dates are detached; keep the layout that passes the tests.
 2. **Reading order = source order.** No `place`, `float`, `move`, or absolutely positioned elements for content.
 3. **Standard headings**, in the order: contact block, Summary, Work Experience, Education, Skills, Languages, Certifications, Projects, custom. (Order is per `cv.sections`; the standard names are the defaults.)
 4. **Contact block is body text, at the top of page 1**, with text labels or plain separators, no icons. The template places email and phone within the first five extracted lines; the ATS check (section 7.2) fails only beyond eight, which leaves room for a headline. URLs printed in full (linkified only for `https:`/`mailto:`).
