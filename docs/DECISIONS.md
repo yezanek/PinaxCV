@@ -606,6 +606,13 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Saving repairs the layout: each top block once, no sidebar entry for a missing section or twice for the same block, and the width clamped (reported as `option_clamped`). Resolving copies the base CV's layout into `ResolvedCv` after the same repair; variants share the base layout. Duplicating a CV moves its placements to the copied sections' new IDs.
 - Two columns go against spec G1, the "no multi-column templates" non-goal, spec 6.4 rule 1 and `docs/ATS_RULES.md` rule 1. Dan decided on 2026-10-30 to allow them with safeguards: a golden reading-order test, a warning in the ATS check, and a one-column ATS copy saved by default when exporting a two-column CV. The spec and ATS rules are amended with the template change (#123).
 
+## ADR-085 — Purging deleted CVs after 30 days (M8, issue #113)
+
+- Spec section 5.2 keeps a soft-deleted CV for 30 days. `cv-app` names the period `DELETED_CV_RETENTION` and `App::purge_deleted_cvs` removes older deleted CVs for good with `Store::purge_deleted`; foreign keys cascade to their variants, snapshots and photo.
+- The shell runs it once per start, after the database opens, on its own thread, so the window never waits for it. The log line carries only the number of CVs removed (or the error code), never titles.
+- The 8-second undo toast is unaffected: it restores a CV deleted seconds ago.
+- Purged rows are deleted with SQL `DELETE`, not `VACUUM`; their text may stay in free pages of the database file until SQLite reuses them. "Delete all data" remains the way to erase everything from the file (ADR-081).
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
