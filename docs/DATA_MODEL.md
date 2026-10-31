@@ -19,7 +19,7 @@ Core entities include:
 - AI suggestion/review state (on the variant, or per CV in `review_sessions` for reviews without a variant)
 - The parsed job requirements and gap questions from tailoring (on the variant)
 - Profile photo (one per CV, stored beside the CV document rather than in it; shown only when `show_photo` is on for the CV or variant)
-- Page layout (on the CV: one or two columns, sidebar side and width, the order of the name, contact and summary blocks, and which blocks sit in the sidebar; ADR-084)
+- Page layout (on the CV: one or two columns, sidebar width (its side follows the name), the order of the name, contact and summary blocks, and which blocks sit in the sidebar; ADR-084)
 - Settings (AI provider, consent, defaults for new CVs) and the AI response cache
 
 Use stable ULIDs rather than database-local integer identities.
