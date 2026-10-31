@@ -103,3 +103,13 @@
     s.items.map(i => if i.level != none { i.name + " (" + i.level + ")" } else { i.name }).join(", ")
   }
 }
+
+// The optional closing block (ADR-089): a consent clause and a "place,
+// date" line, as plain text after the last section, never in a page footer
+// (ATS rule 5). It stays together on one page.
+#if d.closing != none {
+  block(above: 1.5em, breakable: false)[
+    #if d.closing.consent != none { block(below: 0.8em, text(size: 0.9em, d.closing.consent)) }
+    #if d.closing.place_date != none { block(d.closing.place_date) }
+  ]
+}

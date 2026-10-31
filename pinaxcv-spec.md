@@ -169,6 +169,7 @@ pub struct Cv {
     pub basics: Basics,
     pub summary: Option<String>,     // professional summary, plain text
     pub sections: Vec<Section>,      // ordered
+    pub closing: Closing,            // optional consent clause and "place, date" line, off by default (ADR-089)
 }
 
 pub struct Basics {

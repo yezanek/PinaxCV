@@ -15,6 +15,7 @@ use wasm_bindgen::JsCast;
 
 use crate::advice::AiReviewPanel;
 use crate::checks::{ChecksTab, EMAIL_FIELD, FULL_NAME_FIELD, SUMMARY_FIELD, Spot, focus_spot};
+use crate::closing::ClosingSection;
 use crate::entries::{AddSection, Sections};
 use crate::history::{History, Shortcut, shortcut};
 use crate::i18n::{error_message, fill, t};
@@ -529,6 +530,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                     }
                 }}
                 <AddSection edit=edit />
+                <ClosingSection cv=cv edit=edit />
                 </div>
             </section>
             <section class="preview" class:stale=move || rendering.get() aria-label=t().preview

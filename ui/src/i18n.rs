@@ -355,6 +355,19 @@ pub struct Strings {
     pub personal_driving_licence_placeholder: &'static str,
     pub personal_work_permit: &'static str,
 
+    // Closing block (ADR-089)
+    pub closing: &'static str,
+    pub closing_hint: &'static str,
+    pub closing_consent: &'static str,
+    pub closing_insert: &'static str,
+    pub closing_preset_en: &'static str,
+    pub closing_preset_it: &'static str,
+    pub closing_preset_pl: &'static str,
+    pub closing_place: &'static str,
+    pub closing_place_date: &'static str,
+    pub closing_date_hint: &'static str,
+    pub closing_variant: &'static str,
+
     // Variants
     pub version: &'static str,
     pub base_cv: &'static str,
@@ -808,6 +821,18 @@ pub static EN: Strings = Strings {
     personal_driving_licence_placeholder: "Categories, for example B, C1",
     personal_work_permit: "Right to work",
 
+    closing: "Closing",
+    closing_hint: "Optional lines after the last section. Italian employers usually expect a data-protection consent clause; a traditional German or Austrian CV ends with place and date. Each prints only when you tick Show, and each variant has its own switches.",
+    closing_consent: "Consent clause",
+    closing_insert: "Insert a clause:",
+    closing_preset_en: "English",
+    closing_preset_it: "Italian",
+    closing_preset_pl: "Polish",
+    closing_place: "Place",
+    closing_place_date: "Place and date",
+    closing_date_hint: "The date is the day you export, in the CV's date style.",
+    closing_variant: "Closing shown in this variant",
+
     version: "Version",
     base_cv: "Base CV",
     new_variant: "New variant",
@@ -1080,6 +1105,7 @@ mod tests {
     const FILES: &[(&str, &str)] = &[
         ("advice.rs", include_str!("advice.rs")),
         ("checks.rs", include_str!("checks.rs")),
+        ("closing.rs", include_str!("closing.rs")),
         ("dates.rs", include_str!("dates.rs")),
         ("diff.rs", include_str!("diff.rs")),
         ("drag.rs", include_str!("drag.rs")),

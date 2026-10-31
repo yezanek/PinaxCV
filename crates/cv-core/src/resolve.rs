@@ -40,6 +40,9 @@ impl Cv {
                 .and_then(|v| v.summary_override.clone())
                 .or_else(|| self.summary.clone()),
             sections,
+            closing: self
+                .closing
+                .only(variant.map_or(&self.closing.show, |v| &v.show_closing)),
         }
     }
 
@@ -480,6 +483,27 @@ mod tests {
             cv.basics.personal.work_permit.as_deref(),
             Some("EU citizen")
         );
+    }
+
+    #[test]
+    fn closing_parts_print_only_where_switched_on() {
+        use crate::{Closing, ClosingPart};
+        let mut cv = cv();
+        cv.closing = Closing {
+            consent: Some("I consent.".into()),
+            place: Some("Berlin".into()),
+            show: [ClosingPart::Consent].into(),
+        };
+        let base = cv.resolve(None).closing;
+        assert_eq!(base.consent.as_deref(), Some("I consent."));
+        assert_eq!(base.place, None);
+        let mut v = variant();
+        assert_eq!(cv.resolve(Some(&v)).closing, Closing::default());
+        v.show_closing = [ClosingPart::PlaceDate].into();
+        let r = cv.resolve(Some(&v)).closing;
+        assert_eq!(r.consent, None);
+        assert_eq!(r.place.as_deref(), Some("Berlin"));
+        assert_eq!(r.show, v.show_closing);
     }
 
     #[test]

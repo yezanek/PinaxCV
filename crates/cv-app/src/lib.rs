@@ -34,9 +34,9 @@ use cv_api::{
 use cv_core::fit::{FitResult, fit};
 use cv_core::validate;
 use cv_core::{
-    AtsReport, Basics, CV_SCHEMA_VERSION, Cv, CvSummary, Id, IdSource, LintIssue, Locale,
-    PageCountError, PageCounter, Paper, ResolvedCv, SnapshotReason, StoredCv, StoredVariant,
-    TemplateId, TemplateOptions, Variant, VariantSummary,
+    AtsReport, Basics, CV_SCHEMA_VERSION, CalendarDate, Cv, CvSummary, Id, IdSource, LintIssue,
+    Locale, PageCountError, PageCounter, Paper, ResolvedCv, SnapshotReason, StoredCv,
+    StoredVariant, TemplateId, TemplateOptions, Variant, VariantSummary,
 };
 use cv_render::{ExportOptions, Exporter, HtmlExporter, PdfExporter, Renderer, ats};
 use cv_store::Store;
@@ -62,6 +62,7 @@ impl PageCounter for PhotoPages<'_> {
     fn pages(&self, cv: &ResolvedCv) -> std::result::Result<u32, PageCountError> {
         let options = ExportOptions {
             photo: self.photo.clone().filter(|_| cv.show_photo),
+            date: Some(today()),
             ..ExportOptions::default()
         };
         self.renderer
@@ -71,6 +72,18 @@ impl PageCounter for PhotoPages<'_> {
                 let messages: Vec<&str> = diags.iter().map(|d| d.message.as_str()).collect();
                 PageCountError(messages.join("; "))
             })
+    }
+}
+
+/// Today's date on this computer, for the closing block's "place, date"
+/// line (ADR-089).
+fn today() -> CalendarDate {
+    use chrono::Datelike;
+    let now = chrono::Local::now().date_naive();
+    CalendarDate {
+        year: u16::try_from(now.year()).unwrap_or(u16::MAX),
+        month: u8::try_from(now.month()).ok(),
+        day: u8::try_from(now.day()).ok(),
     }
 }
 
@@ -368,6 +381,7 @@ impl App {
             include_email: req.include_email,
             include_phone: req.include_phone,
             photo: self.photo_for(&resolved)?,
+            date: Some(today()),
         };
         let doc = HtmlExporter
             .export(&resolved, &options)
@@ -458,6 +472,7 @@ impl App {
     fn pdf_options(&self, cv: &ResolvedCv) -> Result<ExportOptions> {
         Ok(ExportOptions {
             photo: self.photo_for(cv)?,
+            date: Some(today()),
             ..ExportOptions::default()
         })
     }
@@ -535,6 +550,7 @@ pub fn blank_cv(id: Id, title: &str) -> Cv {
         },
         summary: None,
         sections: Vec::new(),
+        closing: Default::default(),
     }
 }
 

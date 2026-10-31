@@ -34,6 +34,8 @@ h3 { font-size: 1rem; margin: 0; }
 header::after { content: ""; display: block; clear: both; }
 .contact { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; }
 .personal { list-style: none; margin: 0.4rem 0 0; padding: 0; }
+.closing { margin-top: 2rem; }
+.closing .consent { font-size: 0.9rem; color: var(--muted); }
 .org { font-weight: normal; }
 .meta { margin: 0.1rem 0 0.4rem; color: var(--muted); }
 .entry { margin: 0 0 1.25rem; }

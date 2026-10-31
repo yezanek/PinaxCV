@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use std::collections::BTreeSet;
 
-use crate::{Id, IdSource, PersonalDetails, PersonalField, SuggestionTarget};
+use crate::{Closing, Id, IdSource, PersonalDetails, PersonalField, SuggestionTarget};
 
 /// Current version of the [`Cv`] JSON shape. Bumped together with a migration step.
 pub const CV_SCHEMA_VERSION: u32 = 1;
@@ -27,6 +27,10 @@ pub struct Cv {
     pub summary: Option<String>,
     /// Sections in display order.
     pub sections: Vec<Section>,
+    /// Optional consent clause and "place, date" line after the last
+    /// section (ADR-089). Empty and off by default.
+    #[serde(default)]
+    pub closing: Closing,
 }
 
 impl Cv {
