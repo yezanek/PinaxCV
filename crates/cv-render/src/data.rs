@@ -6,7 +6,10 @@
 
 use cv_core::lint::is_clickable_url;
 use cv_core::locale::{self, Labels};
-use cv_core::{Locale, Paper, ResolvedCv, ResolvedEntry, ResolvedSection};
+use cv_core::{
+    BlockRef, ClosingPart, Column, Columns, Locale, Paper, ResolvedCv, ResolvedEntry,
+    ResolvedSection, TopBlock,
+};
 use serde::Serialize;
 
 use crate::ExportOptions;
@@ -21,6 +24,56 @@ pub struct TypstData {
     pub basics: BasicsData,
     pub summary: Option<String>,
     pub sections: Vec<SectionData>,
+    /// The closing block after the last section (ADR-089), or `null` when
+    /// it prints nothing.
+    pub closing: Option<ClosingData>,
+    pub layout: LayoutData,
+}
+
+/// The shown parts of the closing block, as printed.
+#[derive(Serialize, Debug, PartialEq)]
+pub struct ClosingData {
+    pub consent: Option<String>,
+    /// "Berlin, 30 Oct 2026": the place and the export date in the CV's
+    /// date style, or whichever of the two is known.
+    pub place_date: Option<String>,
+    /// Whether the template draws `signature.png`: the CV shows its
+    /// signature and the export was given one (ADR-090).
+    pub signature: bool,
+}
+
+/// Which blocks each column draws, in order (ADR-084). With one column every
+/// block is in `main`. Sections are indices into `TypstData::sections`.
+#[derive(Serialize, Debug, PartialEq)]
+pub struct LayoutData {
+    pub two: bool,
+    pub sidebar_width_pct: u8,
+    /// Whether the sidebar is drawn on the left and read first: it holds
+    /// the name.
+    pub sidebar_first: bool,
+    pub sidebar: Vec<BlockData>,
+    pub main: Vec<BlockData>,
+}
+
+impl LayoutData {
+    /// The columns in reading order: the left one (holding the name), then
+    /// the right one. With one column the second is empty.
+    pub fn reading_columns(&self) -> [&[BlockData]; 2] {
+        if self.sidebar_first {
+            [&self.sidebar, &self.main]
+        } else {
+            [&self.main, &self.sidebar]
+        }
+    }
+}
+
+#[derive(Serialize, Debug, PartialEq, Clone, Copy)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum BlockData {
+    Name,
+    Contact,
+    Summary,
+    Section { index: usize },
 }
 
 /// PDF metadata: title "<Full name>, CV" and author = full name.
@@ -61,6 +114,16 @@ pub struct BasicsData {
     /// Whether the template draws `photo.jpg`: the CV shows its photo and
     /// the export was given one.
     pub photo: bool,
+    /// Personal details switched on for this CV or variant (ADR-088), in
+    /// print order, one line each after the contact details.
+    pub personal: Vec<PersonalLineData>,
+}
+
+/// One personal detail as printed: "Nationality: Italian".
+#[derive(Serialize, Debug, PartialEq)]
+pub struct PersonalLineData {
+    pub label: &'static str,
+    pub value: String,
 }
 
 /// `clickable` is true only for `https:` and `mailto:` URLs.
@@ -124,6 +187,18 @@ pub struct LanguageData {
 pub fn to_typst_data(cv: &ResolvedCv, options: &ExportOptions) -> TypstData {
     let labels = locale::labels(cv.locale);
     let b = &cv.basics;
+    let sections: Vec<(Column, SectionData)> = cv
+        .sections
+        .iter()
+        .filter_map(|s| {
+            let column = cv
+                .layout
+                .column_of(&BlockRef::Section { id: s.id().clone() });
+            section(s, cv).map(|data| (column, data))
+        })
+        .collect();
+    let columns: Vec<Column> = sections.iter().map(|(c, _)| *c).collect();
+    let layout = layout_data(cv, &columns);
     let name = b.full_name.trim();
     TypstData {
         meta: MetaData {
@@ -158,10 +233,73 @@ pub fn to_typst_data(cv: &ResolvedCv, options: &ExportOptions) -> TypstData {
                 .filter_map(|l| link(Some(&l.label), &l.url))
                 .collect(),
             photo: cv.show_photo && options.photo.is_some(),
+            personal: b
+                .personal
+                .lines(cv.options.date_style, cv.locale)
+                .into_iter()
+                .map(|(field, value)| PersonalLineData {
+                    label: locale::personal_label(field, cv.locale),
+                    value,
+                })
+                .collect(),
         },
         summary: text(&cv.summary),
-        sections: cv.sections.iter().filter_map(|s| section(s, cv)).collect(),
+        sections: sections.into_iter().map(|(_, s)| s).collect(),
+        layout,
+        closing: closing(cv, options),
     }
+}
+
+fn closing(cv: &ResolvedCv, options: &ExportOptions) -> Option<ClosingData> {
+    let c = &cv.closing;
+    let place_date = c.show.contains(&ClosingPart::PlaceDate).then(|| {
+        let date = options
+            .date
+            .map(|d| locale::format_day(d, cv.options.date_style, cv.locale));
+        [c.place_text().map(str::to_owned), date]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>()
+            .join(", ")
+    });
+    let data = ClosingData {
+        consent: c.consent_text().map(str::to_owned),
+        place_date: place_date.filter(|l| !l.is_empty()),
+        signature: c.show.contains(&ClosingPart::Signature) && options.signature.is_some(),
+    };
+    (data.consent.is_some() || data.place_date.is_some() || data.signature).then_some(data)
+}
+
+/// Puts the top blocks and the printed sections into their columns.
+/// `sections` pairs each printed section with its column.
+fn layout_data(cv: &ResolvedCv, columns: &[Column]) -> LayoutData {
+    let l = &cv.layout;
+    let mut data = LayoutData {
+        two: l.columns == Columns::Two,
+        sidebar_width_pct: l.sidebar_width_pct,
+        sidebar_first: l.first_column() == Column::Sidebar,
+        sidebar: Vec::new(),
+        main: Vec::new(),
+    };
+    for column in [Column::Sidebar, Column::Main] {
+        let blocks = match column {
+            Column::Sidebar => &mut data.sidebar,
+            Column::Main => &mut data.main,
+        };
+        blocks.extend(l.top_in(column).into_iter().map(|b| match b {
+            TopBlock::Name => BlockData::Name,
+            TopBlock::Contact => BlockData::Contact,
+            TopBlock::Summary => BlockData::Summary,
+        }));
+        blocks.extend(
+            columns
+                .iter()
+                .enumerate()
+                .filter(|(_, c)| **c == column)
+                .map(|(index, _)| BlockData::Section { index }),
+        );
+    }
+    data
 }
 
 /// The Typst `lang` code for `locale`.
@@ -294,6 +432,65 @@ mod tests {
     }
 
     #[test]
+    fn one_column_puts_every_block_in_main() {
+        let cv = testdata::fixture("typical").resolve(None);
+        let d = to_typst_data(&cv, &ExportOptions::default());
+        assert!(!d.layout.two);
+        assert!(d.layout.sidebar.is_empty());
+        assert_eq!(
+            d.layout.main,
+            [
+                BlockData::Name,
+                BlockData::Contact,
+                BlockData::Summary,
+                BlockData::Section { index: 0 },
+                BlockData::Section { index: 1 },
+                BlockData::Section { index: 2 },
+                BlockData::Section { index: 3 },
+            ]
+        );
+        let [first, second] = d.layout.reading_columns();
+        assert_eq!(first.len(), 7);
+        assert!(second.is_empty());
+    }
+
+    #[test]
+    fn two_columns_split_blocks_and_read_the_name_column_first() {
+        let cv = testdata::fixture("two_column").resolve(None);
+        let d = to_typst_data(&cv, &ExportOptions::default());
+        assert!(d.layout.two && d.layout.sidebar_first);
+        assert_eq!(d.layout.sidebar_width_pct, 32);
+        // Skills and languages (sections 2 and 3) are in the sidebar.
+        assert_eq!(
+            d.layout.sidebar,
+            [
+                BlockData::Name,
+                BlockData::Contact,
+                BlockData::Section { index: 2 },
+                BlockData::Section { index: 3 },
+            ]
+        );
+        assert_eq!(
+            d.layout.main,
+            [
+                BlockData::Summary,
+                BlockData::Section { index: 0 },
+                BlockData::Section { index: 1 },
+            ]
+        );
+        assert_eq!(d.layout.reading_columns()[0], d.layout.sidebar.as_slice());
+
+        let cv = testdata::fixture("two_column_long").resolve(None);
+        let d = to_typst_data(&cv, &ExportOptions::default());
+        assert!(!d.layout.sidebar_first, "the name stays in main");
+        assert_eq!(d.layout.reading_columns()[0], d.layout.main.as_slice());
+        let v = serde_json::to_value(&d.layout).expect("json");
+        assert_eq!(v["main"][0]["kind"], "name");
+        assert_eq!(v["sidebar"][0]["kind"], "section");
+        assert!(v["sidebar"][0]["index"].is_u64());
+    }
+
+    #[test]
     fn typical_matches_contract_shape() {
         let d = data("typical");
         assert_eq!(d["locale"], "en");
@@ -367,9 +564,82 @@ mod tests {
             include_email: false,
             include_phone: false,
             photo: None,
+            signature: None,
+            date: None,
         };
         let d = to_typst_data(&cv, &opts);
         assert_eq!((d.basics.email, d.basics.phone), (None, None));
+    }
+
+    #[test]
+    fn personal_details_follow_the_switches() {
+        let d = data("european");
+        let lines: Vec<String> = d["basics"]["personal"]
+            .as_array()
+            .expect("personal")
+            .iter()
+            .map(|l| {
+                format!(
+                    "{}: {}",
+                    l["label"].as_str().expect("label"),
+                    l["value"].as_str().expect("value")
+                )
+            })
+            .collect();
+        assert_eq!(
+            lines,
+            [
+                "Nationality: Italian, German",
+                "Date of birth: 12 Mar 1990",
+                "Place of birth: Turin",
+                "Gender: Female",
+                "Marital status: Married",
+                "Address: Via Esempio 1, 10100 Torino",
+                "Driving licence: B, C1",
+                "Right to work: EU citizen",
+            ]
+        );
+        // A variant that switches nothing on prints none of them.
+        let cv = testdata::fixture("european");
+        let v = cv_core::Variant::empty(cv.id.clone(), cv.id.clone(), "UK");
+        let d = to_typst_data(&cv.resolve(Some(&v)), &ExportOptions::default());
+        assert!(d.basics.personal.is_empty());
+        assert!(
+            data("typical")["basics"]["personal"]
+                .as_array()
+                .is_some_and(Vec::is_empty)
+        );
+    }
+
+    #[test]
+    fn closing_prints_the_shown_parts_with_the_export_date() {
+        use cv_core::{CalendarDate, ClosingPart};
+        let mut cv = testdata::fixture("typical");
+        assert_eq!(data("typical")["closing"], serde_json::Value::Null);
+        cv.closing.consent = Some(" I consent. ".into());
+        cv.closing.place = Some("Berlin".into());
+        cv.closing.show = [ClosingPart::Consent, ClosingPart::PlaceDate].into();
+        let mut opts = ExportOptions {
+            date: CalendarDate::parse("2026-10-30"),
+            ..ExportOptions::default()
+        };
+        let d = to_typst_data(&cv.resolve(None), &opts)
+            .closing
+            .expect("closing");
+        assert_eq!(d.consent.as_deref(), Some("I consent."));
+        assert_eq!(d.place_date.as_deref(), Some("Berlin, 30 Oct 2026"));
+
+        cv.options.date_style = cv_core::DateStyle::NumericMonthYear;
+        cv.closing.place = None;
+        let d = to_typst_data(&cv.resolve(None), &opts)
+            .closing
+            .expect("closing");
+        assert_eq!(d.place_date.as_deref(), Some("30/10/2026"));
+
+        // Without a place or a date, the line prints nothing.
+        opts.date = None;
+        cv.closing.show = [ClosingPart::PlaceDate].into();
+        assert_eq!(to_typst_data(&cv.resolve(None), &opts).closing, None);
     }
 
     #[test]

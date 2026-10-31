@@ -7,7 +7,7 @@
 use std::collections::BTreeSet;
 
 use crate::{
-    Bullet, Cv, Entry, EntrySection, Id, LanguagesSection, ResolvedCv, ResolvedEntry,
+    Basics, Bullet, Cv, Entry, EntrySection, Id, LanguagesSection, ResolvedCv, ResolvedEntry,
     ResolvedEntrySection, ResolvedLanguagesSection, ResolvedSection, ResolvedSkillsSection,
     Section, SkillGroup, SkillsSection, Variant,
 };
@@ -40,12 +40,27 @@ impl Cv {
             paper: self.paper,
             template: self.template.clone(),
             options: self.options.clone(),
-            basics: self.basics.clone(),
+            basics: self.resolved_basics(variant),
             show_photo: variant.map_or(self.basics.show_photo, |v| v.show_photo),
             summary: variant
                 .and_then(|v| v.summary_override.clone())
                 .or_else(|| self.summary.clone()),
             sections,
+            closing: self
+                .closing
+                .only(variant.map_or(&self.closing.show, |v| &v.show_closing)),
+        }
+    }
+
+    /// The basics as printed: `show_personal` is the variant's set (the base
+    /// CV's without a variant), and `personal` keeps only those fields, so
+    /// nothing downstream can print a hidden detail (ADR-088).
+    fn resolved_basics(&self, variant: Option<&Variant>) -> Basics {
+        let shown = variant.map_or(&self.basics.show_personal, |v| &v.show_personal);
+        Basics {
+            personal: self.basics.personal.only(shown),
+            show_personal: shown.clone(),
+            ..self.basics.clone()
         }
     }
 
@@ -467,6 +482,65 @@ mod tests {
         assert_eq!(with.variant_id, Some(id(100)));
         with.variant_id = None;
         assert_eq!(with, cv.resolve(None));
+    }
+
+    #[test]
+    fn personal_details_print_only_where_switched_on() {
+        use crate::{PersonalDetails, PersonalField};
+        let mut cv = cv();
+        cv.basics.personal = PersonalDetails {
+            nationality: vec!["Italian".into()],
+            birth_place: Some("Turin".into()),
+            work_permit: Some("EU citizen".into()),
+            ..PersonalDetails::default()
+        };
+        // Nothing prints until switched on.
+        assert_eq!(cv.resolve(None).basics.personal, PersonalDetails::default());
+
+        cv.basics.show_personal = [PersonalField::Nationality, PersonalField::BirthPlace].into();
+        let base = cv.resolve(None).basics;
+        assert_eq!(base.personal.nationality, ["Italian"]);
+        assert_eq!(base.personal.birth_place.as_deref(), Some("Turin"));
+        assert_eq!(base.personal.work_permit, None);
+        assert_eq!(base.show_personal, cv.basics.show_personal);
+
+        // A variant has its own set and ignores the base CV's.
+        let mut v = variant();
+        assert_eq!(
+            cv.resolve(Some(&v)).basics.personal,
+            PersonalDetails::default()
+        );
+        v.show_personal = [PersonalField::WorkPermit].into();
+        let r = cv.resolve(Some(&v)).basics;
+        assert!(r.personal.nationality.is_empty());
+        assert_eq!(r.personal.work_permit.as_deref(), Some("EU citizen"));
+        assert_eq!(r.show_personal, v.show_personal);
+        // The base CV is unchanged.
+        assert_eq!(
+            cv.basics.personal.work_permit.as_deref(),
+            Some("EU citizen")
+        );
+    }
+
+    #[test]
+    fn closing_parts_print_only_where_switched_on() {
+        use crate::{Closing, ClosingPart};
+        let mut cv = cv();
+        cv.closing = Closing {
+            consent: Some("I consent.".into()),
+            place: Some("Berlin".into()),
+            show: [ClosingPart::Consent].into(),
+        };
+        let base = cv.resolve(None).closing;
+        assert_eq!(base.consent.as_deref(), Some("I consent."));
+        assert_eq!(base.place, None);
+        let mut v = variant();
+        assert_eq!(cv.resolve(Some(&v)).closing, Closing::default());
+        v.show_closing = [ClosingPart::PlaceDate].into();
+        let r = cv.resolve(Some(&v)).closing;
+        assert_eq!(r.consent, None);
+        assert_eq!(r.place.as_deref(), Some("Berlin"));
+        assert_eq!(r.show, v.show_closing);
     }
 
     #[test]

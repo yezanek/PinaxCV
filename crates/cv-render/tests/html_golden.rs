@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use cv_core::Cv;
 use cv_render::{ExportOptions, to_html};
 
-const FIXTURES: [&str; 10] = [
+const FIXTURES: [&str; 13] = [
     "minimal",
     "typical",
     "long",
@@ -17,6 +17,9 @@ const FIXTURES: [&str; 10] = [
     "current_job",
     "special_chars",
     "unsafe_links",
+    "two_column",
+    "two_column_long",
+    "european",
 ];
 
 fn fixture(name: &str) -> Cv {
@@ -34,7 +37,7 @@ fn html_exports_match_snapshots() {
     for name in FIXTURES {
         let doc = to_html(&fixture(name).resolve(None), &options);
         // The stylesheet is the same in every file; snapshot the content.
-        let body = &doc[doc.find("<body>").expect("body")..];
+        let body = &doc[doc.find("<body").expect("body")..];
         insta::assert_snapshot!(format!("html__{name}"), body);
     }
 }

@@ -10,7 +10,7 @@ use cv_api::{
     ExportResult, FitOutcome, FitVariant, ImportCommit, ImportMatch, ImportMatchRequest,
     ImportPreview, ImportText, ImportTextSource, JobId, NewCv, NewVariant, PhotoApply, PhotoInfo,
     PhotoSource, PreviewRequest, PreviewResponse, PruneResult, RestoreResult, ReviewDecide,
-    ReviewDecided, ReviewSession, SaveCv, SaveVariant, Target, TemplateManifest,
+    ReviewDecided, ReviewSession, SaveCv, SaveVariant, SignatureInfo, Target, TemplateManifest,
 };
 use cv_app::App;
 use cv_core::{AtsReport, CvSummary, Id, LintIssue, StoredCv, StoredVariant, VariantSummary};
@@ -561,6 +561,22 @@ pub async fn photo_remove(app: Shared<'_>, id: Id) -> Reply<()> {
     run(app, "photo_remove", move |a| a.photo_remove(&id)).await
 }
 
+/// Asks for an image of a signature and stores it for the CV (ADR-090).
+#[tauri::command]
+pub async fn signature_choose(app: Shared<'_>, id: Id) -> Reply<SignatureInfo> {
+    run(app, "signature_choose", move |a| a.signature_choose(&id)).await
+}
+
+#[tauri::command]
+pub async fn signature_get(app: Shared<'_>, id: Id) -> Reply<Option<SignatureInfo>> {
+    run(app, "signature_get", move |a| a.signature_get(&id)).await
+}
+
+#[tauri::command]
+pub async fn signature_remove(app: Shared<'_>, id: Id) -> Reply<()> {
+    run(app, "signature_remove", move |a| a.signature_remove(&id)).await
+}
+
 /// The licences of the fonts and crates the app ships
 /// (`THIRD_PARTY_LICENSES.md`, generated from `Cargo.lock`).
 #[tauri::command]
@@ -575,12 +591,29 @@ pub async fn open_data_dir(app: Shared<'_>) -> Reply<()> {
         let dir = a
             .data_dir()
             .ok_or_else(|| ApiError::new(ErrorCode::NotFound, "There is no data folder."))?;
-        open_folder(dir)
+        open_folder(dir, "The data folder could not be opened.")
     })
     .await
 }
 
-fn open_folder(dir: &std::path::Path) -> Reply<()> {
+/// Opens the log folder in the system's file manager. It is inside the data
+/// folder on Linux and elsewhere on macOS and Windows.
+#[tauri::command]
+pub async fn open_log_dir(app: Shared<'_>) -> Reply<()> {
+    run(app, "open_log_dir", |a| {
+        let dir = a
+            .log_dir()
+            .ok_or_else(|| ApiError::new(ErrorCode::NotFound, "There is no log folder."))?;
+        // The log may not have been written yet; the folder is still where
+        // it will be.
+        std::fs::create_dir_all(dir)
+            .map_err(|_| ApiError::new(ErrorCode::Io, "The log folder could not be opened."))?;
+        open_folder(dir, "The log folder could not be opened.")
+    })
+    .await
+}
+
+fn open_folder(dir: &std::path::Path, message: &'static str) -> Reply<()> {
     let program = if cfg!(windows) {
         "explorer"
     } else if cfg!(target_os = "macos") {
@@ -588,7 +621,7 @@ fn open_folder(dir: &std::path::Path) -> Reply<()> {
     } else {
         "xdg-open"
     };
-    let failed = || ApiError::new(ErrorCode::Io, "The data folder could not be opened.");
+    let failed = || ApiError::new(ErrorCode::Io, message);
     let mut command = std::process::Command::new(program);
     command.arg(dir);
     if cfg!(windows) {

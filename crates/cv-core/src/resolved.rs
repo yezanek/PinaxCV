@@ -8,8 +8,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    Basics, Bullet, Id, LanguageItem, Layout, Locale, Paper, Period, SkillGroup, TemplateId,
-    TemplateOptions,
+    Basics, Bullet, Closing, Id, LanguageItem, Layout, Locale, Paper, Period, SkillGroup,
+    TemplateId, TemplateOptions,
 };
 
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
@@ -22,6 +22,8 @@ pub struct ResolvedCv {
     pub paper: Paper,
     pub template: TemplateId,
     pub options: TemplateOptions,
+    /// The base CV's basics, except that `personal` keeps only the fields in
+    /// `show_personal`, which is the variant's set (ADR-088).
     pub basics: Basics,
     /// Whether to show the CV's profile photo: the variant's switch, or the
     /// base CV's without a variant. The image is attached at export time.
@@ -30,6 +32,9 @@ pub struct ResolvedCv {
     pub summary: Option<String>,
     /// Visible sections in final order. Empty sections are omitted.
     pub sections: Vec<ResolvedSection>,
+    /// The closing block with only the parts the variant (or, without one,
+    /// the base CV) shows; `closing.show` is that set (ADR-089).
+    pub closing: Closing,
     /// The base CV's layout, with placements of sections that no longer
     /// exist dropped. Renderers put each section in `layout.column_of`.
     #[serde(default)]

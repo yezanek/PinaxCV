@@ -26,7 +26,7 @@ Status: v1 spec, revised 2026-10-13 with the product owner's decisions (see `doc
 
 ### 1.2 Goals
 
-- G1. PDFs whose extracted text is in correct reading order, single column, standard headings, no icons, no ligature artifacts.
+- G1. PDFs whose extracted text is in correct reading order, single column by default (an optional two-column layout keeps each column in order, ADR-084), standard headings, no icons, no ligature artifacts.
 - G2. Live preview rendered by the **same engine** as the PDF export.
 - G3. Fully offline by default. Data is a single SQLite file the user owns.
 - G4. Import from Europass, JSON Resume, LinkedIn data export (ZIP), and pasted/PDF text (LLM-assisted).
@@ -43,7 +43,7 @@ Status: v1 spec, revised 2026-10-13 with the product owner's decisions (see `doc
 - No DOCX/ODT export in v1.
 - No hosted SaaS in v1; PostgreSQL, accounts, sync, multi-tenancy, billing, and server infrastructure are deferred until product demand justifies them.
 - No rich text editing; bullets are plain text.
-- No multi-column or graphic-heavy templates.
+- No graphic-heavy templates, and no layouts beyond one or two columns (ADR-084).
 
 ### 1.4 Users
 
@@ -169,6 +169,7 @@ pub struct Cv {
     pub basics: Basics,
     pub summary: Option<String>,     // professional summary, plain text
     pub sections: Vec<Section>,      // ordered
+    pub closing: Closing,            // optional consent clause, "place, date" line and signature, off by default (ADR-089, ADR-090)
 }
 
 pub struct Basics {
@@ -178,6 +179,9 @@ pub struct Basics {
     pub phone: Option<String>,
     pub location: Option<String>,    // "Berlin, Germany"
     pub links: Vec<Link>,            // Link { id, label, url }  (url printed visibly)
+    pub show_photo: bool,            // ADR-083
+    pub personal: PersonalDetails,   // optional European personal details, empty by default (ADR-088)
+    pub show_personal: BTreeSet<PersonalField>, // which of them the base CV prints; variants have their own set
 }
 
 pub enum Section {
@@ -261,6 +265,9 @@ pub struct Variant {
     pub summary_override: Option<String>,
     pub page_target: Option<u8>,                 // 1 or 2
     pub suggestions: Vec<Suggestion>,
+    pub show_photo: bool,                        // the variant's own photo switch (ADR-083)
+    pub show_personal: BTreeSet<PersonalField>,  // personal details this variant prints (ADR-088)
+    pub show_closing: BTreeSet<ClosingPart>,     // closing parts this variant prints (ADR-089, ADR-090)
     pub revision: u64,
 }
 
@@ -287,7 +294,8 @@ Resolve rules (implement exactly; property-test them):
 4. Apply `order` for each parent: listed IDs first in the given order, then remaining children in base order. The CV id as parent orders sections. Experience entries keep base (reverse-chronological) order unless the user reorders them manually or accepts an opt-in AI reorder suggestion (section 11.6).
 5. Apply `text_overrides`: a bullet id replaces that bullet's text; an entry id replaces that entry's description. Any other key is ignored and reported by `prune`. The summary uses only `summary_override`.
 6. **Locked entries:** overrides targeting `title`, `org`, `period`, `location` don't exist in the model, so this is enforced by the model itself: only text of bullets/description/summary can be overridden.
-7. The resolve function is pure and total (never panics, never returns IDs that do not exist).
+7. **Optional blocks:** the base CV uses `Basics.show_photo`, `Basics.show_personal` and `Closing.show`; a variant uses only its own `show_photo`, `show_personal` and `show_closing`, never the base's, so a new variant shows none of them. Personal details and closing parts that are not shown are left out of `ResolvedCv`.
+8. The resolve function is pure and total (never panics, never returns IDs that do not exist).
 
 Properties to test with `proptest`: (a) `resolve(cv, None)` equals base content; (b) hiding then unhiding an ID is the identity; (c) every ID in the output exists in the base; (d) resolve is idempotent when re-applied with an empty variant.
 
@@ -446,7 +454,7 @@ Requirements:
 - User CV content is escaped and never interpreted as HTML.
 - Only `https:` and `mailto:` links are clickable (same rule in the PDF); any other scheme, including `http:`, `tel:` and `javascript:`, is rendered as plain text and flagged by lint (`unsafe_link`).
 - Email and phone are optional per export: the export dialog has "Include email" (default on) and "Include phone" (default off) checkboxes, because the file is meant for public hosting.
-- Design: single column, the visitor's system font stack (no embedded web fonts), automatic light/dark via `prefers-color-scheme`, and a print stylesheet.
+- Design: single column by default (two columns as a CSS grid when the CV's layout has them, falling back to one on narrow screens, ADR-084), the visitor's system font stack (no embedded web fonts), automatic light/dark via `prefers-color-scheme`, and a print stylesheet.
 - "No external resources" is tested by parsing the output: any `src=`, `<link>`, `<script>`, `@import` or CSS `url(` that is not a `data:` URI fails; navigational `<a href>` links are allowed.
 - Export is completely offline.
 - HTML is generated directly from `ResolvedCv`; it must never be produced by parsing the PDF.
@@ -514,6 +522,9 @@ Rules:
   "opts": { "font_size_pt": 10.0, "line_spacing": 1.1, "margin_mm": 18.0, "accent": null },
   "basics": { "full_name": "Jane Doe", "headline": null, "email": "jane@example.com", "phone": null, "location": null, "links": [{"label":"Website","url":"https://example.com"}] },
   "summary": null,
+  "layout": { "two": false, "sidebar_width_pct": 32, "sidebar_first": false, "sidebar": [],
+              "main": [ { "kind": "name" }, { "kind": "contact" }, { "kind": "summary" },
+                        { "kind": "section", "index": 0 }, { "kind": "section", "index": 1 }, { "kind": "section", "index": 2 } ] },
   "sections": [
     { "kind": "experience", "heading": "Work Experience",
       "entries": [ { "title": "", "org": "", "location": "", "period": "Mar 2021 – Present",
@@ -524,20 +535,20 @@ Rules:
 }
 ```
 
-Absent optional fields are JSON `null` (Typst `none`), never empty strings, so the template never prints stray separators. Dates are formatted in Rust (locale + `date_style`), not in Typst. Section headings come from a locale table in Rust (`cv-core::locale`), with `title_override` taking precedence. Headings in v1: en only. Other locales fall back to English until added.
+`layout` lists the blocks each column draws, in order; `sections` holds the printed sections and blocks refer to them by index (ADR-084). With one column every block is in `main`. Absent optional fields are JSON `null` (Typst `none`), never empty strings, so the template never prints stray separators. Dates are formatted in Rust (locale + `date_style`), not in Typst. Section headings come from a locale table in Rust (`cv-core::locale`), with `title_override` taking precedence. Headings in v1: en only. Other locales fall back to English until added.
 
 ### 6.4 Template requirements (`templates/classic/template.typ`)
 
 Hard rules (document them in `docs/ATS_RULES.md` and enforce with tests):
 
-1. **Single column.** No `grid`/`columns` that place content side by side. The one exception is the optional profile photo (ADR-083), which may sit beside the contact block because it is a PDF artifact with no text, so extraction and reading order are unchanged (golden test). Dates go on the same line as title using right-aligned text via a fixed-width-safe approach: prefer `title, org` on the first line and `period · location` on the second line. Do **not** use `h(1fr)` with dates if extraction tests show dates are detached; keep the layout that passes the tests.
+1. **Single column by default.** No `grid`/`columns` that place content side by side, with two exceptions. The optional profile photo (ADR-083) may sit beside the contact block because it is a PDF artifact with no text, so extraction and reading order are unchanged (golden test). A CV whose layout has two columns (ADR-084) is drawn as one grid row with the column holding the name on the left, so the extracted text reads that column first; each column reads in order on its own (golden test), a page break never splits a bullet, the ATS check warns, and export offers a one-column ATS copy. Dates go on the same line as title using right-aligned text via a fixed-width-safe approach: prefer `title, org` on the first line and `period · location` on the second line. Do **not** use `h(1fr)` with dates if extraction tests show dates are detached; keep the layout that passes the tests.
 2. **Reading order = source order.** No `place`, `float`, `move`, or absolutely positioned elements for content.
 3. **Standard headings**, in the order: contact block, Summary, Work Experience, Education, Skills, Languages, Certifications, Projects, custom. (Order is per `cv.sections`; the standard names are the defaults.)
 4. **Contact block is body text, at the top of page 1**, with text labels or plain separators, no icons. The template places email and phone within the first five extracted lines; the ATS check (section 7.2) fails only beyond eight, which leaves room for a headline. URLs printed in full (linkified only for `https:`/`mailto:`).
 5. **No headers/footers containing contact info.** A plain-text "Page 1 of 2" footer is included only if the extraction tests prove it does not interleave with body text; otherwise there is no footer.
 6. **Ligatures off:** `#set text(ligatures: false)` (and set `features` off for `liga`, `clig` if supported). Kerning stays on.
 7. **Real lists:** use `list`/`-` for bullets, using a standard bullet glyph present in the font.
-8. **No images, no backgrounds, no skill bars/ratings**, no decorative glyphs. Accent color only for heading rules/text. The only exception is the user's own profile photo, off by default and switched on per CV or variant (ADR-083), drawn as an artifact.
+8. **No images, no backgrounds, no skill bars/ratings**, no decorative glyphs. Accent color only for heading rules/text. The only exceptions are the user's own profile photo (ADR-083) and signature image in the closing block (ADR-090), each off by default, switched on per CV or variant, and drawn as an artifact with no text.
 9. **Text is real text**, never outlined shapes.
 10. Font: Inter (body), sizes from options. Language set from `locale` (`#set text(lang: ...)`). Headings are printed as written (title case), not upper-cased.
 11. Handle empty/missing fields without leaving stray separators or blank headings. Empty sections are not emitted.
@@ -640,6 +651,7 @@ Signature: `lint(cv: &ResolvedCv, page_count: Option<u32>) -> Vec<LintIssue { co
 | `unsafe_link` | Warning | link URL scheme is not `https:` or `mailto:` (it will be printed as plain text) |
 | `missing_glyphs` | Warning | characters the embedded fonts cannot display |
 | `page_count` | Info | more than 2 pages (only when `page_count` is provided) |
+| `personal_detail_shown` | Info | a personal detail (date of birth, nationality, …) is printed; whether to show it depends on the target country (ADR-088) |
 
 ### 7.2 ATS check on the real PDF (`cv_render::ats`)
 
@@ -682,6 +694,7 @@ Fixtures (create as JSON, each valid against the schema):
 - `current_job` (`current: true`)
 - `special_chars` (ampersands, quotes, `#`, `$`, `@`, backslashes, Typst-significant characters like `*`, `_`, `` ` ``, to prove data cannot inject markup)
 - `unsafe_links` (`javascript:`, `data:`, `http:` and `tel:` URLs: assert none becomes a link in PDF or HTML, and `unsafe_link` lint fires)
+- `european` (every optional personal detail filled and shown, ADR-088: they print as plain lines after the contact details and the ATS check still passes)
 
 ### 8.2 Other tests
 

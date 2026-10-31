@@ -20,6 +20,17 @@ pub struct EuropassPerson {
     pub country: Option<String>,
     /// Plain text of `ExecutiveSummary`.
     pub summary: Option<String>,
+    /// Postal address lines of the home address: street lines, then
+    /// "PostalCode City". Empty when the XML gives only city and country.
+    pub address: Vec<String>,
+    /// `NationalityCode` values as written, for example "it".
+    pub nationalities: Vec<String>,
+    /// `BirthDate` as written, for example "1990-03-12".
+    pub birth_date: Option<String>,
+    /// `GenderCode` as written: "Male", "Female", "NotKnown" or "NotSpecified".
+    pub gender: Option<String>,
+    /// Driving licence categories from `Licenses/License`, for example "B".
+    pub licences: Vec<String>,
 }
 
 /// One `PositionHistory` with its employer.
@@ -114,6 +125,10 @@ pub fn parse_candidate(xml: &[u8]) -> Result<EuropassCv, XmlError> {
         for c in descendants(profile, "PersonCompetency") {
             cv.languages.push(language(c));
         }
+        for l in descendants(profile, "License") {
+            let code = child_text(l, "LicenseTypeCode").or_else(|| child_text(l, "LicenseName"));
+            cv.person.licences.extend(code);
+        }
     }
     cv.photo = photo(root);
     Ok(cv)
@@ -154,10 +169,26 @@ fn person(p: Node) -> EuropassPerson {
         out.given_name = child_text(name, "GivenName").unwrap_or_default();
         out.family_name = child_text(name, "FamilyName").unwrap_or_default();
     }
+    // The postal address: a home one first, then any but a business one,
+    // then the first (rank 0, 1, 2).
+    let mut address_rank = u8::MAX;
     for c in children(p, "Communication") {
         if let Some(address) = child(c, "Address") {
             out.city = out.city.or_else(|| child_text(address, "CityName"));
             out.country = out.country.or_else(|| child_text(address, "CountryCode"));
+            let use_code = child_text(c, "UseCode")
+                .or_else(|| address.attribute("type").map(str::to_owned))
+                .map(|u| u.to_ascii_lowercase());
+            let rank = match use_code.as_deref() {
+                Some("home" | "personal" | "private") => 0,
+                Some("business" | "work") => 2,
+                _ => 1,
+            };
+            let lines = address_lines(address);
+            if rank < address_rank && !lines.is_empty() {
+                out.address = lines;
+                address_rank = rank;
+            }
             continue;
         }
         let uri = child_text(c, "URI");
@@ -176,7 +207,45 @@ fn person(p: Node) -> EuropassPerson {
             _ => {}
         }
     }
+    out.nationalities = children(p, "NationalityCode")
+        .filter_map(|n| non_empty(text_of(n)))
+        .collect();
+    out.birth_date = child_text(p, "BirthDate");
+    out.gender = child_text(p, "GenderCode");
     out
+}
+
+/// Street lines (`AddressLine`, or `StreetName BuildingNumber, Unit`) and
+/// "PostalCode City". Nothing when there is no street and no postal code, so
+/// a city alone stays in the location only.
+fn address_lines(a: Node) -> Vec<String> {
+    let mut lines: Vec<String> = children(a, "AddressLine")
+        .filter_map(|n| non_empty(text_of(n)))
+        .collect();
+    if lines.is_empty() {
+        let street = [child_text(a, "StreetName"), child_text(a, "BuildingNumber")]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>()
+            .join(" ");
+        let street = match child_text(a, "Unit") {
+            Some(unit) if !street.is_empty() => format!("{street}, {unit}"),
+            Some(unit) => unit,
+            None => street,
+        };
+        lines.extend(non_empty(street));
+    }
+    let postal = child_text(a, "PostalCode");
+    if lines.is_empty() && postal.is_none() {
+        return Vec::new();
+    }
+    let town = [postal, child_text(a, "CityName")]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>()
+        .join(" ");
+    lines.extend(non_empty(town));
+    lines
 }
 
 fn position(p: Node, organisation: &str) -> EuropassPosition {
@@ -450,6 +519,70 @@ mod tests {
             cv.languages[0].scores,
             [("CEF-Writing-Production".into(), "C1".into())]
         );
+    }
+
+    /// Synthetic personal details in the element shape of the Europass
+    /// schema (ECV 3.x: `NationalityCode`, `hr:BirthDate`, `GenderCode`,
+    /// `Address`, `eures:Licenses`).
+    const PERSONAL_XML: &str = r#"<Candidate xmlns="http://www.europass.eu/1.0" xmlns:oa="http://www.openapplications.org/oagis/9" xmlns:hr="http://www.hr-xml.org/3" xmlns:eures="http://www.europass_eures.eu/1.0">
+  <CandidatePerson>
+    <PersonName><oa:GivenName>Giulia</oa:GivenName><hr:FamilyName>Esempio</hr:FamilyName></PersonName>
+    <Communication><UseCode>home</UseCode><Address type="home"><oa:AddressLine>Via Esempio 1</oa:AddressLine><oa:CityName>Torino</oa:CityName><CountryCode>it</CountryCode><oa:PostalCode>10100</oa:PostalCode></Address></Communication>
+    <Communication><Address><oa:StreetName>Ignored</oa:StreetName></Address></Communication>
+    <NationalityCode>it</NationalityCode>
+    <NationalityCode>de</NationalityCode>
+    <hr:BirthDate>1990-03-12</hr:BirthDate>
+    <GenderCode>Female</GenderCode>
+  </CandidatePerson>
+  <CandidateProfile>
+    <eures:Licenses>
+      <eures:License><hr:LicenseTypeCode listName="EURES_LicenseTypeCode">B</hr:LicenseTypeCode></eures:License>
+      <eures:License><hr:LicenseName>C1</hr:LicenseName></eures:License>
+    </eures:Licenses>
+  </CandidateProfile>
+</Candidate>"#;
+
+    #[test]
+    fn reads_personal_details() {
+        let p = parse_candidate(PERSONAL_XML.as_bytes())
+            .expect("parse")
+            .person;
+        assert_eq!(p.address, ["Via Esempio 1", "10100 Torino"]);
+        assert_eq!(p.city.as_deref(), Some("Torino"));
+        assert_eq!(p.nationalities, ["it", "de"]);
+        assert_eq!(p.birth_date.as_deref(), Some("1990-03-12"));
+        assert_eq!(p.gender.as_deref(), Some("Female"));
+        assert_eq!(p.licences, ["B", "C1"]);
+        // The main fixture has a city only: no postal address.
+        let main = parse_candidate(XML.as_bytes()).expect("parse").person;
+        assert!(main.address.is_empty());
+        assert_eq!(main.birth_date.as_deref(), Some("1990-01-01"));
+    }
+
+    #[test]
+    fn the_home_address_wins_over_a_business_one() {
+        let xml = r#"<Candidate xmlns="http://www.europass.eu/1.0"><CandidatePerson>
+            <Communication><UseCode>Business</UseCode><Address><AddressLine>Corso Ufficio 9</AddressLine><PostalCode>20100</PostalCode><CityName>Milano</CityName></Address></Communication>
+            <Communication><UseCode>home</UseCode><Address><AddressLine>Via Esempio 1</AddressLine><PostalCode>10100</PostalCode><CityName>Torino</CityName></Address></Communication>
+            </CandidatePerson></Candidate>"#;
+        let p = parse_candidate(xml.as_bytes()).expect("parses").person;
+        assert_eq!(p.address, ["Via Esempio 1", "10100 Torino"]);
+        // Without a home one, a business address is still better than none.
+        let only_work = xml.replace(
+            "<Communication><UseCode>home</UseCode><Address><AddressLine>Via Esempio 1</AddressLine><PostalCode>10100</PostalCode><CityName>Torino</CityName></Address></Communication>",
+            "",
+        );
+        let p = parse_candidate(only_work.as_bytes())
+            .expect("parses")
+            .person;
+        assert_eq!(p.address, ["Corso Ufficio 9", "20100 Milano"]);
+    }
+
+    #[test]
+    fn street_parts_make_an_address_line() {
+        let xml = r#"<Candidate xmlns="http://www.europass.eu/1.0"><CandidatePerson><Communication><Address><StreetName>Hauptstraße</StreetName><BuildingNumber>5</BuildingNumber><Unit>3. OG</Unit><PostalCode>10115</PostalCode><CityName>Berlin</CityName></Address></Communication></CandidatePerson></Candidate>"#;
+        let p = parse_candidate(xml.as_bytes()).expect("parse").person;
+        assert_eq!(p.address, ["Hauptstraße 5, 3. OG", "10115 Berlin"]);
     }
 
     #[test]

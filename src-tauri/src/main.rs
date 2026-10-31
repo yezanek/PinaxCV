@@ -70,8 +70,9 @@ fn main() {
             preview::respond(app.as_deref().map(Arc::as_ref), request.uri().path())
         })
         .setup(|tauri_app| {
-            if let Ok(logs) = tauri_app.path().app_log_dir() {
-                log::init(&logs);
+            let log_dir = tauri_app.path().app_log_dir().ok();
+            if let Some(logs) = &log_dir {
+                log::init(logs);
             }
             let dir = tauri_app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
@@ -86,6 +87,10 @@ fn main() {
             )
             .with_secrets(Box::new(keychain::Keychain))
             .with_data_dir(dir);
+            let app = match log_dir {
+                Some(logs) => app.with_log_dir(logs),
+                None => app,
+            };
             let app = Arc::new(app);
             tauri_app.manage(app.clone());
             purge_in_background(app);
@@ -132,6 +137,7 @@ fn main() {
             commands::get_settings,
             commands::set_cv_defaults,
             commands::open_data_dir,
+            commands::open_log_dir,
             commands::third_party_licenses,
             commands::backup_db,
             commands::restore_db,
@@ -141,6 +147,9 @@ fn main() {
             commands::photo_get,
             commands::photo_apply,
             commands::photo_remove,
+            commands::signature_choose,
+            commands::signature_get,
+            commands::signature_remove,
         ])
         .run(context)
         .unwrap_or_else(|e| panic!("PinaxCV could not start: {e}"));

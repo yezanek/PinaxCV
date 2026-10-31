@@ -1,5 +1,6 @@
 //! App settings (spec section 12.2, screen 5) apart from AI, which lives in
-//! `ai.rs`: what new CVs start with, the data folder and the about box.
+//! `ai.rs`: what new CVs start with, the data and log folders and the about
+//! box.
 
 use std::path::PathBuf;
 
@@ -34,6 +35,17 @@ impl App {
         self.data_dir.as_deref()
     }
 
+    /// The folder holding the log file, shown in Settings.
+    pub fn with_log_dir(mut self, dir: PathBuf) -> Self {
+        self.log_dir = Some(dir);
+        self
+    }
+
+    /// The log folder, if the app has a log.
+    pub fn log_dir(&self) -> Option<&std::path::Path> {
+        self.log_dir.as_deref()
+    }
+
     /// A saved default, or the type's default when unset or unknown (a
     /// value from a newer version, say).
     fn default_of<T: DeserializeOwned + Default>(&self, key: &str) -> Result<T> {
@@ -66,6 +78,7 @@ impl App {
         Ok(AppSettings {
             defaults: self.cv_defaults()?,
             data_dir: self.data_dir.as_ref().map(|d| d.display().to_string()),
+            log_dir: self.log_dir.as_ref().map(|d| d.display().to_string()),
             version: env!("CARGO_PKG_VERSION").to_owned(),
             license: env!("CARGO_PKG_LICENSE").to_owned(),
         })

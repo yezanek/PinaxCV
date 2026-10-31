@@ -7,8 +7,9 @@ use std::fmt;
 
 use crate::ApiError;
 use cv_core::{
-    AtsReport, Cv, DateStyle, Diagnostic, Id, JobTarget, Link, Locale, Paper, Section, StoredCv,
-    StoredVariant, Suggestion, TemplateId, Timestamp, Variant, VerificationWarning,
+    AtsReport, Cv, DateStyle, Diagnostic, Id, JobTarget, Link, Locale, Paper, PersonalDetails,
+    PersonalField, Section, StoredCv, StoredVariant, Suggestion, TemplateId, Timestamp, Variant,
+    VerificationWarning,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -169,6 +170,9 @@ pub enum ImportField {
     Phone,
     Location,
     Summary,
+    /// One of the optional personal details (ADR-088), for example
+    /// `{"personal": "birth_date"}`.
+    Personal(PersonalField),
 }
 
 /// What an importer read from a file. Nothing is saved until
@@ -185,6 +189,10 @@ pub struct ImportPreview {
     pub links: Vec<Link>,
     pub summary: Option<String>,
     pub sections: Vec<Section>,
+    /// Optional personal details read from the file. An import never
+    /// switches them on (ADR-088).
+    #[serde(default)]
+    pub personal: PersonalDetails,
     /// What the importer skipped or had to guess, in words for the user.
     pub warnings: Vec<String>,
     /// Bullets an AI import could not find word for word in the text; the
@@ -343,9 +351,13 @@ pub struct CvDefaults {
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
 pub struct AppSettings {
     pub defaults: CvDefaults,
-    /// The folder holding the database and the log; `None` when the app
-    /// keeps its data in memory (tests).
+    /// The folder holding the database; `None` when the app keeps its data
+    /// in memory (tests).
     pub data_dir: Option<String>,
+    /// The folder holding the log file. It is inside the data folder on
+    /// Linux and elsewhere on macOS and Windows; `None` without a log.
+    #[serde(default)]
+    pub log_dir: Option<String>,
     /// The app's version, from its build.
     pub version: String,
     /// The app's SPDX licence identifier.
@@ -605,6 +617,13 @@ pub struct PhotoInfo {
     pub crop: PhotoCrop,
     /// The original, to crop again.
     pub original: PhotoSource,
+}
+
+/// A CV's signature image for the closing block (ADR-090).
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct SignatureInfo {
+    /// `data:image/png;base64,…`, with metadata already removed.
+    pub data_url: String,
 }
 
 /// Crops a chosen file, or the CV's original again, and makes it the CV's

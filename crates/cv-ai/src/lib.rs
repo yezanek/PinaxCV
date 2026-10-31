@@ -23,7 +23,7 @@ pub use advice::{
     CheckedNote, CheckedSummary, NoteCategory, Review, find_gaps, review_cv, summarize,
 };
 pub use cache::{MemoryCache, ResponseCache, cache_key, generate_cached};
-pub use payload::{CvPayload, PayloadOptions, build_cv_payload};
+pub use payload::{CvPayload, PayloadOptions, build_cv_payload, build_cv_payload_redacting};
 pub use prompts::{Kind, Prompt, PromptError};
 pub use stages::{
     ChangeType, CheckedRewrite, Relevance, Rewrites, StageContext, parse_job, rewrite_bullets,

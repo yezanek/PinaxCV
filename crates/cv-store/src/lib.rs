@@ -115,6 +115,15 @@ pub trait Store: Send + Sync {
     /// Removes the CV's photo, if any.
     fn photo_delete(&self, cv_id: &Id) -> Result<()>;
 
+    /// The CV's signature image (PNG, ADR-090), if it has one and the CV is
+    /// not deleted.
+    fn signature_get(&self, cv_id: &Id) -> Result<Option<Vec<u8>>>;
+    /// Sets or replaces the CV's signature; [`StoreError::NotFound`] for a
+    /// missing or deleted CV.
+    fn signature_put(&self, cv_id: &Id, image: &[u8]) -> Result<()>;
+    /// Removes the CV's signature, if any.
+    fn signature_delete(&self, cv_id: &Id) -> Result<()>;
+
     /// The latest AI review of a CV made without a variant (spec section
     /// 11.11): opaque JSON and when it was saved.
     fn review_session_get(&self, cv_id: &Id) -> Result<Option<(String, Timestamp)>>;

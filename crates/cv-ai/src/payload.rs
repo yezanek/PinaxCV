@@ -6,7 +6,9 @@
 
 use std::sync::LazyLock;
 
-use cv_core::{Basics, PartialDate, Period, ResolvedCv, ResolvedEntry, ResolvedSection};
+use cv_core::{
+    Basics, PartialDate, Period, PersonalDetails, ResolvedCv, ResolvedEntry, ResolvedSection,
+};
 use regex::Regex;
 use serde::Serialize;
 
@@ -94,8 +96,24 @@ pub struct PayloadLanguage {
 }
 
 /// Builds the payload for `cv` (spec section 11.3).
+///
+/// A resolved CV holds only the personal details it shows (ADR-088), so a
+/// hidden postal address is not known here; callers that have the stored CV
+/// use [`build_cv_payload_redacting`] so the address is still taken out of
+/// free text.
 pub fn build_cv_payload(cv: &ResolvedCv, opts: PayloadOptions) -> CvPayload {
-    let r = Redactor::new(&cv.basics, opts);
+    build_cv_payload_redacting(cv, &cv.basics.personal, opts)
+}
+
+/// [`build_cv_payload`], also redacting the postal address in `stored`, the
+/// stored CV's personal details, whether or not `cv` shows it. Nothing from
+/// `stored` is added to the payload.
+pub fn build_cv_payload_redacting(
+    cv: &ResolvedCv,
+    stored: &PersonalDetails,
+    opts: PayloadOptions,
+) -> CvPayload {
+    let r = Redactor::new(&cv.basics, opts).also_redacting(stored);
     let place = |l: &Option<String>| {
         l.as_deref()
             .filter(|_| opts.send_location)
@@ -271,11 +289,33 @@ impl Redactor {
                 known.push(l.clone());
             }
         }
+        // The postal address (ADR-088) never goes, whole or line by line.
+        if let Some(address) = &basics.personal.address {
+            known.extend(address.lines().map(str::to_owned));
+        }
         known.retain(|k| k.trim().chars().count() >= 3);
         known.iter_mut().for_each(|k| *k = k.trim().to_owned());
         // Longest first, so a value containing another one goes whole.
         known.sort_by_key(|k| std::cmp::Reverse(k.len()));
         Self { known }
+    }
+
+    /// Also takes out the postal address in `personal`, whole or line by
+    /// line, for example the stored address that a resolved CV hides.
+    #[must_use]
+    pub fn also_redacting(mut self, personal: &PersonalDetails) -> Self {
+        if let Some(address) = &personal.address {
+            self.known.extend(
+                address
+                    .lines()
+                    .map(str::trim)
+                    .filter(|l| l.chars().count() >= 3)
+                    .map(str::to_owned),
+            );
+            self.known.sort_by_key(|k| std::cmp::Reverse(k.len()));
+            self.known.dedup();
+        }
+        self
     }
 
     /// A redactor that knows no CV: it takes out only what is shaped like
@@ -397,6 +437,41 @@ mod tests {
         let r = Redactor::new(&cv.basics, PayloadOptions::default());
         let out = r.text("Code at github.com/janedoe and GitHub.com/JaneDoe/x.");
         assert!(!out.to_lowercase().contains("janedoe"), "{out}");
+    }
+
+    #[test]
+    fn the_postal_address_is_redacted_line_by_line() {
+        let mut cv = typical();
+        cv.basics.personal.address = Some("Via Esempio 1\n10100 Torino\n".into());
+        let r = Redactor::new(&cv.basics, PayloadOptions::default());
+        let out = r.text("Write to via esempio 1, 10100 Torino, or visit Turin.");
+        assert!(!out.to_lowercase().contains("esempio"), "{out}");
+        assert!(!out.contains("10100"), "{out}");
+        assert!(out.contains("Turin"), "{out}");
+    }
+
+    #[test]
+    fn a_hidden_postal_address_is_still_redacted() {
+        let mut cv = typical();
+        cv.basics.personal.address = Some("Via Esempio 1\n10100 Torino".into());
+        cv.summary = Some("Based at Via Esempio 1, 10100 Torino.".into());
+        // The address switch is off, so the resolved CV does not have it.
+        let resolved = cv.resolve(None);
+        assert_eq!(resolved.basics.personal.address, None);
+        let leaky = build_cv_payload(&resolved, PayloadOptions::default());
+        assert!(
+            leaky
+                .summary
+                .as_deref()
+                .is_some_and(|s| s.contains("Esempio"))
+        );
+        let p =
+            build_cv_payload_redacting(&resolved, &cv.basics.personal, PayloadOptions::default());
+        let json = serde_json::to_string(&p).expect("json");
+        assert!(
+            !json.contains("Esempio") && !json.contains("10100"),
+            "{json}"
+        );
     }
 
     #[test]

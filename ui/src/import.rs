@@ -10,7 +10,9 @@ use cv_api::{
     EntryChoice, EntryDecision, EntryMatch, ErrorCode, ImportCommit, ImportField, ImportMatch,
     ImportMatchRequest, ImportPreview, ImportTarget,
 };
-use cv_core::{CvSummary, Entry, EntrySection, Id, Section, StoredCv};
+use cv_core::{
+    CvSummary, Entry, EntrySection, Id, PersonalDetails, PersonalField, Section, StoredCv,
+};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 
@@ -46,6 +48,16 @@ pub fn entry_label(e: &Entry) -> String {
 }
 
 /// One line per imported section: its name and how many items it holds.
+/// "Personal details: Nationality, Date of birth" when the import read any.
+fn personal_line(p: &PersonalDetails) -> Option<String> {
+    let names: Vec<&str> = PersonalField::ALL
+        .into_iter()
+        .filter(|f| p.is_filled(*f))
+        .map(crate::personal::label)
+        .collect();
+    (!names.is_empty()).then(|| fill(t().import_personal_line, &[("fields", &names.join(", "))]))
+}
+
 pub fn section_lines(sections: &[Section]) -> Vec<String> {
     let s = t();
     sections
@@ -127,6 +139,7 @@ fn field_label(field: ImportField) -> &'static str {
         ImportField::Phone => s.phone,
         ImportField::Location => s.location,
         ImportField::Summary => s.summary,
+        ImportField::Personal(p) => crate::personal::label(p),
     }
 }
 
@@ -254,7 +267,8 @@ pub fn ImportWizard(
         .full_name
         .clone()
         .unwrap_or_else(|| s.imported_cv_default.to_owned());
-    let lines = section_lines(&preview.sections);
+    let mut lines = section_lines(&preview.sections);
+    lines.extend(personal_line(&preview.personal));
     let has_warnings = !preview.warnings.is_empty();
     let warnings = StoredValue::new(preview.warnings.clone());
     let review_bullets = StoredValue::new(needs_review_texts(&preview));
@@ -522,6 +536,7 @@ mod tests {
                 title_override: None,
                 entries: vec![e],
             })],
+            personal: PersonalDetails::default(),
             warnings: Vec::new(),
             needs_review: vec![id(6)],
             photo: None,
