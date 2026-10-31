@@ -169,3 +169,71 @@ fn images(pdf: &[u8]) -> usize {
         })
         .count()
 }
+
+/// The closing block (ADR-089) prints as plain text after the last section,
+/// not in a page footer, and the ATS check still passes.
+#[test]
+fn the_closing_block_is_text_after_the_last_section() {
+    use cv_core::{CalendarDate, ClosingPart};
+    let mut cv = fixture("typical");
+    cv.closing.consent = Some(
+        "Autorizzo il trattamento dei miei dati personali presenti nel CV ai sensi del \
+         Regolamento UE 2016/679 (GDPR) e del D.Lgs. 196/2003."
+            .into(),
+    );
+    cv.closing.place = Some("Berlin".into());
+    cv.closing.show = [ClosingPart::Consent, ClosingPart::PlaceDate].into();
+    let resolved = cv.resolve(None);
+    let options = ExportOptions {
+        date: CalendarDate::parse("2026-10-30"),
+        ..ExportOptions::default()
+    };
+    let compiled = Renderer::new()
+        .compile(&resolved, &options)
+        .expect("compiles");
+    assert!(compiled.warnings().is_empty(), "{:?}", compiled.warnings());
+    let bytes = compiled.to_pdf().expect("pdf");
+    let report = ats_report(&bytes, &resolved);
+    let failed: Vec<_> = report.failed_checks().collect();
+    assert!(failed.is_empty(), "{failed:#?}");
+    let text = report
+        .extracted_text
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(
+        text.ends_with("Regolamento UE 2016/679 (GDPR) e del D.Lgs. 196/2003. Berlin, 30 Oct 2026"),
+        "{text}"
+    );
+}
+
+/// A closing block taller than a page breaks across pages instead of
+/// overflowing one; a short one is never split (ADR-089).
+#[test]
+fn a_closing_block_taller_than_a_page_may_break() {
+    use cv_core::ClosingPart;
+    let mut cv = fixture("minimal");
+    let renderer = Renderer::new();
+    let pages = |cv: &Cv| {
+        renderer
+            .compile(&cv.resolve(None), &ExportOptions::default())
+            .expect("compiles")
+            .page_count()
+    };
+    let base = pages(&cv);
+    cv.closing.show = [ClosingPart::Consent].into();
+    cv.closing.consent = Some("I consent to the processing of my personal data. ".repeat(400));
+    let long = pages(&cv);
+    assert!(long >= base + 2, "{base} -> {long}");
+    let text = LopdfExtractor
+        .extract(
+            &renderer
+                .compile(&cv.resolve(None), &ExportOptions::default())
+                .expect("compiles")
+                .to_pdf()
+                .expect("pdf"),
+        )
+        .expect("extracts");
+    let text = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    assert_eq!(text.matches("consent to the processing").count(), 400);
+}

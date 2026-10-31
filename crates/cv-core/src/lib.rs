@@ -6,6 +6,7 @@
 
 #![forbid(unsafe_code)]
 
+mod closing;
 mod cv;
 mod id;
 mod job;
@@ -28,6 +29,7 @@ pub mod validate;
 #[cfg(test)]
 mod test_fixtures;
 
+pub use closing::{CONSENT_PRESETS, Closing, ClosingPart, ConsentPreset};
 pub use cv::*;
 pub use id::{Id, IdSource, InvalidId};
 pub use job::{JobRequirements, Requirement, RequirementKind};

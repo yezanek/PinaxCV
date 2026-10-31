@@ -85,6 +85,18 @@ pub fn to_html(cv: &ResolvedCv, options: &ExportOptions) -> String {
         write_blocks(&mut out, &d, &l.main[lead..], photo);
         out.push_str("</main>\n");
     }
+    // The optional closing block (ADR-089), after the last section and
+    // below the columns.
+    if let Some(c) = &d.closing {
+        out.push_str("<footer class=\"closing\">\n");
+        if let Some(consent) = &c.consent {
+            let _ = writeln!(out, "<p class=\"consent\">{}</p>", esc(consent));
+        }
+        if let Some(line) = &c.place_date {
+            let _ = writeln!(out, "<p>{}</p>", esc(line));
+        }
+        out.push_str("</footer>\n");
+    }
     out.push_str("</body>\n</html>\n");
     out
 }
@@ -605,6 +617,25 @@ mod tests {
     }
 
     #[test]
+    fn the_closing_block_follows_the_main_content() {
+        use cv_core::ClosingPart;
+        let mut cv = testdata::fixture("typical");
+        cv.closing.consent = Some("Autorizzo il trattamento <dei> dati.".into());
+        cv.closing.place = Some("Torino".into());
+        cv.closing.show = [ClosingPart::Consent, ClosingPart::PlaceDate].into();
+        let options = ExportOptions {
+            date: cv_core::CalendarDate::parse("2026-10-30"),
+            ..ExportOptions::html_default()
+        };
+        let doc = to_html(&cv.resolve(None), &options);
+        assert!(doc.contains(
+            "</main>\n<footer class=\"closing\">\n<p class=\"consent\">Autorizzo il trattamento &lt;dei&gt; dati.</p>\n<p>Torino, 30 Oct 2026</p>\n</footer>\n</body>"
+        ), "{doc}");
+        cv.closing.show.clear();
+        assert!(!to_html(&cv.resolve(None), &options).contains("<footer"));
+    }
+
+    #[test]
     fn a_shown_photo_is_an_embedded_decorative_image() {
         let jpeg: std::sync::Arc<[u8]> = vec![0xff, 0xd8, 0xff, 0xd9].into();
         let options = ExportOptions {
@@ -644,6 +675,7 @@ mod tests {
                 include_email: true,
                 include_phone: true,
                 photo: None,
+                date: None,
             },
         );
         assert!(both.contains("mailto:jane@example.com") && both.contains("+49 30 1234 5678"));
@@ -653,6 +685,7 @@ mod tests {
                 include_email: false,
                 include_phone: false,
                 photo: None,
+                date: None,
             },
         );
         assert!(!neither.contains("jane@example.com") && !neither.contains("+49 30"));

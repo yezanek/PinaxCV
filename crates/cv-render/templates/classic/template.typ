@@ -164,3 +164,18 @@
     grid(columns: (1fr, side), column-gutter: 1.5em, main, sidebar)
   }
 }
+
+// The optional closing block (ADR-089): a consent clause and a "place,
+// date" line, as plain text after the last section and below the columns,
+// never in a page footer (ATS rule 5). It stays together on one page unless
+// it is taller than a page, when it may break rather than overflow.
+#if d.closing != none {
+  let body = [
+    #if d.closing.consent != none { block(below: 0.8em, text(size: 0.9em, d.closing.consent)) }
+    #if d.closing.place_date != none { block(d.closing.place_date) }
+  ]
+  layout(size => {
+    let height = measure(block(width: size.width, body)).height
+    block(above: 1.5em, breakable: height > size.height, body)
+  })
+}

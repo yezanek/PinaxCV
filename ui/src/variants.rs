@@ -10,6 +10,7 @@ use leptos::task::spawn_local;
 use serde::Serialize;
 
 use crate::advice::GapList;
+use crate::closing::VariantClosing;
 use crate::drag::DragHandle;
 use crate::fit::{EditFn, FitPanel};
 use crate::i18n::{error_message, fill, t};
@@ -603,6 +604,7 @@ pub fn VariantBar(
                     {t().photo_show_variant}
                 </label>
                 <VariantPersonal cv=cv variant=variant edit=edit_cb disabled=tailoring.into() />
+                <VariantClosing variant=variant edit=edit_cb disabled=tailoring.into() />
                 <button prop:disabled=move || busy.get() || duplicating.get() || tailoring.get() on:click=move |_| duplicate.run(())>{t().duplicate_variant}</button>
                 <Show when=move || confirming.with(Option::is_none)
                     fallback=move || view! {
