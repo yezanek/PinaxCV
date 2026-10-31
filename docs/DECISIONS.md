@@ -596,6 +596,13 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Checks add an informational note (`photo`) when the shown version has a photo: many employers, in the US and the UK for example, prefer CVs without one.
 - Not in this change: reading the photo from a Europass XML import (a follow-up).
 
+## ADR-085 — Purging deleted CVs after 30 days (M8, issue #113)
+
+- Spec section 5.2 keeps a soft-deleted CV for 30 days. `cv-app` names the period `DELETED_CV_RETENTION` and `App::purge_deleted_cvs` removes older deleted CVs for good with `Store::purge_deleted`; foreign keys cascade to their variants, snapshots and photo.
+- The shell runs it once per start, after the database opens, on its own thread, so the window never waits for it. The log line carries only the number of CVs removed (or the error code), never titles.
+- The 8-second undo toast is unaffected: it restores a CV deleted seconds ago.
+- Purged rows are deleted with SQL `DELETE`, not `VACUUM`; their text may stay in free pages of the database file until SQLite reuses them. "Delete all data" remains the way to erase everything from the file (ADR-081).
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
