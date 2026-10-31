@@ -92,5 +92,37 @@ fn create_edit_preview_and_export() {
     let bytes = fs::read(&pdf).expect("read pdf");
     assert!(bytes.starts_with(b"%PDF"), "not a PDF: {}", pdf.display());
 
+    // Style tab (ADR-084): two columns, then the name card moves to the
+    // sidebar with its keyboard button.
+    s.click(&s.wait_for("//button[@id='tab-style']").expect("Style tab"))
+        .expect("open Style");
+    s.click(
+        &s.wait_for(
+            "//fieldset[contains(@class,'layout')]//label[normalize-space()='Two columns']/input",
+        )
+        .expect("Two columns"),
+    )
+    .expect("two columns");
+    s.click(
+        &s.wait_for(&format!(
+            "//div[@data-drop-zone='main']//button[@aria-label={}]",
+            xpath_literal("Move Name to the other column")
+        ))
+        .expect("move button"),
+    )
+    .expect("move name");
+    s.wait_for("//div[@data-drop-zone='sidebar']//li[@data-drop-key='top:name']")
+        .expect("name card in the sidebar");
+    // Then the summary card is dragged below it.
+    let handle = s
+        .wait_for("//li[@data-drop-key='top:summary']//span[contains(@class,'drag-handle')]")
+        .expect("summary handle");
+    let name_card = s
+        .wait_for("//div[@data-drop-zone='sidebar']//li[@data-drop-key='top:name']")
+        .expect("name card");
+    s.drag(&handle, &name_card, 12).expect("drag");
+    s.wait_for("//div[@data-drop-zone='sidebar']//li[@data-drop-key='top:summary']")
+        .expect("summary card dragged to the sidebar");
+
     s.quit().expect("quit");
 }

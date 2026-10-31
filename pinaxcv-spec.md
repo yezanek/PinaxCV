@@ -1279,7 +1279,7 @@ Assertions (CI replays recorded responses; live runs against a real model are do
 
 ### 12.8 Style tab
 
-Template picker (v1: one), options controls bound to `TemplateOptions` with sliders/segmented controls within ranges, paper size, locale (v1: English only; affects headings and date formatting), date style. Values outside the manifest ranges are clamped by the backend.
+Layout panel (ADR-084): One column / Two columns, the sidebar width (25 to 40%), and a page canvas with one card per block (name, contact, summary, each section). Cards are dragged within and between the columns; each also has Move up, Move down and Move to the other column buttons. The column holding the name is drawn on the left. Template picker (v1: one), options controls bound to `TemplateOptions` with sliders/segmented controls within ranges, paper size, locale (v1: English only; affects headings and date formatting), date style. Values outside the manifest ranges are clamped by the backend.
 
 ### 12.9 Accessibility
 

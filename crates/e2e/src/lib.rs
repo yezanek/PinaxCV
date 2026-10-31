@@ -66,6 +66,25 @@ impl Session {
         value_of(reply.body_mut().read_json().map_err(|e| e.to_string())?)
     }
 
+    /// Drags `from` with the mouse and lets go `dy` pixels below the centre
+    /// of `to`. Two moves over the target, so pointer-event code sees it.
+    pub fn drag(&self, from: &Element, to: &Element, dy: i64) -> Result<()> {
+        let at = |el: &Element, x: i64, y: i64, ms: u64| json!({ "type": "pointerMove", "duration": ms, "origin": { ELEMENT_KEY: el.0 }, "x": x, "y": y });
+        let body = json!({ "actions": [{
+            "type": "pointer",
+            "id": "mouse",
+            "parameters": { "pointerType": "mouse" },
+            "actions": [
+                at(from, 0, 0, 0),
+                { "type": "pointerDown", "button": 0 },
+                at(to, 0, dy, 200),
+                at(to, 1, dy, 100),
+                { "type": "pointerUp", "button": 0 },
+            ],
+        }]});
+        self.post("/actions", &body).map(|_| ())
+    }
+
     /// The first element matching the XPath, if any.
     pub fn find(&self, xpath: &str) -> Result<Option<Element>> {
         let body = json!({ "using": "xpath", "value": xpath });

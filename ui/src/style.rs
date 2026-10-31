@@ -10,6 +10,7 @@ use leptos::task::spawn_local;
 use crate::entries::Edit;
 use crate::i18n::{error_message, t};
 use crate::ipc::{NoArgs, call};
+use crate::layout::LayoutPanel;
 
 /// The value shown next to a slider: at most two decimals, no trailing zeros.
 pub fn show_number(value: f32) -> String {
@@ -131,6 +132,7 @@ pub fn StyleTab(
 
     let s = t();
     view! {
+        <LayoutPanel cv=cv edit=edit />
         <label>{s.template}
             <select on:change=move |ev| {
                 let id = TemplateId(event_target_value(&ev));
