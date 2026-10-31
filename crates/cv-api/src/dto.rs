@@ -202,6 +202,10 @@ pub struct ImportPreview {
     /// preview highlights them.
     #[serde(default)]
     pub needs_review: Vec<Id>,
+    /// The profile photo the file carried (a Europass attachment), already
+    /// cleaned and cropped as it will be stored, as a `data:` URL.
+    #[serde(default)]
+    pub photo: Option<String>,
 }
 
 /// Where the text for a text import comes from (spec section 9.4).
@@ -246,6 +250,9 @@ pub struct ImportMatch {
     /// Imported entries that look like an existing entry (same kind of
     /// section, organisation, title and start year).
     pub matches: Vec<EntryMatch>,
+    /// Both the CV and the import have a photo; the user keeps one.
+    #[serde(default)]
+    pub photo_conflict: bool,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
@@ -297,6 +304,10 @@ pub struct ImportCommit {
     pub use_imported: Vec<ImportField>,
     /// Entries not listed are added as new.
     pub entries: Vec<EntryDecision>,
+    /// Replace the CV's photo with the imported one. A CV without a photo
+    /// always takes the imported one; `show_photo` is never changed.
+    #[serde(default)]
+    pub use_imported_photo: bool,
 }
 
 // Settings and AI configuration

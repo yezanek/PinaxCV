@@ -78,6 +78,11 @@ pub struct Strings {
     /// `{entry}`: the existing entry the import would overwrite.
     pub import_replace: &'static str,
     pub import_merge_note: &'static str,
+    pub import_photo: &'static str,
+    pub import_photo_note: &'static str,
+    pub import_keep_photo: &'static str,
+    pub import_use_photo: &'static str,
+    pub import_photo_replace_note: &'static str,
     pub import_button: &'static str,
 
     // Editor bar and status
@@ -529,6 +534,11 @@ pub static EN: Strings = Strings {
     import_skip: "Skip",
     import_replace: "Replace {entry}",
     import_merge_note: "New skills, languages and links are added. A snapshot of the CV is saved first, so the merge can be undone.",
+    import_photo: "Profile photo",
+    import_photo_note: "The photo is imported cropped to the centre and stays hidden until you switch it on in the editor.",
+    import_keep_photo: "Keep my photo",
+    import_use_photo: "Use the imported photo",
+    import_photo_replace_note: "Undoing the merge does not bring back a replaced photo.",
     import_button: "Import",
 
     back_to_cvs: "← CVs",

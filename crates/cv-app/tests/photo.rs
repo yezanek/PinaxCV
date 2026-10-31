@@ -1,12 +1,13 @@
 //! The optional profile photo (ADR-083): choosing, cropping, storing and
-//! drawing it only where it is switched on.
+//! drawing it only where it is switched on, and importing it from a
+//! Europass CV (issue #116).
 
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use cv_api::{
-    ErrorCode, ExportHtmlRequest, ExportPdfRequest, NewCv, NewVariant, PhotoApply, PhotoCrop,
-    PhotoShape, SaveCv, SaveVariant, Target,
+    ErrorCode, ExportHtmlRequest, ExportPdfRequest, ImportCommit, ImportMatchRequest, ImportTarget,
+    NewCv, NewVariant, PhotoApply, PhotoCrop, PhotoShape, SaveCv, SaveVariant, Target,
 };
 use cv_app::{App, ExportKind, FileDialog, MAX_PHOTO_FILE, PHOTO_EXTENSIONS, UlidIds};
 use cv_core::{Cv, JobTarget, StoredCv};
@@ -26,6 +27,15 @@ impl FileDialog for Dialog {
     }
 
     fn choose_open_path(&self, extensions: &[&str]) -> Option<PathBuf> {
+        // The photo dialog, or the import dialog for a Europass file.
+        if extensions.contains(&"xml") {
+            return self
+                .open
+                .lock()
+                .expect("lock")
+                .as_ref()
+                .map(|p| p.with_file_name("cv.xml"));
+        }
         assert_eq!(extensions, PHOTO_EXTENSIONS);
         self.open.lock().expect("lock").clone()
     }
@@ -56,6 +66,36 @@ impl Fixture {
 
     fn file(&self, bytes: &[u8]) {
         std::fs::write(self.dir.path().join("photo.jpg"), bytes).expect("write");
+    }
+
+    /// Writes the synthetic Europass sample with `photo` attached as its
+    /// profile picture, for the import dialog to open.
+    fn europass(&self, photo: &[u8]) {
+        use base64::Engine as _;
+        let sample = std::fs::read_to_string(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../testdata/import/europass-sample.xml"),
+        )
+        .expect("sample");
+        let b64 = base64::engine::general_purpose::STANDARD.encode(photo);
+        let attachment = format!(
+            "<eures:Attachment><oa:EmbeddedData mimeCode=\"image/jpeg\" encodingCode=\"base64Binary\">{b64}</oa:EmbeddedData><hr:Instructions>ProfilePicture</hr:Instructions></eures:Attachment>\n  </CandidateProfile>"
+        );
+        let xml = sample.replacen("</CandidateProfile>", &attachment, 1);
+        std::fs::write(self.dir.path().join("cv.xml"), xml).expect("write");
+    }
+
+    /// Imports the Europass file into `target`.
+    fn import(&self, target: ImportTarget, use_imported_photo: bool) -> StoredCv {
+        let preview = self.app.import_parse().expect("parse");
+        self.app
+            .import_commit(ImportCommit {
+                preview_id: preview.preview_id,
+                target,
+                use_imported: Vec::new(),
+                entries: Vec::new(),
+                use_imported_photo,
+            })
+            .expect("commit")
     }
 
     fn pdf_images(&self, target: Target) -> usize {
@@ -391,4 +431,126 @@ fn checks_note_a_shown_photo() {
         })
         .expect("apply");
     assert!(noted(&f.app));
+}
+
+#[test]
+fn a_europass_photo_is_imported_cleaned_cropped_and_hidden() {
+    let f = Fixture::new();
+    f.europass(&camera_jpeg());
+    let preview = f.app.import_parse().expect("parse");
+    let shown = decode_data_url(preview.photo.as_deref().expect("photo in preview"));
+    // Upright 80 × 120, cropped to the centred 3:4 frame.
+    assert_eq!(size(&shown), (78, 104));
+    assert!(!contains(&shown, b"SECRET-GPS") && !contains(&shown, b"Exif"));
+
+    let stored = f
+        .app
+        .import_commit(ImportCommit {
+            preview_id: preview.preview_id,
+            target: ImportTarget::New {
+                title: String::new(),
+            },
+            use_imported: Vec::new(),
+            entries: Vec::new(),
+            use_imported_photo: false,
+        })
+        .expect("commit");
+    assert!(!stored.cv.basics.show_photo, "photos stay opt-in");
+    let info = f.app.photo_get(&stored.cv.id).expect("get").expect("photo");
+    assert_eq!(info.crop, crop(1, 8, 78, 104, PhotoShape::Portrait));
+    assert_eq!((info.original.width, info.original.height), (80, 120));
+    assert_eq!(decode_data_url(&info.data_url), shown);
+    drop(f.app);
+    let db = std::fs::read(f.dir.path().join("pinaxcv.db")).expect("db");
+    assert!(!contains(&db, b"SECRET-GPS"));
+}
+
+#[test]
+fn a_merge_keeps_the_cvs_photo_unless_told_otherwise() {
+    let f = Fixture::new();
+    // A CV without a photo takes the imported one, with no question.
+    let bare = filled(&f.app);
+    f.europass(&camera_jpeg());
+    let preview = f.app.import_parse().expect("parse");
+    let matched = f
+        .app
+        .import_match(ImportMatchRequest {
+            preview_id: preview.preview_id,
+            cv_id: bare.cv.id.clone(),
+        })
+        .expect("match");
+    assert!(!matched.photo_conflict);
+    let merged = f.import(
+        ImportTarget::Merge {
+            cv_id: bare.cv.id.clone(),
+            expected_revision: bare.revision,
+        },
+        false,
+    );
+    assert!(!merged.cv.basics.show_photo);
+    assert!(f.app.photo_get(&bare.cv.id).expect("get").is_some());
+
+    // A CV with its own (square) photo asks, and keeps it by default.
+    let own = filled(&f.app);
+    f.file(&camera_jpeg());
+    let source = f.app.photo_choose().expect("choose");
+    let mine = f
+        .app
+        .photo_apply(PhotoApply {
+            cv_id: own.cv.id.clone(),
+            source_id: source.source_id,
+            crop: crop(0, 0, 80, 80, PhotoShape::Square),
+        })
+        .expect("apply");
+    let preview = f.app.import_parse().expect("parse");
+    let matched = f
+        .app
+        .import_match(ImportMatchRequest {
+            preview_id: preview.preview_id,
+            cv_id: own.cv.id.clone(),
+        })
+        .expect("match");
+    assert!(matched.photo_conflict);
+    let kept = f.import(
+        ImportTarget::Merge {
+            cv_id: own.cv.id.clone(),
+            expected_revision: own.revision,
+        },
+        false,
+    );
+    assert_eq!(f.app.photo_get(&own.cv.id).expect("get"), Some(mine));
+    let replaced = f.import(
+        ImportTarget::Merge {
+            cv_id: own.cv.id.clone(),
+            expected_revision: kept.revision,
+        },
+        true,
+    );
+    assert!(!replaced.cv.basics.show_photo);
+    let now = f.app.photo_get(&own.cv.id).expect("get").expect("photo");
+    assert_eq!(now.crop.shape, PhotoShape::Portrait);
+}
+
+#[test]
+fn an_unreadable_europass_photo_is_skipped_with_a_warning() {
+    let f = Fixture::new();
+    // Starts like a JPEG but does not decode.
+    f.europass(&[0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3]);
+    let preview = f.app.import_parse().expect("parse");
+    assert_eq!(preview.photo, None);
+    assert!(
+        preview
+            .warnings
+            .iter()
+            .any(|w| w.contains("photo could not be read")),
+        "{:?}",
+        preview.warnings
+    );
+    let stored = f.import(
+        ImportTarget::New {
+            title: String::new(),
+        },
+        false,
+    );
+    assert_eq!(f.app.photo_get(&stored.cv.id).expect("get"), None);
 }
