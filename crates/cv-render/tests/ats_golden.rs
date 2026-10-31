@@ -10,7 +10,7 @@ use cv_render::{ExportOptions, MISSING_GLYPHS, Renderer, TextExtractor};
 
 const TEMPLATES: [&str; 1] = ["classic"];
 
-const FIXTURES: [&str; 11] = [
+const FIXTURES: [&str; 13] = [
     "minimal",
     "typical",
     "long",
@@ -21,6 +21,8 @@ const FIXTURES: [&str; 11] = [
     "current_job",
     "special_chars",
     "unsafe_links",
+    "two_column",
+    "two_column_long",
     "european",
 ];
 

@@ -9,7 +9,9 @@ use std::fmt::Write as _;
 
 use cv_core::ResolvedCv;
 
-use crate::data::{EntriesData, EntryData, LinkData, SectionData, TypstData, to_typst_data};
+use crate::data::{
+    BlockData, EntriesData, EntryData, LinkData, SectionData, TypstData, to_typst_data,
+};
 use crate::{ExportOptions, ExportedDocument, Exporter, RenderError, suggested_file_name};
 
 /// Single column, system fonts, automatic dark mode and a print stylesheet.
@@ -41,25 +43,50 @@ pub fn to_html(cv: &ResolvedCv, options: &ExportOptions) -> String {
     let d = to_typst_data(cv, options);
     let mut out = String::with_capacity(8 * 1024);
     head(&mut out, &d);
-    header(
-        &mut out,
-        &d,
-        options.photo.as_deref().filter(|_| d.basics.photo),
-    );
-    out.push_str("<main>\n");
-    if let Some(summary) = &d.summary {
+    let photo = options.photo.as_deref().filter(|_| d.basics.photo);
+    let l = &d.layout;
+    if l.two {
+        // Two columns (ADR-084): the DOM is in reading order, the name's
+        // column first, and that column is also the one drawn on the left.
+        let side = u16::from(l.sidebar_width_pct);
+        let (first, second) = if l.sidebar_first {
+            (side, 100 - side)
+        } else {
+            (100 - side, side)
+        };
         let _ = writeln!(
             out,
-            "<section class=\"summary\">\n<h2>{}</h2>\n<p>{}</p>\n</section>",
-            esc(d.labels.summary),
-            esc(summary)
+            "<div class=\"columns\" style=\"--cols: {first}fr {second}fr\">"
         );
+        let sidebar = |out: &mut String| {
+            out.push_str("<div class=\"sidebar\">\n");
+            write_blocks(out, &d, &l.sidebar, photo);
+            out.push_str("</div>\n");
+        };
+        let main = |out: &mut String| {
+            out.push_str("<main>\n");
+            write_blocks(out, &d, &l.main, photo);
+            out.push_str("</main>\n");
+        };
+        if l.sidebar_first {
+            sidebar(&mut out);
+            main(&mut out);
+        } else {
+            main(&mut out);
+            sidebar(&mut out);
+        }
+        out.push_str("</div>\n");
+    } else {
+        // One column: a leading name and contact block is the page header,
+        // outside `<main>`.
+        let lead = header_len(&l.main);
+        write_blocks(&mut out, &d, &l.main[..lead], photo);
+        out.push_str("<main>\n");
+        write_blocks(&mut out, &d, &l.main[lead..], photo);
+        out.push_str("</main>\n");
     }
-    for section in &d.sections {
-        write_section(&mut out, section);
-    }
-    out.push_str("</main>\n");
-    // The optional closing block (ADR-089), after the last section.
+    // The optional closing block (ADR-089), after the last section and
+    // below the columns.
     if let Some(c) = &d.closing {
         out.push_str("<footer class=\"closing\">\n");
         if let Some(consent) = &c.consent {
@@ -83,6 +110,46 @@ pub fn to_html(cv: &ResolvedCv, options: &ExportOptions) -> String {
     out
 }
 
+/// How many of `blocks` form the leading header: the name, with the
+/// contact block when it follows directly.
+fn header_len(blocks: &[BlockData]) -> usize {
+    match blocks {
+        [BlockData::Name, BlockData::Contact, ..] => 2,
+        [BlockData::Name, ..] => 1,
+        _ => 0,
+    }
+}
+
+/// Writes one column's blocks in order. A name followed by the contact
+/// block shares one `<header>` with the photo.
+fn write_blocks(out: &mut String, d: &TypstData, blocks: &[BlockData], photo: Option<&[u8]>) {
+    let mut i = 0;
+    while i < blocks.len() {
+        match blocks[i] {
+            BlockData::Name => {
+                let with_contact = matches!(blocks.get(i + 1), Some(BlockData::Contact));
+                header(out, d, photo, with_contact);
+                if with_contact {
+                    i += 1;
+                }
+            }
+            BlockData::Contact => contact(out, d),
+            BlockData::Summary => {
+                if let Some(summary) = &d.summary {
+                    let _ = writeln!(
+                        out,
+                        "<section class=\"summary\">\n<h2>{}</h2>\n<p>{}</p>\n</section>",
+                        esc(d.labels.summary),
+                        esc(summary)
+                    );
+                }
+            }
+            BlockData::Section { index } => write_section(out, &d.sections[index]),
+        }
+        i += 1;
+    }
+}
+
 fn head(out: &mut String, d: &TypstData) {
     let _ = write!(
         out,
@@ -90,11 +157,12 @@ fn head(out: &mut String, d: &TypstData) {
          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\
          <meta name=\"author\" content=\"{author}\">\n<meta name=\"generator\" content=\"PinaxCV\">\n\
          <title>{title}</title>\n<style>\n:root {{ --accent: {accent}; }}\n{CSS}</style>\n\
-         </head>\n<body>\n",
+         </head>\n<body{body_class}>\n",
         lang = esc(d.locale),
         author = esc(&d.meta.author),
         title = esc(&d.meta.title),
         accent = accent(d.opts.accent.as_deref()),
+        body_class = if d.layout.two { " class=\"two\"" } else { "" },
     );
 }
 
@@ -135,7 +203,7 @@ fn accent(value: Option<&str>) -> String {
     }
 }
 
-fn header(out: &mut String, d: &TypstData, photo: Option<&[u8]>) {
+fn header(out: &mut String, d: &TypstData, photo: Option<&[u8]>, with_contact: bool) {
     let b = &d.basics;
     out.push_str("<header>\n");
     // Decorative (empty alt), so the page's text is the same with and
@@ -151,6 +219,14 @@ fn header(out: &mut String, d: &TypstData, photo: Option<&[u8]>) {
     if let Some(h) = &b.headline {
         let _ = writeln!(out, "<p class=\"headline\">{}</p>", esc(h));
     }
+    if with_contact {
+        contact(out, d);
+    }
+    out.push_str("</header>\n");
+}
+
+fn contact(out: &mut String, d: &TypstData) {
+    let b = &d.basics;
     let mut items = Vec::new();
     if let Some(email) = &b.email {
         items.push(format!("<a href=\"mailto:{0}\">{0}</a>", esc(email)));
@@ -182,7 +258,6 @@ fn header(out: &mut String, d: &TypstData, photo: Option<&[u8]>) {
         }
         out.push_str("</ul>\n");
     }
-    out.push_str("</header>\n");
 }
 
 fn write_section(out: &mut String, section: &SectionData) {
@@ -688,6 +763,38 @@ mod tests {
         let mut out = String::new();
         entries_section(&mut out, exp);
         assert!(!out.contains("<h3>") && out.contains("<h2>"), "{out}");
+    }
+
+    #[test]
+    fn two_columns_keep_the_name_column_first_in_the_dom() {
+        fn cols(doc: &str) -> &str {
+            let start = doc.find("--cols: ").expect("grid style") + "--cols: ".len();
+            let len = doc[start..].find('"').expect("end of style");
+            &doc[start..start + len]
+        }
+        let doc = html("two_column");
+        assert!(doc.contains("<body class=\"two\">"));
+        assert_eq!(cols(&doc), "32fr 68fr");
+        let at = |s: &str| doc.find(s).unwrap_or_else(|| panic!("{s} missing"));
+        assert!(at("<div class=\"sidebar\">") < at("<h1>"));
+        assert!(at("<h1>") < at("<h2>Skills</h2>"));
+        assert!(at("<h2>Languages</h2>") < at("<main>"));
+        assert!(at("<main>") < at("<h2>Summary</h2>"));
+
+        let doc = html("two_column_long");
+        assert_eq!(cols(&doc), "68fr 32fr", "main is first and wide");
+        let at = |s: &str| doc.find(s).unwrap_or_else(|| panic!("{s} missing"));
+        assert!(at("<main>") < at("<div class=\"sidebar\">"));
+        assert!(!html("typical").contains("<div class=\"columns\""));
+    }
+
+    #[test]
+    fn header_takes_a_leading_name_and_contact() {
+        use BlockData::*;
+        assert_eq!(header_len(&[Name, Contact, Summary]), 2);
+        assert_eq!(header_len(&[Name, Summary, Contact]), 1);
+        assert_eq!(header_len(&[Summary, Name, Contact]), 0);
+        assert_eq!(header_len(&[]), 0);
     }
 
     #[test]

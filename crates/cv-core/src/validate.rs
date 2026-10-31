@@ -7,7 +7,7 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    CV_SCHEMA_VERSION, Cv, Entry, Id, Section, Severity, TemplateOptions, ValidationIssue,
+    CV_SCHEMA_VERSION, Cv, Entry, Id, Layout, Section, Severity, TemplateOptions, ValidationIssue,
 };
 
 /// Stable codes for [`ValidationIssue::code`].
@@ -39,6 +39,18 @@ pub mod codes {
 /// save a document with errors.
 pub fn for_save(cv: &mut Cv) -> Vec<ValidationIssue> {
     let mut issues = normalize_options(&mut cv.options);
+    let section_ids: Vec<Id> = cv.sections.iter().map(|s| s.id().clone()).collect();
+    if cv.layout.normalize(&section_ids) {
+        let (min, max) = Layout::SIDEBAR_WIDTH_PCT;
+        issues.push(warning(
+            codes::OPTION_CLAMPED,
+            "/layout/sidebar_width_pct",
+            &format!(
+                "sidebar_width_pct must be between {min} and {max}; it was set to {}.",
+                cv.layout.sidebar_width_pct
+            ),
+        ));
+    }
     issues.extend(structure(cv));
     issues
 }
@@ -373,6 +385,23 @@ mod tests {
             codes_of(&for_save(&mut cv)),
             [(codes::SCHEMA_VERSION, "/schema_version")]
         );
+    }
+
+    #[test]
+    fn layout_is_repaired_and_a_clamped_width_reported() {
+        let mut cv = sample_cv();
+        cv.layout.sidebar_width_pct = 80;
+        cv.layout.sidebar = vec![
+            crate::BlockRef::Section { id: id(3) },
+            crate::BlockRef::Section { id: id(99) },
+        ];
+        assert_eq!(
+            codes_of(&for_save(&mut cv)),
+            [(codes::OPTION_CLAMPED, "/layout/sidebar_width_pct")]
+        );
+        assert_eq!(cv.layout.sidebar_width_pct, 40);
+        assert_eq!(cv.layout.sidebar, [crate::BlockRef::Section { id: id(3) }]);
+        assert_eq!(for_save(&mut cv), vec![], "repair is idempotent");
     }
 
     #[test]

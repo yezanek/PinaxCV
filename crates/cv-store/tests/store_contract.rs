@@ -90,6 +90,7 @@ fn cv(n: u32) -> Cv {
             }],
         })],
         closing: Default::default(),
+        layout: cv_core::Layout::default(),
     }
 }
 
