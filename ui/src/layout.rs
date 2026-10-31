@@ -102,15 +102,29 @@ fn section_column(layout: &Layout, id: &Id) -> Column {
 /// changed. With one column only the order changes.
 pub fn place(cv: &mut Cv, key: &Key, column: Column, before: Option<&Key>) -> bool {
     let mut changed = false;
+    let mut crossed = false;
     if cv.layout.columns == Columns::Two {
-        changed |= cv.layout.set_column(key.block(), column);
+        crossed = cv.layout.set_column(key.block(), column);
+        changed |= crossed;
     }
     match key {
         Key::Top(block) => {
             let old = cv.layout.top.clone();
-            let mut top: Vec<TopBlock> = old.iter().copied().filter(|b| b != block).collect();
+            // The name and the contact details change column together
+            // (`Layout::set_column`), so they also move as a pair.
+            let pair = [TopBlock::Name, TopBlock::Contact];
+            let moving: Vec<TopBlock> = if crossed && pair.contains(block) {
+                old.iter().copied().filter(|b| pair.contains(b)).collect()
+            } else {
+                vec![*block]
+            };
+            let mut top: Vec<TopBlock> = old
+                .iter()
+                .copied()
+                .filter(|b| !moving.contains(b))
+                .collect();
             let at = match before {
-                Some(Key::Top(t)) if t != block => top.iter().position(|b| b == t),
+                Some(Key::Top(t)) if !moving.contains(t) => top.iter().position(|b| b == t),
                 _ => None,
             }
             .unwrap_or_else(|| {
@@ -119,7 +133,7 @@ pub fn place(cv: &mut Cv, key: &Key, column: Column, before: Option<&Key>) -> bo
                     .rposition(|b| cv.layout.column_of(&BlockRef::Top { block: *b }) == column)
                     .map_or(top.len(), |i| i + 1)
             });
-            top.insert(at, *block);
+            top.splice(at..at, moving);
             changed |= top != old;
             cv.layout.top = top;
         }
@@ -468,7 +482,8 @@ pub(crate) mod tests {
         let mut c = cv();
         c.layout.columns = Columns::Two;
         assert!(place(&mut c, &NAME, Column::Sidebar, None));
-        assert!(place(&mut c, &CONTACT, Column::Sidebar, None));
+        // The contact details came along with the name.
+        assert!(!place(&mut c, &CONTACT, Column::Sidebar, None));
         assert!(place(&mut c, &sec(4), Column::Sidebar, None));
         assert_eq!(visual_columns(&c.layout), [Column::Sidebar, Column::Main]);
         assert_eq!(blocks_in(&c, Column::Sidebar), [NAME, CONTACT, sec(4)]);
@@ -490,10 +505,14 @@ pub(crate) mod tests {
         );
         // Dropping where it already is changes nothing.
         assert!(!place(&mut c, &sec(3), Column::Sidebar, None));
-        // The name back to main: main is drawn on the left now.
+        // The name back to main, with its contact details: main is drawn
+        // on the left now.
         assert!(place(&mut c, &NAME, Column::Main, Some(&SUMMARY)));
         assert_eq!(visual_columns(&c.layout), [Column::Main, Column::Sidebar]);
-        assert_eq!(blocks_in(&c, Column::Main), [NAME, SUMMARY, sec(1), sec(2)]);
+        assert_eq!(
+            blocks_in(&c, Column::Main),
+            [NAME, CONTACT, SUMMARY, sec(1), sec(2)]
+        );
     }
 
     #[test]
