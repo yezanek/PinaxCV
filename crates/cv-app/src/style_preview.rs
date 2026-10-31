@@ -73,6 +73,8 @@ pub fn sample_cv() -> Cv {
                 url: "https://example.com".into(),
             }],
             show_photo: false,
+            personal: Default::default(),
+            show_personal: Default::default(),
         },
         summary: Some(
             "Engineer who turns rough ideas into dependable products. Sample text for previewing a style."
@@ -173,6 +175,7 @@ pub fn sample_cv() -> Cv {
             }),
         ],
         layout: Default::default(),
+        closing: Default::default(),
     }
 }
 
@@ -241,6 +244,8 @@ impl App {
             include_email: true,
             include_phone: true,
             photo: None,
+            signature: None,
+            date: None,
         };
         let doc = HtmlExporter
             .export(&resolved, &options)
@@ -313,6 +318,8 @@ mod tests {
                         include_email: true,
                         include_phone: true,
                         photo: None,
+                        signature: None,
+                        date: None,
                     },
                 )
                 .expect("export")

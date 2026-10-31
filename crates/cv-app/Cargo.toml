@@ -11,6 +11,7 @@ publish.workspace = true
 [dependencies]
 async-trait.workspace = true
 base64.workspace = true
+chrono.workspace = true
 cv-ai.workspace = true
 cv-api.workspace = true
 cv-core.workspace = true

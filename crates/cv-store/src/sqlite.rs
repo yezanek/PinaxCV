@@ -24,13 +24,14 @@ pub const EXPORT_SNAPSHOT_INTERVAL: Duration = Duration::from_secs(3600);
 
 /// Database schema migrations, applied in order; `PRAGMA user_version` holds
 /// the number applied so far.
-const MIGRATIONS: [&str; 2] = [
+const MIGRATIONS: [&str; 3] = [
     include_str!("../migrations/0001_init.sql"),
     include_str!("../migrations/0002_photos.sql"),
+    include_str!("../migrations/0003_signatures.sql"),
 ];
 
 /// The newest database schema this build understands.
-pub const DB_SCHEMA_VERSION: u32 = 2;
+pub const DB_SCHEMA_VERSION: u32 = 3;
 
 /// SQLite-backed [`Store`].
 pub struct SqliteStore {
@@ -564,6 +565,12 @@ impl Store for SqliteStore {
             params![id.as_str(), copy.id.as_str(), now.0],
         )
         .map_err(backend)?;
+        tx.execute(
+            "INSERT INTO signatures (cv_id, image, updated_at) \
+             SELECT ?2, image, ?3 FROM signatures WHERE cv_id = ?1",
+            params![id.as_str(), copy.id.as_str(), now.0],
+        )
+        .map_err(backend)?;
         tx.commit().map_err(backend)?;
         Ok(stored)
     }
@@ -913,6 +920,46 @@ impl Store for SqliteStore {
         Ok(())
     }
 
+    fn signature_get(&self, cv_id: &Id) -> Result<Option<Vec<u8>>> {
+        let conn = self.lock();
+        conn.query_row(
+            "SELECT s.image FROM signatures s JOIN cvs c ON c.id = s.cv_id \
+             WHERE s.cv_id = ?1 AND c.deleted_at IS NULL",
+            params![cv_id.as_str()],
+            |r| r.get(0),
+        )
+        .optional()
+        .map_err(backend)
+    }
+
+    fn signature_put(&self, cv_id: &Id, image: &[u8]) -> Result<()> {
+        let now = self.now();
+        let conn = self.lock();
+        let changed = conn
+            .execute(
+                "INSERT INTO signatures (cv_id, image, updated_at) \
+                 SELECT id, ?2, ?3 FROM cvs WHERE id = ?1 AND deleted_at IS NULL \
+                 ON CONFLICT (cv_id) DO UPDATE SET image = excluded.image, \
+                 updated_at = excluded.updated_at",
+                params![cv_id.as_str(), image, now.0],
+            )
+            .map_err(backend)?;
+        if changed == 0 {
+            return Err(StoreError::NotFound(cv_id.clone()));
+        }
+        Ok(())
+    }
+
+    fn signature_delete(&self, cv_id: &Id) -> Result<()> {
+        let conn = self.lock();
+        conn.execute(
+            "DELETE FROM signatures WHERE cv_id = ?1",
+            params![cv_id.as_str()],
+        )
+        .map_err(backend)?;
+        Ok(())
+    }
+
     fn review_session_get(&self, cv_id: &Id) -> Result<Option<(String, Timestamp)>> {
         let conn = self.lock();
         conn.query_row(
@@ -976,6 +1023,7 @@ impl Store for SqliteStore {
         // Children first; the foreign keys would cascade anyway.
         for table in [
             "photos",
+            "signatures",
             "ai_cache",
             "settings",
             "review_sessions",
@@ -1066,6 +1114,22 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM cvs", [], |r| r.get(0))
             .expect("cvs kept");
         assert_eq!(cvs, 1);
+    }
+
+    #[test]
+    fn a_version_2_database_gains_the_signatures_table() {
+        let conn = Connection::open_in_memory().expect("open");
+        conn.execute_batch(&format!(
+            "{}\n{}\nPRAGMA user_version = 2;",
+            MIGRATIONS[0], MIGRATIONS[1]
+        ))
+        .expect("v2 schema");
+        migrate_db(&conn).expect("migrate");
+        assert_eq!(user_version(&conn).expect("version"), DB_SCHEMA_VERSION);
+        let n: i64 = conn
+            .query_row("SELECT COUNT(*) FROM signatures", [], |r| r.get(0))
+            .expect("signatures table");
+        assert_eq!(n, 0);
     }
 
     #[test]
