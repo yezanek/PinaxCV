@@ -15,16 +15,6 @@ pub enum Columns {
     Two,
 }
 
-/// The side the sidebar is drawn on. Visual only: the reading order is set
-/// by [`Layout::first_column`].
-#[derive(Serialize, Deserialize, JsonSchema, Clone, Copy, Debug, PartialEq, Eq, Default)]
-#[serde(rename_all = "snake_case")]
-pub enum Side {
-    #[default]
-    Left,
-    Right,
-}
-
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Copy, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Column {
@@ -59,7 +49,6 @@ pub enum BlockRef {
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
 pub struct Layout {
     pub columns: Columns,
-    pub sidebar_side: Side,
     /// Width of the sidebar as a share of the text width.
     pub sidebar_width_pct: u8,
     /// Order of the top blocks; each appears once.
@@ -73,7 +62,6 @@ impl Default for Layout {
     fn default() -> Self {
         Self {
             columns: Columns::One,
-            sidebar_side: Side::Left,
             sidebar_width_pct: 32,
             top: TopBlock::ALL.to_vec(),
             sidebar: Vec::new(),
@@ -126,8 +114,10 @@ impl Layout {
             .collect()
     }
 
-    /// The column read first: the one holding the name, so the PDF text
-    /// starts with the name and contact whichever side they are drawn on.
+    /// The column drawn on the left and read first: the one holding the
+    /// name. PDF text is read left column first, so the name's column goes
+    /// on the left and the text always starts with the name; the sidebar's
+    /// side follows from where the name is.
     pub fn first_column(&self) -> Column {
         self.column_of(&BlockRef::Top {
             block: TopBlock::Name,
@@ -254,7 +244,6 @@ mod tests {
     fn normalize_repairs_top_sidebar_and_width() {
         let mut l = Layout {
             columns: Columns::Two,
-            sidebar_side: Side::Right,
             sidebar_width_pct: 90,
             top: vec![TopBlock::Summary, TopBlock::Summary],
             sidebar: vec![section(3), section(9), section(3), NAME],
@@ -292,7 +281,6 @@ mod tests {
         };
         let v = serde_json::to_value(&l).expect("serialize");
         assert_eq!(v["columns"], "two");
-        assert_eq!(v["sidebar_side"], "left");
         assert_eq!(v["top"][0], "name");
         assert_eq!(v["sidebar"][0]["kind"], "top");
         assert_eq!(v["sidebar"][0]["block"], "name");
