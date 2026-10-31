@@ -57,12 +57,24 @@ pub struct EuropassLanguage {
     pub scores: Vec<(String, String)>,
 }
 
+/// An embedded profile picture: an `Attachment` whose `Instructions` say
+/// `ProfilePicture` (or whose title or file type names a photo), with its
+/// `EmbeddedData` still base64 encoded.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct EuropassPhoto {
+    /// The `mimeCode` attribute, as written.
+    pub mime: Option<String>,
+    /// The base64 text, whitespace included.
+    pub base64: String,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct EuropassCv {
     pub person: EuropassPerson,
     pub positions: Vec<EuropassPosition>,
     pub education: Vec<EuropassEducation>,
     pub languages: Vec<EuropassLanguage>,
+    pub photo: Option<EuropassPhoto>,
 }
 
 /// Why the XML could not be read.
@@ -103,7 +115,37 @@ pub fn parse_candidate(xml: &[u8]) -> Result<EuropassCv, XmlError> {
             cv.languages.push(language(c));
         }
     }
+    cv.photo = photo(root);
     Ok(cv)
+}
+
+/// The first attachment marked as the profile picture, otherwise the first
+/// one titled or typed as a photo. Only embedded data is read; a URI is
+/// never fetched.
+fn photo(root: Node) -> Option<EuropassPhoto> {
+    let embedded = |a: Node| {
+        child(a, "EmbeddedData").map(|d| EuropassPhoto {
+            mime: d.attribute("mimeCode").map(str::to_owned),
+            base64: text_of(d),
+        })
+    };
+    let marked = |a: Node| {
+        child_text(a, "Instructions").is_some_and(|i| i.eq_ignore_ascii_case("ProfilePicture"))
+    };
+    let named = |a: Node| {
+        ["DocumentTitle", "FileType"].into_iter().any(|name| {
+            child_text(a, name).is_some_and(|t| {
+                let t = t.to_lowercase();
+                t.contains("photo") || t.contains("picture")
+            })
+        })
+    };
+    let attachments: Vec<Node> = descendants(root, "Attachment").collect();
+    attachments
+        .iter()
+        .filter(|a| marked(**a))
+        .chain(attachments.iter().filter(|a| !marked(**a) && named(**a)))
+        .find_map(|a| embedded(*a))
 }
 
 fn person(p: Node) -> EuropassPerson {
@@ -408,6 +450,34 @@ mod tests {
             cv.languages[0].scores,
             [("CEF-Writing-Production".into(), "C1".into())]
         );
+    }
+
+    #[test]
+    fn reads_the_profile_picture_attachment() {
+        let xml = |attachments: &str| {
+            format!(
+                r#"<Candidate xmlns="http://www.europass.eu/1.0" xmlns:oa="http://www.openapplications.org/oagis/9"><CandidateProfile>{attachments}</CandidateProfile></Candidate>"#
+            )
+        };
+        let other = r#"<Attachment><oa:EmbeddedData mimeCode="application/pdf">UERG</oa:EmbeddedData><Instructions>Diploma</Instructions></Attachment>"#;
+        let picture = r#"<Attachment><oa:EmbeddedData mimeCode="image/png" encodingCode="base64Binary">
+            iVBO Rw0K
+        </oa:EmbeddedData><FileType>png</FileType><Instructions>ProfilePicture</Instructions></Attachment>"#;
+        let cv = parse_candidate(xml(&format!("{other}{picture}")).as_bytes()).expect("parse");
+        let photo = cv.photo.expect("photo");
+        assert_eq!(photo.mime.as_deref(), Some("image/png"));
+        assert_eq!(
+            photo.base64.split_whitespace().collect::<String>(),
+            "iVBORw0K"
+        );
+
+        let titled = r#"<Attachment><EmbeddedData>AAAA</EmbeddedData><DocumentTitle>Photo</DocumentTitle></Attachment>"#;
+        let cv = parse_candidate(xml(&format!("{other}{titled}")).as_bytes()).expect("parse");
+        assert_eq!(cv.photo.map(|p| p.base64).as_deref(), Some("AAAA"));
+
+        let linked = r#"<Attachment><URI>https://example.com/me.jpg</URI><Instructions>ProfilePicture</Instructions></Attachment>"#;
+        let cv = parse_candidate(xml(&format!("{other}{linked}")).as_bytes()).expect("parse");
+        assert_eq!(cv.photo, None);
     }
 
     #[test]

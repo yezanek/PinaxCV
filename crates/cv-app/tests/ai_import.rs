@@ -160,6 +160,7 @@ async fn pasted_text_is_extracted_without_sending_contact_details() {
             },
             use_imported: Vec::new(),
             entries: Vec::new(),
+            use_imported_photo: false,
         })
         .expect("saved");
     assert_eq!(saved.cv.title, "Alex Sample");
