@@ -46,6 +46,7 @@
     "allow-get-settings",
     "allow-set-cv-defaults",
     "allow-open-data-dir",
+    "allow-open-log-dir",
     "allow-backup-db",
     "allow-restore-db",
     "allow-clear-ai-cache",

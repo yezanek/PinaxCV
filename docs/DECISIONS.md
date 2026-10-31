@@ -564,6 +564,7 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 
 - Settings keeps the AI section and adds "New CVs" (paper, CV language, date style), "Your data" and "About PinaxCV". The defaults are stored as `defaults.paper`, `defaults.locale` and `defaults.date_style` (serde names such as `letter`) and apply to a new blank CV and to a CV created by an import; existing CVs keep their own settings in the Style tab. An unknown stored value (from a newer version, say) falls back to the built-in default.
 - `get_settings` returns the defaults, the data folder (the app data directory holding the database), the version and the SPDX licence from the build. `set_cv_defaults` saves the defaults; `open_data_dir` opens the folder in the system file manager (`xdg-open`, `open` or `explorer`, started from Rust; the webview gets no shell or opener permission).
+- The log is not in the data folder on macOS (`~/Library/Logs/<id>`) or Windows (`%LOCALAPPDATA%\<id>\logs`), only on Linux (`<data>/logs`). So `get_settings` also returns `log_dir` (Tauri's `app_log_dir`), and "Your data" shows it as its own row with "Open log folder" (`open_log_dir`, the same Rust-side opener, which creates the folder first if no log was written yet). The data folder's text no longer claims to hold the log (issue #114).
 - About names the version, the app licence and the Inter font's licence. The full third-party licence list is issue #72 (ADR-082). Backup and restore (#66) and "Delete all data" / "Clear AI cache" (#67) get their own sections in later changes.
 
 ## ADR-080 — Backup and restore from Settings (M8)
@@ -594,7 +595,7 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - The UI crops like a profile-picture dialog: a fixed square or 3:4 frame, drag to move, zoom with a slider or the wheel, Apply or Cancel. It sends only the crop rectangle in the original's pixels; the backend checks it is inside the photo, trims it to the exact ratio around its centre and refuses crops under 32 px. A chosen file stays in memory (the last two) until it is applied.
 - PDF: the classic template puts the photo to the right of the name and contact block, 2.8 cm wide, marked as an artifact, so it adds no text and the ATS extract and reading order are the same with or without it (golden test). HTML export embeds it as a `data:` URL with empty `alt`, so the file stays self-contained. Preview, page counting, fit-to-pages (from the Fit button and from tailoring), the ATS check and lint all render with it when it is shown.
 - Checks add an informational note (`photo`) when the shown version has a photo: many employers, in the US and the UK for example, prefer CVs without one.
-- Not in this change: reading the photo from a Europass XML import (a follow-up).
+- Not in this change: reading the photo from a Europass XML import (a follow-up, ADR-086).
 
 ## ADR-085 — Purging deleted CVs after 30 days (M8, issue #113)
 
@@ -634,3 +635,12 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
+
+## ADR-086 — Profile photo from a Europass import (M4, issue #116)
+
+- The Europass importer reads the profile picture from the Candidate XML, bare or embedded in a Europass PDF: the first `Attachment` whose `Instructions` are `ProfilePicture`, otherwise the first whose `DocumentTitle` or `FileType` names a photo or picture. Only `EmbeddedData` (base64) is read; an attachment `URI` is never fetched.
+- The same limits as the photo dialog (ADR-083): the base64 text is measured before decoding and anything over 5 MB decoded is refused, and only bytes with a JPEG or PNG signature are kept. A refused photo leaves a warning in the preview and the rest of the import goes ahead.
+- `CvPartial.photo` carries the raw bytes out of `cv-import`. The app cleans them when the preview is made, exactly as a chosen photo (decode, EXIF orientation, re-encode as JPEG without metadata, original at most 2000 px), and crops them to the largest centred 3:4 frame, so the wizard shows what will be stored (`ImportPreview.photo`, a `data:` URL). One that does not decode is dropped with a warning.
+- A new CV and a CV without a photo always take the imported photo. When the CV already has one, `import_match` sets `photo_conflict` and the merge review asks "Keep my photo / Use the imported photo" (keep is the default); `ImportCommit.use_imported_photo` carries the answer. `show_photo` is never changed, so an imported photo stays hidden until the user switches it on.
+- Snapshots hold the CV document only, so undoing a merge does not bring back a replaced photo; the review says so when replacing is chosen. The photo is stored after the CV is saved and after the preview is dropped, so a failure to store it cannot save the import twice; the error then says the CV was saved without its photo.
+- Tests use a generated image only, never a real photo.

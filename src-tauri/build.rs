@@ -43,6 +43,7 @@ const COMMANDS: &[&str] = &[
     "get_settings",
     "set_cv_defaults",
     "open_data_dir",
+    "open_log_dir",
     "backup_db",
     "restore_db",
     "clear_ai_cache",
