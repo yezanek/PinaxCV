@@ -9,7 +9,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex, PoisonError};
 
 use base64::Engine as _;
-use cv_api::{ApiError, ErrorCode, PhotoApply, PhotoCrop, PhotoInfo, PhotoSource};
+use cv_api::{ApiError, ErrorCode, PhotoApply, PhotoCrop, PhotoInfo, PhotoShape, PhotoSource};
 use cv_core::{Id, ResolvedCv};
 use cv_store::StoredPhoto;
 use image::codecs::jpeg::JpegEncoder;
@@ -222,7 +222,34 @@ pub fn cropped(original: &[u8], crop: PhotoCrop) -> Result<(Vec<u8>, PhotoCrop)>
     Ok((jpeg(&fit_within(part, max_w, max_h), 85)?, crop))
 }
 
-fn data_url(jpeg: &[u8]) -> String {
+/// The largest crop of `shape` centred in a `width` × `height` image.
+pub fn centred_crop(width: u32, height: u32, shape: PhotoShape) -> PhotoCrop {
+    let (rw, rh) = shape.ratio();
+    let unit = (width / rw).min(height / rh);
+    let (w, h) = (unit * rw, unit * rh);
+    PhotoCrop {
+        x: (width - w) / 2,
+        y: (height - h) / 2,
+        width: w,
+        height: h,
+        shape,
+    }
+}
+
+/// An imported photo (JPEG or PNG bytes from a file), cleaned like a chosen
+/// one and cropped to the centred portrait frame, ready to store.
+pub fn imported(bytes: &[u8]) -> Result<StoredPhoto> {
+    let original = clean_original(bytes)?;
+    let (width, height) = dimensions(&original)?;
+    let (image, crop) = cropped(&original, centred_crop(width, height, PhotoShape::Portrait))?;
+    Ok(StoredPhoto {
+        original,
+        image,
+        crop: serde_json::to_string(&crop).map_err(|_| encode_error())?,
+    })
+}
+
+pub(crate) fn data_url(jpeg: &[u8]) -> String {
     format!(
         "data:image/jpeg;base64,{}",
         base64::engine::general_purpose::STANDARD.encode(jpeg)
@@ -328,7 +355,6 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cv_api::PhotoShape;
 
     fn crop(x: u32, y: u32, width: u32, height: u32, shape: PhotoShape) -> PhotoCrop {
         PhotoCrop {
@@ -350,5 +376,13 @@ mod tests {
         assert!(fit_crop(crop(300, 0, 200, 200, PhotoShape::Square), 400, 500).is_err());
         assert!(fit_crop(crop(u32::MAX, 0, 2, 2, PhotoShape::Square), 400, 500).is_err());
         assert!(fit_crop(crop(0, 0, 20, 20, PhotoShape::Square), 400, 500).is_err());
+    }
+
+    #[test]
+    fn the_default_crop_is_centred_and_in_shape() {
+        let c = centred_crop(800, 600, PhotoShape::Portrait);
+        assert_eq!((c.x, c.y, c.width, c.height), (175, 0, 450, 600));
+        let c = centred_crop(300, 901, PhotoShape::Square);
+        assert_eq!((c.x, c.y, c.width, c.height), (0, 300, 300, 300));
     }
 }

@@ -9,6 +9,7 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
+base64.workspace = true
 cv-core.workspace = true
 csv.workspace = true
 lopdf.workspace = true
