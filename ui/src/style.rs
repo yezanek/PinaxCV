@@ -4,7 +4,9 @@
 //! be saved to and loaded from `.pinaxstyle.xml` files (ADR-084).
 
 use cv_api::{ErrorCode, OptionRange, StyleOpened, StyleSave, StyleSaved, TemplateManifest};
-use cv_core::{Cv, DateStyle, Locale, Paper, Style, StyleApplied, TemplateId, TemplateOptions};
+use cv_core::{
+    Cv, DateStyle, Locale, Paper, StoredVariant, Style, StyleApplied, TemplateId, TemplateOptions,
+};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 
@@ -163,6 +165,7 @@ fn ranges_for(templates: &[TemplateManifest], id: &TemplateId) -> [OptionRange; 
 #[component]
 pub fn StyleTab(
     cv: RwSignal<Option<Cv>>,
+    variant: RwSignal<Option<StoredVariant>>,
     edit: Edit,
     error: RwSignal<Option<String>>,
 ) -> impl IntoView {
@@ -239,7 +242,7 @@ pub fn StyleTab(
 
     let s = t();
     view! {
-        <LayoutPanel cv=cv edit=edit />
+        <LayoutPanel cv=cv variant=variant edit=edit />
         <label>{s.template}
             <select on:change=move |ev| {
                 let id = TemplateId(event_target_value(&ev));
