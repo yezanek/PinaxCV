@@ -9,6 +9,7 @@
 mod cv;
 mod id;
 mod job;
+mod layout;
 mod pages;
 mod records;
 mod report;
@@ -29,6 +30,7 @@ mod test_fixtures;
 pub use cv::*;
 pub use id::{Id, IdSource, InvalidId};
 pub use job::{JobRequirements, Requirement, RequirementKind};
+pub use layout::{BlockRef, Column, Columns, Layout, TopBlock};
 pub use pages::{PageCountError, PageCounter};
 pub use records::{
     CvSummary, SnapshotReason, SnapshotSummary, StoredCv, StoredVariant, Timestamp, VariantSummary,
