@@ -607,6 +607,13 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Editor (#126, #127): the Style tab opens with a Layout panel: One column / Two columns, the sidebar width slider, and a page canvas (A4 or Letter ratio) with one card per block, the name's column drawn on the left. `drag.rs` gains `ZoneDragHandle`, which drags between lists (`data-drop-group`, `data-drop-zone`, `data-drop-key`) and shows an insertion line; the existing single-list `DragHandle` is unchanged. A drop places the block in the target column and before the card under the pointer (the lower half of a card means after it); a section dropped among the top blocks lands first among that column's sections. Sections are reordered in `cv.sections`, so the canvas and the Content tab show one order. Each card has Move up and Move down within its column, and Move to the other column. The canvas edits the base CV, also while a variant is open: the layout is shared, and a variant's own section order still applies inside each column.
 - Two columns go against spec G1, the "no multi-column templates" non-goal, spec 6.4 rule 1 and `docs/ATS_RULES.md` rule 1. Dan decided on 2026-10-30 to allow them with safeguards: a golden reading-order test, a warning in the ATS check, and a one-column ATS copy saved by default when exporting a two-column CV. The spec and ATS rules are amended with the template change (#123).
 
+## ADR-085 — Purging deleted CVs after 30 days (M8, issue #113)
+
+- Spec section 5.2 keeps a soft-deleted CV for 30 days. `cv-app` names the period `DELETED_CV_RETENTION` and `App::purge_deleted_cvs` removes older deleted CVs for good with `Store::purge_deleted`; foreign keys cascade to their variants, snapshots and photo.
+- The shell runs it once per start, after the database opens, on its own thread, so the window never waits for it. The log line carries only the number of CVs removed (or the error code), never titles.
+- The 8-second undo toast is unaffected: it restores a CV deleted seconds ago.
+- Purged rows are deleted with SQL `DELETE`, not `VACUUM`; their text may stay in free pages of the database file until SQLite reuses them. "Delete all data" remains the way to erase everything from the file (ADR-081).
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
