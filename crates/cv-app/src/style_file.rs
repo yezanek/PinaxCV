@@ -585,7 +585,8 @@ mod tests {
 
     #[test]
     fn the_documented_example_loads() {
-        let doc = include_str!("../../../docs/IMPORT_EXPORT.md");
+        // Windows checkouts may turn the newlines into CRLF.
+        let doc = include_str!("../../../docs/IMPORT_EXPORT.md").replace("\r\n", "\n");
         let xml = doc
             .split("```xml\n")
             .nth(1)
