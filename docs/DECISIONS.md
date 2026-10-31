@@ -614,7 +614,14 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - The date is the export date, today on the user's computer (chrono `Local`, already locked through lopdf), passed to the renderer as `ExportOptions.date` so `cv-render` stays free of clocks. It prints in the CV's date style like the date of birth: "Berlin, 30 Oct 2026" or "Berlin, 30/10/2026". Previews and page counts use the same date. Without a place the line is the date alone.
 - The editor can insert a GDPR consent clause in English, Italian (also naming D.Lgs. 196/2003) or Polish (`CONSENT_PRESETS`), since the CV language is English only for now. The user can edit it freely.
 - PDF prints the closing block after the last section as plain body text, kept together on one page and never in a page footer (ATS rule 5); the consent is in slightly smaller type. HTML prints it in a `<footer class="closing">` after `<main>`. A golden test checks that the extracted text ends with the clause and the line, and that the ATS check still passes.
-- Not in this change: the signature image (a follow-up, stored like the photo), and a QC hint for an Italian target country, which needs variants to carry a target country first.
+- Not in this change: a QC hint for an Italian target country, which needs variants to carry a target country first.
+
+## ADR-090 — Signature image in the closing block (issue #143)
+
+- The closing block (ADR-089) can end with a signature image. `ClosingPart::Signature` is its show switch, on `Closing.show` for the base CV and `Variant.show_closing` for each variant, off by default.
+- The image is stored beside the CV like the photo (ADR-083), not in the CV document: table `signatures` (one PNG per CV, migration `0003_signatures.sql`, schema version 3). Duplicating a CV copies it; deleting a CV hides it with the CV; Delete all data removes it.
+- `signature_choose(id)` opens the backend's image dialog (JPEG or PNG, at most 5 MB), decodes the file and re-encodes it, so no metadata survives. Light paper (luma 215 and up) becomes transparent and darker pixels get an opacity that grows with their darkness, so a phone photo of ink on paper works on any background. The margins are trimmed to the ink plus 4 px and the result fits in 900 × 300 px. A blank image is refused. Choosing replaces the stored one; `signature_get` and `signature_remove` read and delete it. The first signature switches the base CV's Show on, as the first photo does.
+- The PDF draws it under the closing text, 1.6 cm high, as a PDF artifact, so the extracted text and the ATS check are the same with or without it. HTML embeds it as a `data:` URL with an empty `alt`. Nothing is drawn when the switch is on but no signature is stored, and an empty closing block is never printed.
 
 ## Open decisions
 

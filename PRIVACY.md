@@ -14,6 +14,9 @@ sends, and how to remove it.
   exported. It is off unless you switch it on. "Remove photo" removes it from
   the database. Deleting the CV only hides the photo along with the CV (see
   below).
+- **Your signature**, if you add one, is kept in the same database the same
+  way: re-encoded without metadata, its paper made transparent. It prints
+  only where you switch it on. "Remove signature" removes it.
 - **Personal details** such as your date of birth, nationality or postal
   address are optional and kept with the CV. Each one is printed only on the
   CV or variant where you switch it on. They are never sent to an AI provider.
@@ -78,12 +81,12 @@ no request.
 
 ## Removing your data
 
-- **Deleting a CV** can be undone: the CV, its variants and its photo are
+- **Deleting a CV** can be undone: the CV, its variants, its photo and its signature are
   hidden, not erased, and stay in the database until you use "Delete all
   data". Backups made after that still contain them.
 - **Clear AI cache** removes every cached AI answer and keeps your CVs.
 - **Delete all data…** (after you confirm) deletes every CV, variant,
-  photo, snapshot, setting and cached answer, compacts the database so the deleted text is not
+  photo, signature, snapshot, setting and cached answer, compacts the database so the deleted text is not
   left in the file, removes the safety copies made by a restore, and deletes
   your API keys from the keychain. Files you saved elsewhere (exports and
   backups) and the log file are not touched; delete them yourself if you

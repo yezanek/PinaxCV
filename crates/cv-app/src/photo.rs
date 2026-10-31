@@ -73,7 +73,7 @@ impl PhotoSources {
     }
 }
 
-fn not_an_image() -> ApiError {
+pub(crate) fn not_an_image() -> ApiError {
     ApiError::new(
         ErrorCode::UnsupportedFormat,
         "The file is not a JPEG or PNG image that can be read.",
@@ -84,8 +84,9 @@ fn encode_error() -> ApiError {
     ApiError::new(ErrorCode::Internal, "The photo could not be encoded.")
 }
 
-/// Reads at most [`MAX_PHOTO_FILE`] bytes.
-fn read_photo(path: &Path) -> Result<Vec<u8>> {
+/// Reads at most [`MAX_PHOTO_FILE`] bytes; `too_large` is the message for
+/// a larger file.
+pub(crate) fn read_image(path: &Path, too_large: &'static str) -> Result<Vec<u8>> {
     // The io::Error text can carry the path, which holds the user's name.
     let unreadable = |e: std::io::Error| {
         ApiError::new(
@@ -100,10 +101,7 @@ fn read_photo(path: &Path) -> Result<Vec<u8>> {
         .read_to_end(&mut bytes)
         .map_err(unreadable)?;
     if bytes.len() > MAX_PHOTO_FILE {
-        return Err(ApiError::new(
-            ErrorCode::Validation,
-            "That photo is larger than 5 MB. Choose a smaller one.",
-        ));
+        return Err(ApiError::new(ErrorCode::Validation, too_large));
     }
     Ok(bytes)
 }
@@ -267,7 +265,11 @@ impl App {
             .dialog
             .choose_open_path(PHOTO_EXTENSIONS)
             .ok_or_else(|| ApiError::new(ErrorCode::Cancelled, "No photo chosen."))?;
-        let original: Arc<[u8]> = clean_original(&read_photo(&path)?)?.into();
+        let original: Arc<[u8]> = clean_original(&read_image(
+            &path,
+            "That photo is larger than 5 MB. Choose a smaller one.",
+        )?)?
+        .into();
         let id = self.photo_sources.put(original.clone());
         source(Some(id), &original)
     }

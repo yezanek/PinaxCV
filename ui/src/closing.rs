@@ -1,19 +1,25 @@
 //! The optional closing block (ADR-089): a consent clause with presets and
-//! the "place, date" line, each with its own show switch on the base CV and
-//! on each variant.
+//! the "place, date" line and the signature image (ADR-090), each with its
+//! own show switch on the base CV and on each variant. The signature is
+//! stored with the CV on the backend, like the photo; only its switch is part
+//! of the CV document.
 
-use cv_core::{CONSENT_PRESETS, ClosingPart, Cv, StoredVariant};
+use cv_api::{ErrorCode, SignatureInfo};
+use cv_core::{CONSENT_PRESETS, ClosingPart, Cv, Id, StoredVariant};
 use leptos::prelude::*;
+use leptos::task::spawn_local;
 
 use crate::entries::Edit;
 use crate::fit::EditFn;
-use crate::i18n::t;
+use crate::i18n::{error_message, t};
+use crate::ipc::{IdArg, call};
 
 /// The UI label of `part`.
 fn label(part: ClosingPart) -> &'static str {
     match part {
         ClosingPart::Consent => t().closing_consent,
         ClosingPart::PlaceDate => t().closing_place_date,
+        ClosingPart::Signature => t().closing_signature,
     }
 }
 
@@ -36,7 +42,14 @@ fn toggle(set: &mut std::collections::BTreeSet<ClosingPart>, part: ClosingPart, 
 
 /// The "Closing" group at the end of the Content tab, collapsed by default.
 #[component]
-pub fn ClosingSection(cv: RwSignal<Option<Cv>>, edit: Edit) -> impl IntoView {
+pub fn ClosingSection(
+    cv_id: Id,
+    cv: RwSignal<Option<Cv>>,
+    edit: Edit,
+    error: RwSignal<Option<String>>,
+    /// Called after the stored signature changed, so the preview re-renders.
+    changed: Callback<()>,
+) -> impl IntoView {
     let shown = move |part: ClosingPart| {
         move || cv.with(|c| c.as_ref().is_some_and(|c| c.closing.show.contains(&part)))
     };
@@ -98,7 +111,107 @@ pub fn ClosingSection(cv: RwSignal<Option<Cv>>, edit: Edit) -> impl IntoView {
                 {show_switch(ClosingPart::PlaceDate)}
             </div>
             <p class="hint">{t().closing_date_hint}</p>
+            <Signature cv_id=cv_id cv=cv edit=edit error=error changed=changed />
+            {show_switch(ClosingPart::Signature)}
         </details>
+    }
+}
+
+/// The signature row: a thumbnail, add, replace and remove, and the switch.
+#[component]
+fn Signature(
+    cv_id: Id,
+    cv: RwSignal<Option<Cv>>,
+    edit: Edit,
+    error: RwSignal<Option<String>>,
+    changed: Callback<()>,
+) -> impl IntoView {
+    let signature: RwSignal<Option<SignatureInfo>> = RwSignal::new(None);
+    let busy = RwSignal::new(false);
+    let cv_id = StoredValue::new(cv_id);
+
+    spawn_local(async move {
+        let id = cv_id.get_value();
+        match call::<_, Option<SignatureInfo>>("signature_get", &IdArg { id: &id }).await {
+            Ok(s) => {
+                let _ = signature.try_set(s);
+            }
+            Err(e) => {
+                let _ = error.try_set(Some(error_message(&e)));
+            }
+        }
+    });
+
+    let choose = move |_| {
+        if busy.get_untracked() {
+            return;
+        }
+        busy.set(true);
+        let first = signature.with_untracked(Option::is_none);
+        spawn_local(async move {
+            let id = cv_id.get_value();
+            let result = call::<_, SignatureInfo>("signature_choose", &IdArg { id: &id }).await;
+            let _ = busy.try_set(false);
+            match result {
+                Ok(info) => {
+                    signature.set(Some(info));
+                    // A first signature is meant to be seen; the switch
+                    // stays the user's after that.
+                    if first
+                        && cv.with_untracked(|c| {
+                            c.as_ref()
+                                .is_some_and(|c| !c.closing.show.contains(&ClosingPart::Signature))
+                        })
+                    {
+                        edit.run(Box::new(|c| {
+                            c.closing.show.insert(ClosingPart::Signature);
+                        }));
+                    }
+                    changed.run(());
+                }
+                Err(e) if e.code == ErrorCode::Cancelled => {}
+                Err(e) => error.set(Some(error_message(&e))),
+            }
+        });
+    };
+
+    let remove = move |_| {
+        if busy.get_untracked() {
+            return;
+        }
+        busy.set(true);
+        spawn_local(async move {
+            let id = cv_id.get_value();
+            let result = call::<_, ()>("signature_remove", &IdArg { id: &id }).await;
+            let _ = busy.try_set(false);
+            match result {
+                Ok(()) => {
+                    signature.set(None);
+                    changed.run(());
+                }
+                Err(e) => error.set(Some(error_message(&e))),
+            }
+        });
+    };
+
+    view! {
+        <h4>{t().closing_signature}</h4>
+        <p class="hint">{t().closing_signature_hint}</p>
+        <Show when=move || signature.with(Option::is_some)
+            fallback=move || view! {
+                <button prop:disabled=move || busy.get() on:click=choose>{t().closing_signature_add}</button>
+            }>
+            <div class="photo-row">
+                <img class="signature-thumb" alt=t().closing_signature_alt
+                    src=move || signature.with(|s| s.as_ref().map(|s| s.data_url.clone()).unwrap_or_default()) />
+                <div class="photo-actions">
+                    <div>
+                        <button prop:disabled=move || busy.get() on:click=choose>{t().closing_signature_replace}</button>
+                        <button prop:disabled=move || busy.get() on:click=remove>{t().closing_signature_remove}</button>
+                    </div>
+                </div>
+            </div>
+        </Show>
     }
 }
 
@@ -129,6 +242,7 @@ pub fn VariantClosing(
             <summary>{t().closing_variant}</summary>
             {switch(ClosingPart::Consent)}
             {switch(ClosingPart::PlaceDate)}
+            {switch(ClosingPart::Signature)}
         </details>
     }
 }

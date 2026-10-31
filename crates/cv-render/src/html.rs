@@ -68,6 +68,15 @@ pub fn to_html(cv: &ResolvedCv, options: &ExportOptions) -> String {
         if let Some(line) = &c.place_date {
             let _ = writeln!(out, "<p>{}</p>", esc(line));
         }
+        // Decorative (empty alt), so the page's text is the same with and
+        // without the signature (ADR-090).
+        if let Some(png) = options.signature.as_deref().filter(|_| c.signature) {
+            let _ = writeln!(
+                out,
+                "<img class=\"signature\" src=\"data:image/png;base64,{}\" alt=\"\">",
+                base64(png)
+            );
+        }
         out.push_str("</footer>\n");
     }
     out.push_str("</body>\n</html>\n");
@@ -561,6 +570,30 @@ mod tests {
     }
 
     #[test]
+    fn a_shown_signature_is_an_embedded_decorative_image() {
+        use cv_core::ClosingPart;
+        let mut cv = testdata::fixture("typical");
+        cv.closing.show = [ClosingPart::Signature].into();
+        let png: std::sync::Arc<[u8]> = vec![0x89, b'P', b'N', b'G'].into();
+        let with = ExportOptions {
+            signature: Some(png),
+            ..ExportOptions::html_default()
+        };
+        let doc = to_html(&cv.resolve(None), &with);
+        assert!(
+            doc.contains(
+                "<img class=\"signature\" src=\"data:image/png;base64,iVBORw==\" alt=\"\">"
+            ),
+            "{doc}"
+        );
+        // No image without the switch, and no empty block without an image.
+        cv.closing.show.clear();
+        assert!(!to_html(&cv.resolve(None), &with).contains("<footer"));
+        cv.closing.show = [ClosingPart::Signature].into();
+        assert!(!to_html(&cv.resolve(None), &ExportOptions::html_default()).contains("<footer"));
+    }
+
+    #[test]
     fn a_shown_photo_is_an_embedded_decorative_image() {
         let jpeg: std::sync::Arc<[u8]> = vec![0xff, 0xd8, 0xff, 0xd9].into();
         let options = ExportOptions {
@@ -600,6 +633,7 @@ mod tests {
                 include_email: true,
                 include_phone: true,
                 photo: None,
+                signature: None,
                 date: None,
             },
         );
@@ -610,6 +644,7 @@ mod tests {
                 include_email: false,
                 include_phone: false,
                 photo: None,
+                signature: None,
                 date: None,
             },
         );

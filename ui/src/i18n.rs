@@ -367,6 +367,12 @@ pub struct Strings {
     pub closing_place_date: &'static str,
     pub closing_date_hint: &'static str,
     pub closing_variant: &'static str,
+    pub closing_signature: &'static str,
+    pub closing_signature_hint: &'static str,
+    pub closing_signature_add: &'static str,
+    pub closing_signature_replace: &'static str,
+    pub closing_signature_remove: &'static str,
+    pub closing_signature_alt: &'static str,
 
     // Variants
     pub version: &'static str,
@@ -832,6 +838,12 @@ pub static EN: Strings = Strings {
     closing_place_date: "Place and date",
     closing_date_hint: "The date is the day you export, in the CV's date style.",
     closing_variant: "Closing shown in this variant",
+    closing_signature: "Signature",
+    closing_signature_hint: "A scan or photo of your signature on light paper. The paper becomes transparent. It is an image only, so applicant tracking systems ignore it.",
+    closing_signature_add: "Add signature…",
+    closing_signature_replace: "Replace…",
+    closing_signature_remove: "Remove signature",
+    closing_signature_alt: "Your signature",
 
     version: "Version",
     base_cv: "Base CV",

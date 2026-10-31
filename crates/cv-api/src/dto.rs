@@ -604,6 +604,13 @@ pub struct PhotoInfo {
     pub original: PhotoSource,
 }
 
+/// A CV's signature image for the closing block (ADR-090).
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct SignatureInfo {
+    /// `data:image/png;base64,…`, with metadata already removed.
+    pub data_url: String,
+}
+
 /// Crops a chosen file, or the CV's original again, and makes it the CV's
 /// photo.
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]

@@ -125,6 +125,9 @@ fn main() {
             commands::photo_get,
             commands::photo_apply,
             commands::photo_remove,
+            commands::signature_choose,
+            commands::signature_get,
+            commands::signature_remove,
         ])
         .run(context)
         .unwrap_or_else(|e| panic!("PinaxCV could not start: {e}"));
