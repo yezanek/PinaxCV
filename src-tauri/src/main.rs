@@ -44,6 +44,20 @@ fn with_driver_args(context: &mut tauri::Context<tauri::Wry>) {
     }
 }
 
+/// Removes CVs deleted more than 30 days ago, off the startup path so a
+/// large purge never delays the window. Only the count is logged.
+fn purge_in_background(app: Arc<App>) {
+    let spawned = std::thread::Builder::new()
+        .name("purge-deleted".into())
+        .spawn(move || match app.purge_deleted_cvs() {
+            Ok(count) => tracing::info!(count, "purged deleted CVs"),
+            Err(e) => tracing::warn!(code = e.code.as_str(), "could not purge deleted CVs"),
+        });
+    if spawned.is_err() {
+        tracing::warn!("could not start the purge of deleted CVs");
+    }
+}
+
 fn main() {
     #[allow(unused_mut)]
     let mut context = tauri::generate_context!();
@@ -72,7 +86,9 @@ fn main() {
             )
             .with_secrets(Box::new(keychain::Keychain))
             .with_data_dir(dir);
-            tauri_app.manage(Arc::new(app));
+            let app = Arc::new(app);
+            tauri_app.manage(app.clone());
+            purge_in_background(app);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
