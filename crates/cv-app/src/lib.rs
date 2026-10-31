@@ -20,6 +20,7 @@ mod photo;
 mod preview;
 mod review;
 mod settings;
+mod signature;
 mod tailor;
 
 use std::path::PathBuf;
@@ -35,8 +36,8 @@ use cv_api::{
 use cv_core::fit::{FitResult, fit};
 use cv_core::validate;
 use cv_core::{
-    AtsReport, Basics, CV_SCHEMA_VERSION, CalendarDate, Cv, CvSummary, Id, IdSource, LintIssue,
-    Locale, PageCountError, PageCounter, Paper, ResolvedCv, SnapshotReason, StoredCv,
+    AtsReport, Basics, CV_SCHEMA_VERSION, CalendarDate, ClosingPart, Cv, CvSummary, Id, IdSource,
+    LintIssue, Locale, PageCountError, PageCounter, Paper, ResolvedCv, SnapshotReason, StoredCv,
     StoredVariant, TemplateId, TemplateOptions, Variant, VariantSummary,
 };
 use cv_render::{ExportOptions, Exporter, HtmlExporter, PdfExporter, Renderer, ats};
@@ -51,18 +52,25 @@ pub use import::{IMPORT_EXTENSIONS, ImportCache};
 pub use jobs::{JobContext, JobEvent, JobEvents, JobRegistry};
 pub use photo::{MAX_PHOTO_FILE, PHOTO_EXTENSIONS, PhotoSources};
 pub use preview::PreviewCache;
+pub use signature::clean_signature;
 
 /// Counts pages as the PDF export draws them, with the CV's photo when the
 /// resolved CV shows it.
 struct PhotoPages<'a> {
     renderer: &'a Renderer,
     photo: Option<Arc<[u8]>>,
+    /// The CV's signature, drawn when the resolved CV shows it (ADR-090).
+    signature: Option<Arc<[u8]>>,
 }
 
 impl PageCounter for PhotoPages<'_> {
     fn pages(&self, cv: &ResolvedCv) -> std::result::Result<u32, PageCountError> {
         let options = ExportOptions {
             photo: self.photo.clone().filter(|_| cv.show_photo),
+            signature: self
+                .signature
+                .clone()
+                .filter(|_| cv.closing.show.contains(&ClosingPart::Signature)),
             date: Some(today()),
             ..ExportOptions::default()
         };
@@ -293,6 +301,7 @@ impl App {
         let pages = PhotoPages {
             renderer: &self.renderer,
             photo: self.photo_for(&cv.resolve(Some(&variant)))?,
+            signature: self.signature_for(&cv.resolve(Some(&variant)))?,
         };
         let result = self
             .with_ids(|ids| fit(&cv, &variant, None, req.page_target, &pages, ids))
@@ -397,6 +406,7 @@ impl App {
             include_email: req.include_email,
             include_phone: req.include_phone,
             photo: self.photo_for(&resolved)?,
+            signature: self.signature_for(&resolved)?,
             date: Some(today()),
         };
         let doc = HtmlExporter
@@ -488,6 +498,7 @@ impl App {
     fn pdf_options(&self, cv: &ResolvedCv) -> Result<ExportOptions> {
         Ok(ExportOptions {
             photo: self.photo_for(cv)?,
+            signature: self.signature_for(cv)?,
             date: Some(today()),
             ..ExportOptions::default()
         })

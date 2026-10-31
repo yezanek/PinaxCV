@@ -16,7 +16,7 @@ Requirements:
 - backup/restore;
 - no secrets in the database.
 
-Tables: `cvs` and `variants` (JSON documents with a revision; CVs are soft-deleted), `snapshots`, `review_sessions`, `settings` (AI provider and consent, new-CV defaults), `ai_cache` (answers that passed their type check), and `photos` (one cleaned photo per CV, migration `0002_photos.sql`, schema version 2, ADR-083). The schema version is `PRAGMA user_version`; a database from a newer PinaxCV is refused.
+Tables: `cvs` and `variants` (JSON documents with a revision; CVs are soft-deleted), `snapshots`, `review_sessions`, `settings` (AI provider and consent, new-CV defaults), `ai_cache` (answers that passed their type check), and `photos` (one cleaned photo per CV, migration `0002_photos.sql`, schema version 2, ADR-083), and `signatures` (one cleaned signature PNG per CV, migration `0003_signatures.sql`, schema version 3, ADR-090). The schema version is `PRAGMA user_version`; a database from a newer PinaxCV is refused.
 
 Data operations from Settings (ADR-080, ADR-081):
 

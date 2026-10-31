@@ -207,6 +207,47 @@ fn the_closing_block_is_text_after_the_last_section() {
     );
 }
 
+/// The signature (ADR-090) is an image only: the PDF holds it, but the
+/// extracted text and the ATS result do not change.
+#[test]
+fn the_signature_adds_an_image_but_no_text() {
+    use cv_core::ClosingPart;
+    let png: std::sync::Arc<[u8]> = include_bytes!("fixtures/signature.png").as_slice().into();
+    let mut cv = fixture("typical");
+    cv.closing.place = Some("Berlin".into());
+    cv.closing.show = [ClosingPart::PlaceDate].into();
+    let renderer = Renderer::new();
+    let plain = renderer
+        .compile(&cv.resolve(None), &ExportOptions::default())
+        .expect("compiles")
+        .to_pdf()
+        .expect("pdf");
+    cv.closing.show.insert(ClosingPart::Signature);
+    let options = ExportOptions {
+        signature: Some(png),
+        ..ExportOptions::default()
+    };
+    let resolved = cv.resolve(None);
+    let signed = renderer
+        .compile(&resolved, &options)
+        .expect("compiles")
+        .to_pdf()
+        .expect("pdf");
+    assert_eq!(images(&plain), 0);
+    // The PNG and its alpha channel, which PDF keeps as a soft mask.
+    assert_eq!(images(&signed), 2);
+    assert_eq!(
+        LopdfExtractor.extract(&signed).expect("extracts"),
+        LopdfExtractor.extract(&plain).expect("extracts"),
+    );
+    assert!(
+        ats_report(&signed, &resolved)
+            .failed_checks()
+            .next()
+            .is_none()
+    );
+}
+
 /// A closing block taller than a page breaks across pages instead of
 /// overflowing one; a short one is never split (ADR-089).
 #[test]

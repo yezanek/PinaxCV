@@ -435,6 +435,8 @@ fn delete_all_data_leaves_an_empty_working_store() {
         .expect("cache");
     s.photo_put(&secret.id, &photo(b"Unmistakable-Photo-0815"))
         .expect("photo");
+    s.signature_put(&secret.id, b"Unmistakable-Signature-0916")
+        .expect("signature");
     let backup = dir.path().join("backup.sqlite3");
     s.backup_to(&backup).expect("backup");
     clock.advance(Duration::from_secs(1));
@@ -446,12 +448,17 @@ fn delete_all_data_leaves_an_empty_working_store() {
     assert_eq!(s.get_setting("ai.model").expect("get"), None);
     assert_eq!(s.ai_cache_get("k").expect("get"), None);
     assert_eq!(s.photo_get(&secret.id).expect("get"), None);
+    assert_eq!(s.signature_get(&secret.id).expect("get"), None);
     assert!(!copy.exists(), "restore copies are removed");
     assert!(backup.exists(), "files elsewhere are not touched");
     // Nothing of the deleted CV is left in the database or its WAL.
     for file in [db.clone(), dir.path().join("pinaxcv.sqlite3-wal")] {
         if let Ok(bytes) = std::fs::read(&file) {
-            for needle in [&b"Unmistakable-Title-4711"[..], b"Unmistakable-Photo-0815"] {
+            for needle in [
+                &b"Unmistakable-Title-4711"[..],
+                b"Unmistakable-Photo-0815",
+                b"Unmistakable-Signature-0916",
+            ] {
                 let found = bytes.windows(needle.len()).any(|w| w == needle);
                 assert!(!found, "{} still holds deleted data", file.display());
             }
@@ -552,4 +559,32 @@ fn photos_belong_to_live_cvs_and_follow_duplicates() {
         s.photo_put(&id(999), &photo(b"c")),
         Err(StoreError::NotFound(_))
     ));
+}
+
+#[test]
+fn signatures_belong_to_live_cvs_and_follow_duplicates() {
+    let (s, _clock) = store();
+    let base = s.create_cv(&cv(1)).expect("create").cv;
+    assert_eq!(s.signature_get(&base.id).expect("get"), None);
+    s.signature_put(&base.id, b"a").expect("put");
+    s.signature_put(&base.id, b"b").expect("replace");
+    assert_eq!(s.signature_get(&base.id).expect("get"), Some(b"b".to_vec()));
+
+    let copy = s
+        .duplicate_cv(&base.id, "Copy", &mut Ids(100))
+        .expect("duplicate")
+        .cv;
+    assert_eq!(s.signature_get(&copy.id).expect("get"), Some(b"b".to_vec()));
+    s.signature_delete(&copy.id).expect("delete");
+    assert_eq!(s.signature_get(&copy.id).expect("get"), None);
+    assert_eq!(s.signature_get(&base.id).expect("get"), Some(b"b".to_vec()));
+
+    s.delete_cv(&base.id).expect("delete cv");
+    assert_eq!(s.signature_get(&base.id).expect("get"), None);
+    assert!(matches!(
+        s.signature_put(&base.id, b"c"),
+        Err(StoreError::NotFound(_))
+    ));
+    s.restore_cv(&base.id).expect("restore cv");
+    assert_eq!(s.signature_get(&base.id).expect("get"), Some(b"b".to_vec()));
 }

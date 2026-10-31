@@ -176,6 +176,8 @@ fieldset.photo .hint { margin: 0 0 0.5rem; color: var(--muted); font-size: 0.9em
 .photo-thumb { width: 5rem; height: auto; border: 1px solid var(--border); }
 .photo-actions { display: flex; flex-direction: column; gap: 0.4rem; }
 .photo-actions div { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.signature-thumb { max-width: 12rem; max-height: 4rem; background: #fff; border: 1px solid var(--border); }
+details.closing h4 { margin: 0.75rem 0 0; }
 details.personal { border: 1px solid var(--border); margin: 0 0 0.75rem; padding: 0.5rem 0.75rem; }
 details.personal summary { cursor: pointer; font-weight: 600; }
 details.personal .hint { margin: 0.5rem 0; color: var(--muted); font-size: 0.9em; }

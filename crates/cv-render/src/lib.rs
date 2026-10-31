@@ -27,6 +27,9 @@ pub struct ExportOptions {
     /// The CV's profile photo as JPEG, drawn when the resolved CV shows it
     /// (ADR-083). It adds no text to any export.
     pub photo: Option<Arc<[u8]>>,
+    /// The CV's signature as PNG, drawn in the closing block when the
+    /// resolved CV shows it (ADR-090). It adds no text to any export.
+    pub signature: Option<Arc<[u8]>>,
     /// The export date, printed in the closing block's "place, date" line
     /// when the CV shows it (ADR-089). `None` prints the place alone.
     pub date: Option<CalendarDate>,
@@ -40,6 +43,7 @@ impl Default for ExportOptions {
             include_email: true,
             include_phone: true,
             photo: None,
+            signature: None,
             date: None,
         }
     }
@@ -54,6 +58,7 @@ impl ExportOptions {
             include_email: true,
             include_phone: false,
             photo: None,
+            signature: None,
             date: None,
         }
     }

@@ -165,14 +165,17 @@
   }
 }
 
-// The optional closing block (ADR-089): a consent clause and a "place,
-// date" line, as plain text after the last section and below the columns,
-// never in a page footer (ATS rule 5). It stays together on one page unless
-// it is taller than a page, when it may break rather than overflow.
+// The optional closing block (ADR-089): a consent clause, a "place,
+// date" line and a signature image, as plain text after the last section
+// and below the columns, never in a page footer (ATS rule 5). It stays
+// together on one page unless it is taller than a page, when it may break
+// rather than overflow.
 #if d.closing != none {
   let body = [
     #if d.closing.consent != none { block(below: 0.8em, text(size: 0.9em, d.closing.consent)) }
     #if d.closing.place_date != none { block(d.closing.place_date) }
+    // The signature (ADR-090) is a PDF artifact, like the photo: no text.
+    #if d.closing.signature { block(above: 0.6em, pdf.artifact(image("signature.png", height: 1.6cm))) }
   ]
   layout(size => {
     let height = measure(block(width: size.width, body)).height

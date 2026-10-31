@@ -535,7 +535,7 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                     }
                 }}
                 <AddSection edit=edit />
-                <ClosingSection cv=cv edit=edit />
+                <ClosingSection cv_id=id.clone() cv=cv edit=edit error=error changed=variant_changed />
                 </div>
             </section>
             <section class="preview" class:stale=move || rendering.get() aria-label=t().preview

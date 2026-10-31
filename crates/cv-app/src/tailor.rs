@@ -235,13 +235,18 @@ impl App {
                 // Count pages with the photo when the variant shows it, as
                 // the PDF export draws them.
                 let resolved = cv.resolve(Some(&trial));
-                let photo = self.blocking(move |app| app.photo_for(&resolved)).await?;
+                let (photo, signature) = self
+                    .blocking(move |app| {
+                        Ok((app.photo_for(&resolved)?, app.signature_for(&resolved)?))
+                    })
+                    .await?;
                 let app = Arc::clone(self);
                 let scores = relevance.scores.clone();
                 let result = tokio::task::spawn_blocking(move || {
                     let pages = crate::PhotoPages {
                         renderer: &app.renderer,
                         photo,
+                        signature,
                     };
                     app.with_ids(|ids| fit(&cv, &trial, Some(&scores), target, &pages, ids))
                 })

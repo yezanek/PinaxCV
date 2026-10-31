@@ -35,6 +35,8 @@ pub enum ClosingPart {
     Consent,
     /// The "place, date" line.
     PlaceDate,
+    /// The signature image, stored beside the CV like the photo (ADR-090).
+    Signature,
 }
 
 impl Closing {

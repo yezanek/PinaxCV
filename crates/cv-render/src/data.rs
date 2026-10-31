@@ -37,6 +37,9 @@ pub struct ClosingData {
     /// "Berlin, 30 Oct 2026": the place and the export date in the CV's
     /// date style, or whichever of the two is known.
     pub place_date: Option<String>,
+    /// Whether the template draws `signature.png`: the CV shows its
+    /// signature and the export was given one (ADR-090).
+    pub signature: bool,
 }
 
 /// Which blocks each column draws, in order (ADR-084). With one column every
@@ -262,8 +265,9 @@ fn closing(cv: &ResolvedCv, options: &ExportOptions) -> Option<ClosingData> {
     let data = ClosingData {
         consent: c.consent_text().map(str::to_owned),
         place_date: place_date.filter(|l| !l.is_empty()),
+        signature: c.show.contains(&ClosingPart::Signature) && options.signature.is_some(),
     };
-    (data.consent.is_some() || data.place_date.is_some()).then_some(data)
+    (data.consent.is_some() || data.place_date.is_some() || data.signature).then_some(data)
 }
 
 /// Puts the top blocks and the printed sections into their columns.
@@ -560,6 +564,7 @@ mod tests {
             include_email: false,
             include_phone: false,
             photo: None,
+            signature: None,
             date: None,
         };
         let d = to_typst_data(&cv, &opts);

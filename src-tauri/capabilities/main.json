@@ -55,6 +55,9 @@
     "allow-photo-choose",
     "allow-photo-get",
     "allow-photo-apply",
-    "allow-photo-remove"
+    "allow-photo-remove",
+    "allow-signature-choose",
+    "allow-signature-get",
+    "allow-signature-remove"
   ]
 }

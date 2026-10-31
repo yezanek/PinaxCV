@@ -471,6 +471,24 @@
           "markdownDescription": "Enables the set_cv_defaults command without any pre-configured scope."
         },
         {
+          "description": "Enables the signature_choose command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-signature-choose",
+          "markdownDescription": "Enables the signature_choose command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the signature_get command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-signature-get",
+          "markdownDescription": "Enables the signature_get command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the signature_remove command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-signature-remove",
+          "markdownDescription": "Enables the signature_remove command without any pre-configured scope."
+        },
+        {
           "description": "Enables the third_party_licenses command without any pre-configured scope.",
           "type": "string",
           "const": "allow-third-party-licenses",
@@ -769,6 +787,24 @@
           "type": "string",
           "const": "deny-set-cv-defaults",
           "markdownDescription": "Denies the set_cv_defaults command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the signature_choose command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-signature-choose",
+          "markdownDescription": "Denies the signature_choose command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the signature_get command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-signature-get",
+          "markdownDescription": "Denies the signature_get command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the signature_remove command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-signature-remove",
+          "markdownDescription": "Denies the signature_remove command without any pre-configured scope."
         },
         {
           "description": "Denies the third_party_licenses command without any pre-configured scope.",
