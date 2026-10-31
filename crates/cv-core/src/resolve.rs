@@ -22,13 +22,15 @@ impl Cv {
     /// visible children are omitted.
     pub fn resolve(&self, variant: Option<&Variant>) -> ResolvedCv {
         let overlay = Overlay(variant);
-        let sections = overlay
+        let sections: Vec<ResolvedSection> = overlay
             .ordered(&self.id, self.sections.iter(), |s| s.id())
             .filter(|s| !overlay.is_hidden(s.id()))
             .filter_map(|s| overlay.section(s))
             .collect();
+        // Prune against what the variant shows, so the sidebar never names an
+        // omitted section.
         let mut layout = self.layout.clone();
-        let section_ids: Vec<Id> = self.sections.iter().map(|s| s.id().clone()).collect();
+        let section_ids: Vec<Id> = sections.iter().map(|s| s.id().clone()).collect();
         layout.normalize(&section_ids);
         ResolvedCv {
             layout,
@@ -427,6 +429,20 @@ mod tests {
             r.layout.column_of(&crate::BlockRef::Section { id: id(3) }),
             crate::Column::Main
         );
+    }
+
+    #[test]
+    fn layout_drops_sections_the_variant_hides() {
+        let mut cv = cv();
+        cv.layout.columns = crate::Columns::Two;
+        cv.layout.sidebar = vec![
+            crate::BlockRef::Section { id: id(6) },
+            crate::BlockRef::Section { id: id(13) },
+        ];
+        let mut v = variant();
+        v.hidden.insert(id(13));
+        let r = cv.resolve(Some(&v));
+        assert_eq!(r.layout.sidebar, [crate::BlockRef::Section { id: id(6) }]);
     }
 
     #[test]
