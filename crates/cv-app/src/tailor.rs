@@ -8,8 +8,8 @@ use std::sync::Arc;
 
 use cv_ai::cache::{ResponseCache, sha256_hex};
 use cv_ai::{
-    LlmError, PayloadOptions, Rewrites, StageContext, build_cv_payload, find_gaps, parse_job,
-    rewrite_bullets, score_relevance, summarize,
+    LlmError, PayloadOptions, Rewrites, StageContext, build_cv_payload_redacting, find_gaps,
+    parse_job, rewrite_bullets, score_relevance, summarize,
 };
 use cv_api::{AiStage, AiTailor, ApiError, DiscardedRewrite, ErrorCode, JobId, TailorResult};
 use cv_core::fit::{FitResult, fit};
@@ -148,7 +148,7 @@ impl App {
             send_name: status.send_name,
             send_location: status.send_location,
         };
-        let payload = build_cv_payload(&base, opts);
+        let payload = build_cv_payload_redacting(&base, &cv.basics.personal, opts);
         let relevance = score_relevance(&stage, &requirements, &payload)
             .await
             .map_err(llm_error)?;
