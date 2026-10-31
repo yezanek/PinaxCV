@@ -24,7 +24,7 @@ mod signature;
 mod style_file;
 mod tailor;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
@@ -37,9 +37,9 @@ use cv_api::{
 use cv_core::fit::{FitResult, fit};
 use cv_core::validate;
 use cv_core::{
-    AtsReport, Basics, CV_SCHEMA_VERSION, CalendarDate, ClosingPart, Cv, CvSummary, Id, IdSource,
-    LintIssue, Locale, PageCountError, PageCounter, Paper, ResolvedCv, SnapshotReason, StoredCv,
-    StoredVariant, TemplateId, TemplateOptions, Variant, VariantSummary,
+    AtsReport, Basics, CV_SCHEMA_VERSION, CalendarDate, ClosingPart, Columns, Cv, CvSummary, Id,
+    IdSource, LintIssue, Locale, PageCountError, PageCounter, Paper, ResolvedCv, SnapshotReason,
+    StoredCv, StoredVariant, TemplateId, TemplateOptions, Variant, VariantSummary,
 };
 use cv_render::{ExportOptions, Exporter, HtmlExporter, PdfExporter, Renderer, ats};
 use cv_store::Store;
@@ -396,13 +396,41 @@ impl App {
         .export(&resolved, &self.pdf_options(&resolved)?)
         .map_err(render_error)?;
         let report = ats::ats_report(&doc.bytes, &resolved);
-        let path = self.save_file(&doc.suggested_file_name, ExportKind::Pdf, &doc.bytes)?;
+        let path = self.choose_save_path(&doc.suggested_file_name, ExportKind::Pdf)?;
+        // The dialog asked before replacing the PDF, which also covers the
+        // copy beside it from the earlier export; otherwise an existing
+        // `-ats.pdf` is someone else's file and is kept.
+        let replaced = path.exists();
+        write_file(&path, &doc.bytes)?;
+        let ats_copy_path = if req.ats_copy && resolved.layout.columns == Columns::Two {
+            Some(self.write_ats_copy(&resolved, &path, replaced)?)
+        } else {
+            None
+        };
         self.snapshot_after_export(&req.target.cv_id);
         Ok(ExportResult {
-            path,
+            path: path.display().to_string(),
             page_count: doc.page_count,
             ats: Some(report),
+            ats_copy_path,
         })
+    }
+
+    /// Writes the one-column copy of a two-column CV next to `pdf`, as
+    /// `<name>-ats.pdf` (ADR-084). An existing copy is replaced only when
+    /// `replace` (the user just replaced `pdf`); otherwise the first free
+    /// `<name>-ats-<n>.pdf` is used. Returns its path for display.
+    fn write_ats_copy(&self, resolved: &ResolvedCv, pdf: &Path, replace: bool) -> Result<String> {
+        let mut one = resolved.clone();
+        one.layout.columns = Columns::One;
+        let doc = PdfExporter {
+            renderer: &self.renderer,
+        }
+        .export(&one, &self.pdf_options(&one)?)
+        .map_err(render_error)?;
+        let path = ats_copy_path(pdf, replace);
+        write_file(&path, &doc.bytes)?;
+        Ok(path.display().to_string())
     }
 
     pub fn export_html(&self, req: ExportHtmlRequest) -> Result<ExportResult> {
@@ -420,9 +448,10 @@ impl App {
         let path = self.save_file(&doc.suggested_file_name, ExportKind::Html, &doc.bytes)?;
         self.snapshot_after_export(&req.target.cv_id);
         Ok(ExportResult {
-            path,
+            path: path.display().to_string(),
             page_count: None,
             ats: None,
+            ats_copy_path: None,
         })
     }
 
@@ -518,22 +547,17 @@ impl App {
         Ok(cv.resolve(variant.as_ref()))
     }
 
-    /// Asks the shell for a path, then writes the file. Returns the path for
-    /// display.
-    fn save_file(&self, suggested: &str, kind: ExportKind, bytes: &[u8]) -> Result<String> {
-        let path = self
-            .dialog
+    /// Asks the shell for a path, then writes the file there.
+    fn save_file(&self, suggested: &str, kind: ExportKind, bytes: &[u8]) -> Result<PathBuf> {
+        let path = self.choose_save_path(suggested, kind)?;
+        write_file(&path, bytes)?;
+        Ok(path)
+    }
+
+    fn choose_save_path(&self, suggested: &str, kind: ExportKind) -> Result<PathBuf> {
+        self.dialog
             .choose_save_path(suggested, kind)
-            .ok_or_else(|| ApiError::new(ErrorCode::Cancelled, "Export cancelled."))?;
-        // The io::Error text can carry the path, which holds the user's name.
-        write_atomically(&path, bytes).map_err(|e| {
-            ApiError::new(
-                ErrorCode::Io,
-                "Could not write the file. Check the folder's permissions and free space.",
-            )
-            .with_details(serde_json::json!({ "kind": format!("{:?}", e.kind()) }))
-        })?;
-        Ok(path.display().to_string())
+            .ok_or_else(|| ApiError::new(ErrorCode::Cancelled, "Export cancelled."))
     }
 
     /// Export snapshots are best effort: the file is already written, and the
@@ -541,6 +565,35 @@ impl App {
     fn snapshot_after_export(&self, cv_id: &Id) {
         let _ = self.with_ids(|ids| self.store.add_snapshot(cv_id, SnapshotReason::Export, ids));
     }
+}
+
+/// Writes `bytes` to `path` atomically.
+fn write_file(path: &Path, bytes: &[u8]) -> Result<()> {
+    // The io::Error text can carry the path, which holds the user's name.
+    write_atomically(path, bytes).map_err(|e| {
+        ApiError::new(
+            ErrorCode::Io,
+            "Could not write the file. Check the folder's permissions and free space.",
+        )
+        .with_details(serde_json::json!({ "kind": format!("{:?}", e.kind()) }))
+    })
+}
+
+/// `<dir>/<stem>-ats.pdf` beside `pdf`. Unless `replace`, an existing file
+/// is kept and the first free `<stem>-ats-<n>.pdf` is returned instead.
+pub fn ats_copy_path(pdf: &Path, replace: bool) -> PathBuf {
+    let stem = pdf
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "CV".to_owned());
+    let first = pdf.with_file_name(format!("{stem}-ats.pdf"));
+    if replace || !first.exists() {
+        return first;
+    }
+    (2u32..)
+        .map(|n| pdf.with_file_name(format!("{stem}-ats-{n}.pdf")))
+        .find(|p| !p.exists())
+        .unwrap_or(first)
 }
 
 /// Parses the embedded template manifests.

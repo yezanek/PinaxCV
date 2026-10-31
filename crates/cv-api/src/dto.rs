@@ -109,6 +109,14 @@ pub struct PreviewResponse {
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
 pub struct ExportPdfRequest {
     pub target: Target,
+    /// For a two-column CV, also save a one-column copy for online
+    /// applications next to the PDF (ADR-084). Ignored for one column.
+    #[serde(default = "default_true")]
+    pub ats_copy: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
@@ -126,6 +134,9 @@ pub struct ExportResult {
     pub page_count: Option<u32>,
     /// PDF only: the ATS check of the exported file.
     pub ats: Option<AtsReport>,
+    /// PDF only: where the one-column ATS copy was written, for display.
+    #[serde(default)]
+    pub ats_copy_path: Option<String>,
 }
 
 // Templates
