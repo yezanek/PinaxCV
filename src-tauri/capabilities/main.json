@@ -46,6 +46,7 @@
     "allow-get-settings",
     "allow-set-cv-defaults",
     "allow-open-data-dir",
+    "allow-open-log-dir",
     "allow-backup-db",
     "allow-restore-db",
     "allow-clear-ai-cache",
@@ -56,6 +57,9 @@
     "allow-photo-apply",
     "allow-photo-remove",
     "allow-style-save",
-    "allow-style-open"
+    "allow-style-open",
+    "allow-signature-choose",
+    "allow-signature-get",
+    "allow-signature-remove"
   ]
 }

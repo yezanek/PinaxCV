@@ -6,7 +6,7 @@
 //! filesystem, network or package access.
 
 use std::collections::BTreeSet;
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Mutex, PoisonError};
 
 use cv_core::{Diagnostic, PageCountError, PageCounter, ResolvedCv, Severity};
 use typst::diag::{FileError, FileResult, SourceDiagnostic};
@@ -76,7 +76,7 @@ impl Renderer {
         if let Some(missing) = world.missing_glyphs(&data) {
             warnings.push(missing);
         }
-        world.set_data(json, options.photo.clone());
+        world.set_data(json, options);
         let result = typst::compile::<PagedDocument>(&*world);
         warnings.extend(result.warnings.iter().map(diagnostic));
         match result.output {
@@ -217,6 +217,8 @@ struct CvWorld {
     data: Bytes,
     photo_id: FileId,
     photo: Option<Bytes>,
+    signature_id: FileId,
+    signature: Option<Bytes>,
 }
 
 fn file_id(name: &str) -> FileId {
@@ -240,12 +242,15 @@ impl CvWorld {
             data: Bytes::new(b"{}".to_vec()),
             photo_id: file_id("photo.jpg"),
             photo: None,
+            signature_id: file_id("signature.png"),
+            signature: None,
         }
     }
 
-    fn set_data(&mut self, json: Vec<u8>, photo: Option<Arc<[u8]>>) {
+    fn set_data(&mut self, json: Vec<u8>, options: &ExportOptions) {
         self.data = Bytes::new(json);
-        self.photo = photo.map(Bytes::new);
+        self.photo = options.photo.clone().map(Bytes::new);
+        self.signature = options.signature.clone().map(Bytes::new);
     }
 
     /// Lists the printed characters no embedded font covers.
@@ -365,6 +370,8 @@ impl World for CvWorld {
             Ok(self.data.clone())
         } else if id == self.photo_id {
             self.photo.clone().ok_or(FileError::AccessDenied)
+        } else if id == self.signature_id {
+            self.signature.clone().ok_or(FileError::AccessDenied)
         } else {
             Err(FileError::AccessDenied)
         }

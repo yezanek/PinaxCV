@@ -15,8 +15,9 @@ Operations, as the Tauri commands that `src-tauri` exposes over `cv-app` (regist
 - **Settings and data:** `get_settings`, `set_cv_defaults`, `open_data_dir`, `backup_db`, `restore_db`, `clear_ai_cache`, `delete_all_data` and `third_party_licenses` (ADR-079 to ADR-082).
 - **Photo:** `photo_choose`, `photo_get`, `photo_apply` and `photo_remove` (ADR-083).
 - **Style files:** `style_save(StyleSave { style, name }) -> StyleSaved` and `style_open() -> StyleOpened { style, warnings, keep_template }`. The UI builds the style with `Style::from_cv` and applies an opened one with `Cv::apply_style` as one edit (ADR-084).
+- **Signature:** `signature_choose`, `signature_get` and `signature_remove`, each taking the CV id (ADR-090).
 
-The backend opens every file dialog itself (export, import, backup, restore, photo, style files), so no command takes a file path from the UI.
+The backend opens every file dialog itself (export, import, backup, restore, photo, signature, style files), so no command takes a file path from the UI.
 
 Requests and responses should be serializable DTOs. Application services may use internal domain types, but transport types should not contain Tauri or database handles.
 

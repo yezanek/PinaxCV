@@ -6,6 +6,7 @@ use leptos::prelude::*;
 
 mod advice;
 mod checks;
+mod closing;
 mod dates;
 mod diff;
 mod drag;
@@ -21,6 +22,7 @@ mod layout;
 mod list;
 mod lists;
 mod order;
+mod personal;
 mod photo;
 mod preview;
 mod review;
