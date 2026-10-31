@@ -9,8 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     Basics, Bullet, Closing, Id, LanguageItem, Layout, Locale, Paper, Period, SkillGroup,
-    TemplateId,
-    TemplateOptions,
+    TemplateId, TemplateOptions,
 };
 
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
