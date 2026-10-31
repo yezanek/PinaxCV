@@ -121,8 +121,12 @@ fn create_edit_preview_and_export() {
         .wait_for("//div[@data-drop-zone='sidebar']//li[@data-drop-key='top:name']")
         .expect("name card");
     s.drag(&handle, &name_card, 12).expect("drag");
-    s.wait_for("//div[@data-drop-zone='sidebar']//li[@data-drop-key='top:summary']")
-        .expect("summary card dragged to the sidebar");
+    // Below the name card's middle, so it lands after the name.
+    s.wait_for(
+        "//div[@data-drop-zone='sidebar']//li[@data-drop-key='top:name']\
+         /following-sibling::li[@data-drop-key='top:summary']",
+    )
+    .expect("summary card dragged to the sidebar");
 
     s.quit().expect("quit");
 }

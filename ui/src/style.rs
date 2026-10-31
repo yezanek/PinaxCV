@@ -3,7 +3,7 @@
 //! template manifest; the backend still clamps whatever is saved.
 
 use cv_api::{OptionRange, TemplateManifest};
-use cv_core::{Cv, DateStyle, Locale, Paper, TemplateId, TemplateOptions};
+use cv_core::{Cv, DateStyle, Locale, Paper, StoredVariant, TemplateId, TemplateOptions};
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 
@@ -56,6 +56,7 @@ fn ranges_for(templates: &[TemplateManifest], id: &TemplateId) -> [OptionRange; 
 #[component]
 pub fn StyleTab(
     cv: RwSignal<Option<Cv>>,
+    variant: RwSignal<Option<StoredVariant>>,
     edit: Edit,
     error: RwSignal<Option<String>>,
 ) -> impl IntoView {
@@ -132,7 +133,7 @@ pub fn StyleTab(
 
     let s = t();
     view! {
-        <LayoutPanel cv=cv edit=edit />
+        <LayoutPanel cv=cv variant=variant edit=edit />
         <label>{s.template}
             <select on:change=move |ev| {
                 let id = TemplateId(event_target_value(&ev));

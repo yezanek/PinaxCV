@@ -5,10 +5,15 @@
 //!
 //! The canvas edits the base CV: columns and placement live on it, and a
 //! section moved within a column is reordered in `cv.sections`, the same
-//! order the Content tab shows.
+//! order the Content tab shows. With a variant selected the canvas still
+//! shows and edits the base CV, and says so: the variant's own section
+//! order is set in the variant panel.
 
-use cv_core::{BlockRef, Column, Columns, Cv, Id, Layout, Section, TopBlock};
+use std::time::Duration;
+
+use cv_core::{BlockRef, Column, Columns, Cv, Id, Layout, Section, StoredVariant, TopBlock};
 use leptos::prelude::*;
+use wasm_bindgen::JsCast;
 
 use crate::drag::{DropSpot, ZoneDragHandle, move_before};
 use crate::entries::Edit;
@@ -247,6 +252,7 @@ fn card_label(cv: &Cv, key: &Key) -> String {
                 Section::Skills(_) | Section::Languages(_) => None,
             };
             match count {
+                Some(1) => fill(s.layout_entry_one, &[("label", &label)]),
                 Some(n) => fill(
                     s.layout_entries,
                     &[("label", &label), ("count", &n.to_string())],
@@ -257,8 +263,71 @@ fn card_label(cv: &Cv, key: &Key) -> String {
     }
 }
 
+/// Runs `change` as one edit, and only when it changes the CV, so a move
+/// that does nothing (↑ on the first card) adds no undo step.
+fn edit_if_changed(
+    cv: RwSignal<Option<Cv>>,
+    edit: Edit,
+    change: impl Fn(&mut Cv) -> bool + 'static,
+) -> bool {
+    let Some(mut probe) = cv.get_untracked() else {
+        return false;
+    };
+    if !change(&mut probe) {
+        return false;
+    }
+    edit.run(Box::new(move |c| {
+        change(c);
+    }));
+    true
+}
+
+/// Which move button of a card.
+#[derive(Clone, Copy)]
+enum Move {
+    Up,
+    Down,
+    Across,
+}
+
+impl Move {
+    fn name(self) -> &'static str {
+        match self {
+            Move::Up => "up",
+            Move::Down => "down",
+            Move::Across => "across",
+        }
+    }
+}
+
+/// Focuses `button` on the card for `key` once the canvas is drawn again,
+/// so a keyboard user stays on the block they moved, in either column.
+fn refocus(key: &Key, button: Move) {
+    let selector = format!(
+        "[data-drop-key=\"{}\"]>.order>button[data-move=\"{}\"]",
+        key.as_text(),
+        button.name()
+    );
+    set_timeout(
+        move || {
+            let found = web_sys::window()
+                .and_then(|w| w.document())
+                .and_then(|d| d.query_selector(&selector).ok().flatten())
+                .and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok());
+            if let Some(el) = found {
+                let _ = el.focus();
+            }
+        },
+        Duration::ZERO,
+    );
+}
+
 #[component]
-pub fn LayoutPanel(cv: RwSignal<Option<Cv>>, edit: Edit) -> impl IntoView {
+pub fn LayoutPanel(
+    cv: RwSignal<Option<Cv>>,
+    variant: RwSignal<Option<StoredVariant>>,
+    edit: Edit,
+) -> impl IntoView {
     let s = t();
     let layout = move || cv.with(|c| c.as_ref().map(|c| c.layout.clone()).unwrap_or_default());
     let two = move || layout().columns == Columns::Two;
@@ -270,10 +339,15 @@ pub fn LayoutPanel(cv: RwSignal<Option<Cv>>, edit: Edit) -> impl IntoView {
             return;
         };
         let before = spot.before.as_deref().and_then(Key::parse);
-        edit.run(Box::new(move |c| {
-            place(c, &key, column, before.as_ref());
-        }));
+        edit_if_changed(cv, edit, move |c| place(c, &key, column, before.as_ref()));
     });
+    // Runs a button's move, then puts focus back on that button.
+    let press = move |key: Key, button: Move, change: fn(&mut Cv, &Key) -> bool| {
+        let k = key.clone();
+        if edit_if_changed(cv, edit, move |c| change(c, &k)) {
+            refocus(&key, button);
+        }
+    };
     let (min, max) = Layout::SIDEBAR_WIDTH_PCT;
 
     let card = move |key: Key| {
@@ -288,33 +362,18 @@ pub fn LayoutPanel(cv: RwSignal<Option<Cv>>, edit: Edit) -> impl IntoView {
                 <ZoneDragHandle group="layout".to_owned() key=text dropped=dropped />
                 <span class="layout-label">{label}</span>
                 <span class="order">
-                    <button aria-label=move || fill(s.move_block_up, &[("block", &l1())])
-                        on:click=move |_| {
-                            let k = k1.clone();
-                            edit.run(Box::new(move |c| {
-                                shift(c, &k, true);
-                            }))
-                        }>"↑"</button>
-                    <button aria-label=move || fill(s.move_block_down, &[("block", &l2())])
-                        on:click=move |_| {
-                            let k = k2.clone();
-                            edit.run(Box::new(move |c| {
-                                shift(c, &k, false);
-                            }))
-                        }>"↓"</button>
+                    <button data-move="up" aria-label=move || fill(s.move_block_up, &[("block", &l1())])
+                        on:click=move |_| press(k1.clone(), Move::Up, |c, k| shift(c, k, true))>"↑"</button>
+                    <button data-move="down" aria-label=move || fill(s.move_block_down, &[("block", &l2())])
+                        on:click=move |_| press(k2.clone(), Move::Down, |c, k| shift(c, k, false))>"↓"</button>
                     <Show when=two>
                         {
                             let k3 = k3.clone();
                             let l3 = l3.clone();
                             view! {
-                                <button aria-label=move || fill(s.move_block_across, &[("block", &l3())])
+                                <button data-move="across" aria-label=move || fill(s.move_block_across, &[("block", &l3())])
                                     title=s.move_block_across_hint
-                                    on:click=move |_| {
-                                        let k = k3.clone();
-                                        edit.run(Box::new(move |c| {
-                                            switch_column(c, &k);
-                                        }))
-                                    }>"⇄"</button>
+                                    on:click=move |_| press(k3.clone(), Move::Across, switch_column)>"⇄"</button>
                             }
                         }
                     </Show>
@@ -360,6 +419,11 @@ pub fn LayoutPanel(cv: RwSignal<Option<Cv>>, edit: Edit) -> impl IntoView {
     view! {
         <fieldset class="layout">
             <legend>{s.layout}</legend>
+            <Show when=move || variant.with(Option::is_some)>
+                <p class="banner" role="status">
+                    {move || variant.with(|v| v.as_ref().map(|v| fill(s.layout_variant_note, &[("name", &v.variant.name)])))}
+                </p>
+            </Show>
             <fieldset class="segmented">
                 <legend>{s.layout_columns}</legend>
                 <label>
