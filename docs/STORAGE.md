@@ -25,7 +25,7 @@ Data operations from Settings (ADR-080, ADR-081):
 - **Clear AI cache** empties `ai_cache`.
 - **Delete all data** empties every table in one transaction, then runs `VACUUM` and a WAL checkpoint so no deleted text stays in the files, and removes the restore copies.
 
-Soft-deleted CVs are meant to be purged after 30 days; `purge_deleted` exists, but nothing calls it yet (#113).
+Soft-deleted CVs are purged after 30 days: at startup the shell calls `App::purge_deleted_cvs` (`Store::purge_deleted` with `DELETED_CV_RETENTION`) on a background thread, so a large purge never delays the window, and logs only the count. Foreign keys cascade to the CV's variants, snapshots and photo (ADR-085).
 
 Application/domain code must not depend on `rusqlite::Connection` or SQLite-specific SQL types.
 

@@ -81,9 +81,13 @@ no request.
 
 ## Removing your data
 
-- **Deleting a CV** can be undone: the CV, its variants, its photo and its signature are
-  hidden, not erased, and stay in the database until you use "Delete all
-  data". Backups made after that still contain them.
+- **Deleting a CV** shows an Undo button for eight seconds. The CV, its
+  variants, its photo and its signature are hidden, not erased, and kept in the database
+  for 30 days. After that they are removed the next time PinaxCV starts.
+  Removing them deletes the rows but does not compact the database, so
+  their text can stay in unused space in the file until SQLite reuses it;
+  "Delete all data" erases it from the file straight away. Backups made
+  before the removal still contain them.
 - **Clear AI cache** removes every cached AI answer and keeps your CVs.
 - **Delete all data…** (after you confirm) deletes every CV, variant,
   photo, signature, snapshot, setting and cached answer, compacts the database so the deleted text is not
