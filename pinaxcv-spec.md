@@ -545,7 +545,7 @@ Hard rules (document them in `docs/ATS_RULES.md` and enforce with tests):
 5. **No headers/footers containing contact info.** A plain-text "Page 1 of 2" footer is included only if the extraction tests prove it does not interleave with body text; otherwise there is no footer.
 6. **Ligatures off:** `#set text(ligatures: false)` (and set `features` off for `liga`, `clig` if supported). Kerning stays on.
 7. **Real lists:** use `list`/`-` for bullets, using a standard bullet glyph present in the font.
-8. **No images, no backgrounds, no skill bars/ratings**, no decorative glyphs. Accent color only for heading rules/text. The only exception is the user's own profile photo, off by default and switched on per CV or variant (ADR-083), drawn as an artifact.
+8. **No images, no backgrounds, no skill bars/ratings**, no decorative glyphs. Accent color only for heading rules/text. The only exceptions are the user's own profile photo (ADR-083) and signature image in the closing block (ADR-090), each off by default, switched on per CV or variant, and drawn as an artifact with no text.
 9. **Text is real text**, never outlined shapes.
 10. Font: Inter (body), sizes from options. Language set from `locale` (`#set text(lang: ...)`). Headings are printed as written (title case), not upper-cased.
 11. Handle empty/missing fields without leaving stray separators or blank headings. Empty sections are not emitted.

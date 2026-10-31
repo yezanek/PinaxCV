@@ -45,7 +45,7 @@ Requirements:
 - optional email and phone;
 - system fonts, automatic dark mode, print styles;
 - escaped user content;
-- the profile photo and the signature, when shown, embedded as `data:` URLs with an empty `alt`;
+- the profile photo and the signature, when shown, embedded as `data:` URLs with an empty `alt` (the signature on a white backing, so its ink stays visible in dark mode);
 - no PinaxCV runtime dependency.
 
 The HTML design should be web-friendly rather than pixel-identical to the PDF. Both formats must represent the same resolved CV content.

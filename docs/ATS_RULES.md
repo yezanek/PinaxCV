@@ -15,7 +15,7 @@ Users should still verify the final document through the employer's application 
 5. No headers or footers with contact info; a "Page 1 of 2" footer only if it does not interleave with body text.
 6. Ligatures off; kerning on.
 7. Real lists with a standard bullet glyph.
-8. No images, backgrounds, skill bars or decorative glyphs. Exception: the user's profile photo, off by default and shown only when switched on for the CV or variant (ADR-083).
+8. No images, backgrounds, skill bars or decorative glyphs. Exceptions: the user's profile photo (ADR-083) and the user's signature image in the closing block (ADR-090). Both are off by default, shown only when switched on for the CV or variant, and drawn as PDF artifacts with no text, so extracted text is the same with and without them.
 9. Text is real text, never outlined shapes.
 10. Inter only; document language set from the CV locale.
 11. Empty fields and sections leave no stray separators or headings.
