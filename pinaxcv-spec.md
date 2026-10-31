@@ -790,7 +790,7 @@ CV and variants:
 
 Rendering:
 - `preview(PreviewReq { cv_id, variant_id?, revision: u64, unsaved_cv?: Cv, unsaved_variant?: Variant }) -> PreviewResp { revision, pages: Vec<Vec<u8>> (PNG), page_count, diagnostics }`. Accepting the unsaved in-memory state lets the UI preview without waiting for saves.
-- `export_pdf(cv_id, variant_id?) -> ExportResult { path, page_count, ats: AtsReport }`; the **backend** opens the save dialog (dialog plugin from Rust) and writes only to the path the dialog returns; the UI never passes file paths. Returns `Cancelled` if the user closes the dialog. Fails on export-time validation errors with the list of issues.
+- `export_pdf(cv_id, variant_id?, ats_copy = true) -> ExportResult { path, page_count, ats: AtsReport, ats_copy_path? }`; the **backend** opens the save dialog (dialog plugin from Rust) and writes only to the path the dialog returns, plus, for a two-column CV with `ats_copy`, a one-column copy `<name>-ats.pdf` beside it (ADR-084); the UI never passes file paths. Returns `Cancelled` if the user closes the dialog. Fails on export-time validation errors with the list of issues.
 - `export_html(cv_id, variant_id?, HtmlExportOptions { include_email, include_phone }) -> ExportResult { path }`; same backend-owned save dialog. Writes one self-contained HTML file generated from the resolved CV. The output contains no external resources and requires no PinaxCV runtime.
 - `ats_check(cv_id, variant_id?) -> AtsReport`
 - `lint(cv_id, variant_id?) -> Vec<LintIssue>`

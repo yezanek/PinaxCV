@@ -34,6 +34,8 @@ pub mod codes {
     pub const PAGE_COUNT: &str = "page_count";
     /// Added by the app, which knows whether a photo is stored (ADR-083).
     pub const PHOTO: &str = "photo";
+    /// The layout has two columns (ADR-084).
+    pub const TWO_COLUMNS: &str = "two_columns";
 }
 
 /// Bullets longer than this many characters get `bullet_too_long`.
@@ -97,6 +99,18 @@ pub fn lint(cv: &ResolvedCv, page_count: Option<u32>) -> Vec<LintIssue> {
     }
     special_chars(cv, &mut out);
     links(cv, &mut out);
+    if cv.layout.columns == crate::Columns::Two {
+        out.push(
+            codes::TWO_COLUMNS,
+            Severity::Warning,
+            None,
+            "This CV has two columns.".into(),
+            Some(
+                "Some ATS read straight across the page. For online applications, \
+                 send the one-column ATS copy that Export PDF saves beside the PDF.",
+            ),
+        );
+    }
     if let Some(pages) = page_count
         && pages > MAX_PAGES
     {
@@ -539,7 +553,7 @@ impl Lints {
 
     /// Stable sort by the rule's position in [`codes`]; document order is kept within a rule.
     fn sort_by_rule(mut self) -> Vec<LintIssue> {
-        const ORDER: [&str; 19] = [
+        const ORDER: [&str; 20] = [
             codes::MISSING_NAME,
             codes::MISSING_CONTACT,
             codes::INVALID_EMAIL,
@@ -559,6 +573,7 @@ impl Lints {
             codes::LONG_URL,
             codes::UNSAFE_LINK,
             codes::PAGE_COUNT,
+            codes::TWO_COLUMNS,
         ];
         self.0
             .sort_by_key(|i| ORDER.iter().position(|c| *c == i.code));
@@ -858,6 +873,19 @@ mod tests {
         assert_eq!(
             (issues[0].code.as_str(), issues[0].severity),
             (codes::PAGE_COUNT, Severity::Info)
+        );
+    }
+
+    #[test]
+    fn two_columns_get_a_warning() {
+        let mut cv = clean_cv();
+        assert_eq!(lint(&cv.resolve(None), None), vec![]);
+        cv.layout.columns = crate::Columns::Two;
+        let issues = lint(&cv.resolve(None), None);
+        assert_eq!(issues.len(), 1);
+        assert_eq!(
+            (issues[0].code.as_str(), issues[0].severity),
+            (codes::TWO_COLUMNS, Severity::Warning)
         );
     }
 }

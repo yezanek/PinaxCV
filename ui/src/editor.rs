@@ -147,6 +147,14 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
 
     // Kept in a stored value so the closures below stay `Copy`.
     let cv_id = StoredValue::new(id.clone());
+    // Two-column CVs also export a one-column ATS copy unless unticked.
+    let ats_copy = RwSignal::new(true);
+    let two_columns = move || {
+        cv.with(|c| {
+            c.as_ref()
+                .is_some_and(|c| c.layout.columns == cv_core::Columns::Two)
+        })
+    };
     let export = move |pdf: bool| {
         let target = Target {
             cv_id: cv_id.get_value(),
@@ -158,7 +166,10 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                 call(
                     "export_pdf",
                     &ReqArg {
-                        req: &ExportPdfRequest { target },
+                        req: &ExportPdfRequest {
+                            target,
+                            ats_copy: ats_copy.get_untracked(),
+                        },
                     },
                 )
                 .await
@@ -176,7 +187,12 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                         .ats
                         .map(|a| fill(t().ats_score, &[("score", &a.score.to_string())]))
                         .unwrap_or_default();
-                    status.set(fill(t().exported_to, &[("path", &r.path), ("ats", &ats)]));
+                    let mut done = fill(t().exported_to, &[("path", &r.path), ("ats", &ats)]);
+                    if let Some(copy) = &r.ats_copy_path {
+                        done.push(' ');
+                        done.push_str(&fill(t().ats_copy_saved, &[("path", copy)]));
+                    }
+                    status.set(done);
                     error.set(None);
                 }
                 Err(e) if e.code == ErrorCode::Cancelled => status.set(t().export_cancelled.into()),
@@ -473,6 +489,13 @@ pub fn Editor(id: Id, open: RwSignal<Option<Id>>) -> impl IntoView {
                 on:click=move |_| step(true)>{t().undo}</button>
             <button aria-keyshortcuts="Control+Shift+Z" title=t().redo_hint prop:disabled=move || !can_redo.get()
                 on:click=move |_| step(false)>{t().redo}</button>
+            <Show when=two_columns>
+                <label class="check" title=t().ats_copy_hint>
+                    <input type="checkbox" prop:checked=move || ats_copy.get()
+                        on:change=move |ev| ats_copy.set(event_target_checked(&ev)) />
+                    {t().ats_copy}
+                </label>
+            </Show>
             <button aria-keyshortcuts="Control+E" title=t().export_pdf_hint on:click=export_pdf>{t().export_pdf}</button>
             <button on:click=export_html>{t().export_html}</button>
         </header>

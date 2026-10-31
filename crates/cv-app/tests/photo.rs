@@ -61,7 +61,10 @@ impl Fixture {
     fn pdf_images(&self, target: Target) -> usize {
         let result = self
             .app
-            .export_pdf(ExportPdfRequest { target })
+            .export_pdf(ExportPdfRequest {
+                target,
+                ats_copy: true,
+            })
             .expect("export");
         images(&std::fs::read(&result.path).expect("pdf"))
     }
