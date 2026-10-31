@@ -265,6 +265,9 @@ pub struct Variant {
     pub summary_override: Option<String>,
     pub page_target: Option<u8>,                 // 1 or 2
     pub suggestions: Vec<Suggestion>,
+    pub show_photo: bool,                        // the variant's own photo switch (ADR-083)
+    pub show_personal: BTreeSet<PersonalField>,  // personal details this variant prints (ADR-088)
+    pub show_closing: BTreeSet<ClosingPart>,     // closing parts this variant prints (ADR-089, ADR-090)
     pub revision: u64,
 }
 
@@ -291,7 +294,8 @@ Resolve rules (implement exactly; property-test them):
 4. Apply `order` for each parent: listed IDs first in the given order, then remaining children in base order. The CV id as parent orders sections. Experience entries keep base (reverse-chronological) order unless the user reorders them manually or accepts an opt-in AI reorder suggestion (section 11.6).
 5. Apply `text_overrides`: a bullet id replaces that bullet's text; an entry id replaces that entry's description. Any other key is ignored and reported by `prune`. The summary uses only `summary_override`.
 6. **Locked entries:** overrides targeting `title`, `org`, `period`, `location` don't exist in the model, so this is enforced by the model itself: only text of bullets/description/summary can be overridden.
-7. The resolve function is pure and total (never panics, never returns IDs that do not exist).
+7. **Optional blocks:** the base CV uses `Basics.show_photo`, `Basics.show_personal` and `Closing.show`; a variant uses only its own `show_photo`, `show_personal` and `show_closing`, never the base's, so a new variant shows none of them. Personal details and closing parts that are not shown are left out of `ResolvedCv`.
+8. The resolve function is pure and total (never panics, never returns IDs that do not exist).
 
 Properties to test with `proptest`: (a) `resolve(cv, None)` equals base content; (b) hiding then unhiding an ID is the identity; (c) every ID in the output exists in the base; (d) resolve is idempotent when re-applied with an empty variant.
 
