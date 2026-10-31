@@ -533,6 +533,7 @@ pub fn blank_cv(id: Id, title: &str) -> Cv {
         },
         summary: None,
         sections: Vec::new(),
+        layout: cv_core::Layout::default(),
     }
 }
 

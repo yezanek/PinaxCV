@@ -596,6 +596,16 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Checks add an informational note (`photo`) when the shown version has a photo: many employers, in the US and the UK for example, prefer CVs without one.
 - Not in this change: reading the photo from a Europass XML import (a follow-up).
 
+## ADR-084 — Page layout and the style editor (issue #121)
+
+- Dan asked on 2026-10-30 for a style editor: drag the CV's big blocks on the page, choose one or two columns, and drag blocks between a sidebar and the main column. Design document: https://claude.ai/artifact/3nZ56Lv2V4sU3rypkGk5YD; work split into #122 to #129.
+- `Cv.layout` (`cv_core::Layout`) holds `columns` (one or two), `sidebar_side` (left or right, visual only), `sidebar_width_pct` (25 to 40, default 32), `top` (the order of the name, contact and summary blocks) and `sidebar` (the blocks placed in the sidebar; everything else is in the main column). The photo is drawn with the name. The field defaults to today's single column when missing, so older CV documents and backups load unchanged, as `show_photo` did (ADR-083); no schema bump.
+- The layout never orders sections. Inside a column, sections appear in the CV's section order with the variant's order applied, so the Content tab, the Variants screen and the layout canvas cannot disagree. Name, contact and summary always sit at the top of their column, before its sections.
+- With one column every block is in the main column; the sidebar list is kept so switching back restores it. A section with no placement (a new or imported one) goes to the main column.
+- The column holding the name is read first (`Layout::first_column`), whichever side it is drawn on, so extracted text starts with the name and contact.
+- Saving repairs the layout: each top block once, no sidebar entry for a missing section or twice for the same block, and the width clamped (reported as `option_clamped`). Resolving copies the base CV's layout into `ResolvedCv` after the same repair; variants share the base layout. Duplicating a CV moves its placements to the copied sections' new IDs.
+- Two columns go against spec G1, the "no multi-column templates" non-goal, spec 6.4 rule 1 and `docs/ATS_RULES.md` rule 1. Dan decided on 2026-10-30 to allow them with safeguards: a golden reading-order test, a warning in the ATS check, and a one-column ATS copy saved by default when exporting a two-column CV. The spec and ATS rules are amended with the template change (#123).
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
