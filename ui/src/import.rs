@@ -154,6 +154,7 @@ pub fn ImportWizard(
     let merge_into: RwSignal<Option<Id>> = RwSignal::new(cvs.first().map(|c| c.id.clone()));
     let review: RwSignal<Option<Review>> = RwSignal::new(None);
     let use_imported: RwSignal<Vec<ImportField>> = RwSignal::new(Vec::new());
+    let use_imported_photo = RwSignal::new(false);
     let choices: RwSignal<HashMap<Id, EntryChoice>> = RwSignal::new(HashMap::new());
     // Counts loads, so a slow answer for a CV no longer chosen is dropped.
     let loads = RwSignal::new(0u64);
@@ -176,6 +177,7 @@ pub fn ImportWizard(
             match (base, matched) {
                 (Ok(base), Ok(matched)) => {
                     use_imported.set(Vec::new());
+                    use_imported_photo.set(false);
                     choices.set(default_choices(&matched.matches));
                     review.set(Some(Review { base, matched }));
                 }
@@ -227,6 +229,7 @@ pub fn ImportWizard(
             } else {
                 Vec::new()
             },
+            use_imported_photo: merging && use_imported_photo.get_untracked(),
         };
         busy.set(true);
         error.set(None);
@@ -256,6 +259,15 @@ pub fn ImportWizard(
     let warnings = StoredValue::new(preview.warnings.clone());
     let review_bullets = StoredValue::new(needs_review_texts(&preview));
     let has_review = review_bullets.with_value(|b| !b.is_empty());
+    let photo = preview.photo.clone().map(|url| {
+        view! {
+            <h3>{s.import_photo}</h3>
+            <div class="photo-row">
+                <img class="photo-thumb" alt=s.photo_alt src=url />
+                <p class="status">{s.import_photo_note}</p>
+            </div>
+        }
+    });
 
     // The merge review: contact conflicts, then one row per imported entry.
     let review_view = move || {
@@ -289,6 +301,28 @@ pub fn ImportWizard(
                 }
             })
             .collect_view();
+        let photo_choice = matched.photo_conflict.then(|| {
+            view! {
+                <fieldset class="segmented">
+                    <legend>{s.import_photo}</legend>
+                    <label>
+                        <input type="radio" name="conflict-photo"
+                            prop:checked=move || !use_imported_photo.get()
+                            on:change=move |_| use_imported_photo.set(false) />
+                        {s.import_keep_photo}
+                    </label>
+                    <label>
+                        <input type="radio" name="conflict-photo"
+                            prop:checked=move || use_imported_photo.get()
+                            on:change=move |_| use_imported_photo.set(true) />
+                        {s.import_use_photo}
+                    </label>
+                </fieldset>
+                <Show when=move || use_imported_photo.get()>
+                    <p class="status">{s.import_photo_replace_note}</p>
+                </Show>
+            }
+        });
         let base_sections = entry_sections(&base.cv.sections);
         let rows = imported_entries
             .iter()
@@ -331,6 +365,7 @@ pub fn ImportWizard(
         view! {
             {hint}
             {conflicts}
+            {photo_choice}
             <h3>{s.import_entries}</h3>
             <ul class="import-entries">{rows}</ul>
             <p class="status">{s.import_merge_note}</p>
@@ -346,6 +381,7 @@ pub fn ImportWizard(
             <ul class="import-summary">
                 {lines.into_iter().map(|l| view! { <li>{l}</li> }).collect_view()}
             </ul>
+            {photo}
             <Show when=move || has_warnings>
                 <h3>{s.import_warnings}</h3>
                 <ul class="warnings">
@@ -488,6 +524,7 @@ mod tests {
             })],
             warnings: Vec::new(),
             needs_review: vec![id(6)],
+            photo: None,
         };
         assert_eq!(needs_review_texts(&preview), ["Reworded"]);
     }
