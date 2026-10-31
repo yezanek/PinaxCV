@@ -5,7 +5,10 @@
 
 use std::collections::{HashMap, HashSet};
 
-use cv_core::{Cv, Entry, EntrySection, Id, LanguagesSection, Section, SkillsSection};
+use cv_core::{
+    Cv, Entry, EntrySection, Id, LanguagesSection, PersonalDetails, PersonalField, Section,
+    SkillsSection,
+};
 
 use crate::partial::CvPartial;
 
@@ -18,6 +21,8 @@ pub enum Field {
     Phone,
     Location,
     Summary,
+    /// One of the optional personal details (ADR-088).
+    Personal(PersonalField),
 }
 
 /// A header field both sides fill with different values.
@@ -46,34 +51,63 @@ pub struct MergePlan {
 }
 
 /// A blank or whitespace-only value counts as empty.
-fn filled(s: Option<&str>) -> Option<&str> {
-    s.filter(|v| !v.trim().is_empty())
+fn filled(s: Option<&str>) -> Option<String> {
+    s.filter(|v| !v.trim().is_empty()).map(str::to_owned)
 }
 
-fn base_value(cv: &Cv, f: Field) -> Option<&str> {
+/// A personal detail as text: lists joined with ", ", the birth date in
+/// ISO 8601, the address with its line breaks.
+fn personal_text(p: &PersonalDetails, f: PersonalField) -> Option<String> {
+    let list = |items: &[String]| {
+        let joined = items
+            .iter()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<_>>()
+            .join(", ");
+        filled(Some(&joined))
+    };
+    match f {
+        PersonalField::Nationality => list(&p.nationality),
+        PersonalField::BirthDate => p.birth_date.map(|d| d.iso()),
+        PersonalField::BirthPlace => filled(p.birth_place.as_deref()),
+        PersonalField::Gender => filled(p.gender.as_deref()),
+        PersonalField::MaritalStatus => filled(p.marital_status.as_deref()),
+        PersonalField::Address => filled(p.address.as_deref()),
+        PersonalField::DrivingLicence => list(&p.driving_licence),
+        PersonalField::WorkPermit => filled(p.work_permit.as_deref()),
+    }
+}
+
+fn base_value(cv: &Cv, f: Field) -> Option<String> {
     let b = &cv.basics;
-    filled(match f {
-        Field::FullName => Some(b.full_name.as_str()),
-        Field::Headline => b.headline.as_deref(),
-        Field::Email => b.email.as_deref(),
-        Field::Phone => b.phone.as_deref(),
-        Field::Location => b.location.as_deref(),
-        Field::Summary => cv.summary.as_deref(),
-    })
+    match f {
+        Field::FullName => filled(Some(b.full_name.as_str())),
+        Field::Headline => filled(b.headline.as_deref()),
+        Field::Email => filled(b.email.as_deref()),
+        Field::Phone => filled(b.phone.as_deref()),
+        Field::Location => filled(b.location.as_deref()),
+        Field::Summary => filled(cv.summary.as_deref()),
+        Field::Personal(p) => personal_text(&b.personal, p),
+    }
 }
 
-fn imported_value(p: &CvPartial, f: Field) -> Option<&str> {
-    filled(match f {
-        Field::FullName => p.full_name.as_deref(),
-        Field::Headline => p.headline.as_deref(),
-        Field::Email => p.email.as_deref(),
-        Field::Phone => p.phone.as_deref(),
-        Field::Location => p.location.as_deref(),
-        Field::Summary => p.summary.as_deref(),
-    })
+fn imported_value(p: &CvPartial, f: Field) -> Option<String> {
+    match f {
+        Field::FullName => filled(p.full_name.as_deref()),
+        Field::Headline => filled(p.headline.as_deref()),
+        Field::Email => filled(p.email.as_deref()),
+        Field::Phone => filled(p.phone.as_deref()),
+        Field::Location => filled(p.location.as_deref()),
+        Field::Summary => filled(p.summary.as_deref()),
+        Field::Personal(f) => personal_text(&p.personal, f),
+    }
 }
 
-fn set_value(cv: &mut Cv, f: Field, v: String) {
+/// Takes `f` from the import. Personal details are copied as they are, so
+/// lists and the birth date keep their shape; their show switches are left
+/// alone (ADR-088).
+fn set_value(cv: &mut Cv, f: Field, incoming: &CvPartial, v: String) {
     let b = &mut cv.basics;
     match f {
         Field::FullName => b.full_name = v,
@@ -82,15 +116,39 @@ fn set_value(cv: &mut Cv, f: Field, v: String) {
         Field::Phone => b.phone = Some(v),
         Field::Location => b.location = Some(v),
         Field::Summary => cv.summary = Some(v),
+        Field::Personal(p) => {
+            let from = &incoming.personal;
+            let to = &mut b.personal;
+            match p {
+                PersonalField::Nationality => to.nationality.clone_from(&from.nationality),
+                PersonalField::BirthDate => to.birth_date = from.birth_date,
+                PersonalField::BirthPlace => to.birth_place.clone_from(&from.birth_place),
+                PersonalField::Gender => to.gender.clone_from(&from.gender),
+                PersonalField::MaritalStatus => to.marital_status.clone_from(&from.marital_status),
+                PersonalField::Address => to.address.clone_from(&from.address),
+                PersonalField::DrivingLicence => {
+                    to.driving_licence.clone_from(&from.driving_licence);
+                }
+                PersonalField::WorkPermit => to.work_permit.clone_from(&from.work_permit),
+            }
+        }
     }
 }
 
-const FIELDS: [Field; 6] = [
+const FIELDS: [Field; 14] = [
     Field::FullName,
     Field::Headline,
     Field::Email,
     Field::Phone,
     Field::Location,
+    Field::Personal(PersonalField::Nationality),
+    Field::Personal(PersonalField::BirthDate),
+    Field::Personal(PersonalField::BirthPlace),
+    Field::Personal(PersonalField::Gender),
+    Field::Personal(PersonalField::MaritalStatus),
+    Field::Personal(PersonalField::Address),
+    Field::Personal(PersonalField::DrivingLicence),
+    Field::Personal(PersonalField::WorkPermit),
     Field::Summary,
 ];
 
@@ -102,10 +160,10 @@ pub fn field_conflicts(base: &Cv, incoming: &CvPartial) -> Vec<FieldConflict> {
         .filter_map(|&field| {
             let mine = base_value(base, field)?;
             let imported = imported_value(incoming, field)?;
-            (norm(mine) != norm(imported)).then(|| FieldConflict {
+            (norm(&mine) != norm(&imported)).then_some(FieldConflict {
                 field,
-                mine: mine.to_owned(),
-                imported: imported.to_owned(),
+                mine,
+                imported,
             })
         })
         .collect()
@@ -161,7 +219,7 @@ pub fn merge(base: &mut Cv, incoming: CvPartial, plan: &MergePlan) {
         if let Some(v) = imported_value(&incoming, field)
             && (base_value(base, field).is_none() || plan.use_imported.contains(&field))
         {
-            set_value(base, field, v.to_owned());
+            set_value(base, field, &incoming, v);
         }
     }
     for link in incoming.links {
@@ -370,6 +428,42 @@ mod tests {
             ],
             ..CvPartial::default()
         }
+    }
+
+    #[test]
+    fn personal_details_merge_per_field_and_stay_hidden() {
+        let mut base = typical();
+        base.basics.personal.nationality = vec!["Italian".into()];
+        base.basics.personal.gender = Some("Female".into());
+        let mut partial = CvPartial::default();
+        partial.personal.nationality = vec!["Italian".into(), "German".into()];
+        partial.personal.gender = Some(" female ".into());
+        partial.personal.birth_date = cv_core::CalendarDate::parse("1990-03-12");
+
+        let conflicts = field_conflicts(&base, &partial);
+        assert_eq!(
+            conflicts,
+            [FieldConflict {
+                field: Field::Personal(PersonalField::Nationality),
+                mine: "Italian".into(),
+                imported: "Italian, German".into(),
+            }]
+        );
+
+        let mut kept = base.clone();
+        merge(&mut kept, partial.clone(), &MergePlan::default());
+        assert_eq!(kept.basics.personal.nationality, ["Italian"]);
+        // Empty in the base: filled from the import.
+        assert_eq!(kept.basics.personal.birth_date, partial.personal.birth_date);
+        assert_eq!(kept.basics.personal.gender.as_deref(), Some("Female"));
+
+        let plan = MergePlan {
+            use_imported: vec![Field::Personal(PersonalField::Nationality)],
+            ..MergePlan::default()
+        };
+        merge(&mut base, partial, &plan);
+        assert_eq!(base.basics.personal.nationality, ["Italian", "German"]);
+        assert!(base.basics.show_personal.is_empty(), "never switched on");
     }
 
     #[test]

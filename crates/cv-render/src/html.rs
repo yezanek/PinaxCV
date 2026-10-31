@@ -229,6 +229,14 @@ fn contact(out: &mut String, d: &TypstData) {
         }
         out.push_str("</ul>\n");
     }
+    // Personal details switched on for this CV (ADR-088), one per line.
+    if !b.personal.is_empty() {
+        out.push_str("<ul class=\"personal\">\n");
+        for p in &b.personal {
+            let _ = writeln!(out, "<li>{}: {}</li>", esc(p.label), esc(&p.value));
+        }
+        out.push_str("</ul>\n");
+    }
 }
 
 fn write_section(out: &mut String, section: &SectionData) {
@@ -576,6 +584,24 @@ mod tests {
         assert_eq!(base64(b"fo"), "Zm8=");
         assert_eq!(base64(b"foo"), "Zm9v");
         assert_eq!(base64(&[0xfb, 0xff, 0xbf]), "+/+/");
+    }
+
+    #[test]
+    fn shown_personal_details_are_escaped_lines_in_the_header() {
+        let mut cv = testdata::fixture("european");
+        cv.basics.personal.birth_place = Some("<Turin & Co>".into());
+        let doc = to_html(&cv.resolve(None), &ExportOptions::html_default());
+        let header =
+            &doc[doc.find("<header>").expect("header")..doc.find("</header>").expect("end")];
+        assert!(
+            header.contains("<ul class=\"personal\">\n<li>Nationality: Italian, German</li>\n")
+        );
+        assert!(header.contains("<li>Place of birth: &lt;Turin &amp; Co&gt;</li>"));
+        assert!(header.contains("<li>Right to work: EU citizen</li>\n</ul>"));
+        cv.basics.show_personal.clear();
+        assert!(
+            !to_html(&cv.resolve(None), &ExportOptions::html_default()).contains("personal\">")
+        );
     }
 
     #[test]

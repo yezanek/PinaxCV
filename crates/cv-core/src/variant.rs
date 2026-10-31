@@ -6,8 +6,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    GapQuestion, Id, JobRequirements, Suggestion, SuggestionAction, SuggestionSource,
-    SuggestionStatus, SuggestionTarget,
+    GapQuestion, Id, JobRequirements, PersonalField, Suggestion, SuggestionAction,
+    SuggestionSource, SuggestionStatus, SuggestionTarget,
 };
 
 /// Current version of the [`Variant`] JSON shape.
@@ -43,6 +43,10 @@ pub struct Variant {
     /// turns it on, so a photo goes only to the jobs that ask for one.
     #[serde(default)]
     pub show_photo: bool,
+    /// The CV's personal details this variant prints (ADR-088). Empty until
+    /// the user switches some on.
+    #[serde(default)]
+    pub show_personal: BTreeSet<PersonalField>,
     /// Mirrors the storage revision; the store's column is authoritative.
     pub revision: u64,
 }
@@ -78,6 +82,7 @@ impl Variant {
             suggestions: Vec::new(),
             gaps: Vec::new(),
             show_photo: false,
+            show_personal: BTreeSet::new(),
             revision: 0,
         }
     }

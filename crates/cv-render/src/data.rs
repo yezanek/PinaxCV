@@ -98,6 +98,16 @@ pub struct BasicsData {
     /// Whether the template draws `photo.jpg`: the CV shows its photo and
     /// the export was given one.
     pub photo: bool,
+    /// Personal details switched on for this CV or variant (ADR-088), in
+    /// print order, one line each after the contact details.
+    pub personal: Vec<PersonalLineData>,
+}
+
+/// One personal detail as printed: "Nationality: Italian".
+#[derive(Serialize, Debug, PartialEq)]
+pub struct PersonalLineData {
+    pub label: &'static str,
+    pub value: String,
 }
 
 /// `clickable` is true only for `https:` and `mailto:` URLs.
@@ -207,6 +217,15 @@ pub fn to_typst_data(cv: &ResolvedCv, options: &ExportOptions) -> TypstData {
                 .filter_map(|l| link(Some(&l.label), &l.url))
                 .collect(),
             photo: cv.show_photo && options.photo.is_some(),
+            personal: b
+                .personal
+                .lines(cv.options.date_style, cv.locale)
+                .into_iter()
+                .map(|(field, value)| PersonalLineData {
+                    label: locale::personal_label(field, cv.locale),
+                    value,
+                })
+                .collect(),
         },
         summary: text(&cv.summary),
         sections: sections.into_iter().map(|(_, s)| s).collect(),
@@ -511,6 +530,46 @@ mod tests {
         };
         let d = to_typst_data(&cv, &opts);
         assert_eq!((d.basics.email, d.basics.phone), (None, None));
+    }
+
+    #[test]
+    fn personal_details_follow_the_switches() {
+        let d = data("european");
+        let lines: Vec<String> = d["basics"]["personal"]
+            .as_array()
+            .expect("personal")
+            .iter()
+            .map(|l| {
+                format!(
+                    "{}: {}",
+                    l["label"].as_str().expect("label"),
+                    l["value"].as_str().expect("value")
+                )
+            })
+            .collect();
+        assert_eq!(
+            lines,
+            [
+                "Nationality: Italian, German",
+                "Date of birth: 12 Mar 1990",
+                "Place of birth: Turin",
+                "Gender: Female",
+                "Marital status: Married",
+                "Address: Via Esempio 1, 10100 Torino",
+                "Driving licence: B, C1",
+                "Right to work: EU citizen",
+            ]
+        );
+        // A variant that switches nothing on prints none of them.
+        let cv = testdata::fixture("european");
+        let v = cv_core::Variant::empty(cv.id.clone(), cv.id.clone(), "UK");
+        let d = to_typst_data(&cv.resolve(Some(&v)), &ExportOptions::default());
+        assert!(d.basics.personal.is_empty());
+        assert!(
+            data("typical")["basics"]["personal"]
+                .as_array()
+                .is_some_and(Vec::is_empty)
+        );
     }
 
     #[test]

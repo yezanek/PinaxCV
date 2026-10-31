@@ -63,6 +63,8 @@ fn cv(n: u32) -> Cv {
             location: None,
             links: vec![],
             show_photo: false,
+            personal: Default::default(),
+            show_personal: Default::default(),
         },
         summary: None,
         sections: vec![Section::Experience(EntrySection {
