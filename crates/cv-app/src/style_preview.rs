@@ -212,28 +212,12 @@ pub fn preview_cv(style: &Style) -> Cv {
     cv
 }
 
-/// `<title>-style-preview.html`, with only letters and digits from the title.
-fn suggested_preview_name(title: &str) -> String {
-    let mut stem = String::new();
-    for c in title.chars() {
-        if c.is_alphanumeric() {
-            stem.push(c);
-        } else if !stem.is_empty() && !stem.ends_with('-') {
-            stem.push('-');
-        }
-    }
-    let stem = stem.trim_end_matches('-');
-    if stem.is_empty() {
-        "style-preview.html".to_owned()
-    } else {
-        format!("{stem}-style-preview.html")
-    }
-}
+/// The preview's file name. Fixed, so it never carries the open CV's title.
+const PREVIEW_FILE_NAME: &str = "style-preview.html";
 
 impl App {
     /// Asks where to save and writes an HTML page of the sample CV in
-    /// `req.style`. Nothing of the open CV is used but its style and, for
-    /// the suggested file name, its title.
+    /// `req.style`. Nothing of the open CV is used but its style.
     pub fn style_preview(&self, req: StyleSave) -> Result<StyleSaved> {
         let mut cv = preview_cv(&req.style);
         if !templates()?.iter().any(|m| m.id == cv.template) {
@@ -251,11 +235,7 @@ impl App {
             .export(&resolved, &options)
             .map_err(render_error)?;
         let path = self
-            .save_file(
-                &suggested_preview_name(&req.name),
-                ExportKind::Html,
-                &doc.bytes,
-            )
+            .save_file(PREVIEW_FILE_NAME, ExportKind::Html, &doc.bytes)
             .map_err(|e| match e.code {
                 ErrorCode::Cancelled => ApiError::new(ErrorCode::Cancelled, "Preview cancelled."),
                 _ => e,
@@ -359,14 +339,5 @@ mod tests {
                 .iter()
                 .any(|s| matches!(s, Section::Custom(c) if c.title == "Additional section"))
         );
-    }
-
-    #[test]
-    fn preview_file_names_are_portable() {
-        assert_eq!(
-            suggested_preview_name("Acme / Senior"),
-            "Acme-Senior-style-preview.html"
-        );
-        assert_eq!(suggested_preview_name(""), "style-preview.html");
     }
 }
