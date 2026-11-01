@@ -278,6 +278,8 @@ pub fn style_from_xml(bytes: &[u8]) -> Result<(Style, Vec<String>)> {
 
     let mut blocks = Vec::new();
     let mut skipped = 0usize;
+    let mut bad_columns = 0usize;
+    let mut repeated_top = 0usize;
     for node in layout.into_iter().flat_map(|n| n.children()).filter(|n| {
         n.is_element()
             && n.tag_name().name() == "block"
@@ -285,7 +287,11 @@ pub fn style_from_xml(bytes: &[u8]) -> Result<(Style, Vec<String>)> {
     }) {
         let column = match node.attribute("column") {
             Some("sidebar") => Column::Sidebar,
-            _ => Column::Main,
+            None | Some("main") => Column::Main,
+            Some(_) => {
+                bad_columns += 1;
+                Column::Main
+            }
         };
         let kind = node.attribute("kind").unwrap_or_default();
         let block = match kind {
@@ -315,6 +321,7 @@ pub fn style_from_xml(bytes: &[u8]) -> Result<(Style, Vec<String>)> {
         if matches!(block, StyleBlock::Top { .. })
             && blocks.iter().any(|b: &PlacedBlock| b.block == block)
         {
+            repeated_top += 1;
             continue;
         }
         blocks.push(PlacedBlock { block, column });
@@ -322,6 +329,16 @@ pub fn style_from_xml(bytes: &[u8]) -> Result<(Style, Vec<String>)> {
     if skipped > 0 {
         warnings.push(format!(
             "{skipped} block(s) of a kind this version does not know were skipped."
+        ));
+    }
+    if bad_columns > 0 {
+        warnings.push(format!(
+            "{bad_columns} block(s) named an unknown column and were put in the main column."
+        ));
+    }
+    if repeated_top > 0 {
+        warnings.push(format!(
+            "{repeated_top} repeated name, contact or summary block(s) were dropped."
         ));
     }
 
@@ -572,7 +589,9 @@ mod tests {
                 },
             ]
         );
-        assert_eq!(warnings.len(), 8, "{warnings:?}");
+        assert_eq!(warnings.len(), 10, "{warnings:?}");
+        assert!(warnings.iter().any(|w| w.contains("unknown column")));
+        assert!(warnings.iter().any(|w| w.contains("repeated")));
     }
 
     #[test]
