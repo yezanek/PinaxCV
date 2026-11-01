@@ -8,8 +8,8 @@ use std::fmt;
 use crate::ApiError;
 use cv_core::{
     AtsReport, Cv, DateStyle, Diagnostic, Id, JobTarget, Link, Locale, Paper, PersonalDetails,
-    PersonalField, Section, StoredCv, StoredVariant, Suggestion, TemplateId, Timestamp, Variant,
-    VerificationWarning,
+    PersonalField, Section, StoredCv, StoredVariant, Style, Suggestion, TemplateId, Timestamp,
+    Variant, VerificationWarning,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -380,6 +380,31 @@ pub struct AppSettings {
 pub struct BackupResult {
     /// Where the backup was written, for display only.
     pub path: String,
+}
+
+/// A style to save as a file (ADR-084).
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct StyleSave {
+    pub style: Style,
+    /// The CV's title, for the suggested file name.
+    pub name: String,
+}
+
+/// A style file that was written.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct StyleSaved {
+    /// Where the file was written, for display only.
+    pub path: String,
+}
+
+/// A style file that was read, for the UI to apply as one edit.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+pub struct StyleOpened {
+    pub style: Style,
+    /// What was adjusted or skipped while reading, to show the user.
+    pub warnings: Vec<String>,
+    /// The style's template is not available; the CV keeps its own.
+    pub keep_template: bool,
 }
 
 /// A backup that replaced the data.

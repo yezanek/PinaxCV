@@ -24,6 +24,7 @@ impl FileDialog for TauriFileDialog {
             ExportKind::Pdf => ("PDF document", kind.extension()),
             ExportKind::Html => ("Web page", kind.extension()),
             ExportKind::Backup => ("PinaxCV backup", kind.extension()),
+            ExportKind::Style => ("PinaxCV style", kind.extension()),
         };
         self.handle
             .dialog()
@@ -39,6 +40,8 @@ impl FileDialog for TauriFileDialog {
             "PinaxCV backup"
         } else if extensions == cv_app::PHOTO_EXTENSIONS {
             "Photo"
+        } else if extensions == cv_app::STYLE_EXTENSIONS {
+            "PinaxCV style"
         } else {
             "CV file"
         };

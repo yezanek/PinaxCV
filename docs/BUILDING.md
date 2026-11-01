@@ -125,7 +125,7 @@ API keys for AI providers go to the system keychain: the Secret Service on Linux
 
 ## 5. End-to-end smoke test
 
-CI drives the real app through [`tauri-driver`](https://v2.tauri.app/develop/tests/webdriver/) on Linux and Windows: it creates a CV, edits it, waits for the preview, exports a PDF, and switches the Style tab to two columns, moves the name card to the sidebar with its button and drags the summary card after it (`crates/e2e/tests/smoke.rs`). `cargo test` skips it unless `PINAXCV_E2E_APP` is set.
+CI drives the real app through [`tauri-driver`](https://v2.tauri.app/develop/tests/webdriver/) on Linux and Windows: it creates a CV, edits it, waits for the preview, exports a PDF, and switches the Style tab to two columns, moves the name card to the sidebar with its button, drags the summary card after it, and saves the style as a `.pinaxstyle.xml` file (`crates/e2e/tests/smoke.rs`). `cargo test` skips it unless `PINAXCV_E2E_APP` is set.
 
 The app is built with the `e2e` feature, which saves exports into `PINAXCV_E2E_EXPORT_DIR` instead of opening the save dialog, because WebDriver cannot drive native dialogs. Release builds never enable it. `tauri-driver` starts the app, so it is the process that needs `PINAXCV_E2E_EXPORT_DIR`.
 

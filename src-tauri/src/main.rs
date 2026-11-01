@@ -147,6 +147,8 @@ fn main() {
             commands::photo_get,
             commands::photo_apply,
             commands::photo_remove,
+            commands::style_save,
+            commands::style_open,
             commands::signature_choose,
             commands::signature_get,
             commands::signature_remove,

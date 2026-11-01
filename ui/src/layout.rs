@@ -462,7 +462,7 @@ pub fn LayoutPanel(
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use cv_core::{EntrySection, LanguagesSection, Locale, Paper, SkillsSection, TemplateId};
 
@@ -471,7 +471,7 @@ mod tests {
     }
 
     /// Experience 1, education 2, skills 3, languages 4.
-    fn cv() -> Cv {
+    pub(crate) fn cv() -> Cv {
         let entries = |n| EntrySection {
             id: id(n),
             title_override: None,

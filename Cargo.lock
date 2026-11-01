@@ -1346,6 +1346,7 @@ dependencies = [
  "cv-store",
  "image",
  "lopdf 0.45.0",
+ "roxmltree 0.21.1",
  "serde",
  "serde_json",
  "tempfile",

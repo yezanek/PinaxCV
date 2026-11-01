@@ -489,6 +489,18 @@
           "markdownDescription": "Enables the signature_remove command without any pre-configured scope."
         },
         {
+          "description": "Enables the style_open command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-style-open",
+          "markdownDescription": "Enables the style_open command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the style_save command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-style-save",
+          "markdownDescription": "Enables the style_save command without any pre-configured scope."
+        },
+        {
           "description": "Enables the third_party_licenses command without any pre-configured scope.",
           "type": "string",
           "const": "allow-third-party-licenses",
@@ -805,6 +817,18 @@
           "type": "string",
           "const": "deny-signature-remove",
           "markdownDescription": "Denies the signature_remove command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the style_open command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-style-open",
+          "markdownDescription": "Denies the style_open command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the style_save command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-style-save",
+          "markdownDescription": "Denies the style_save command without any pre-configured scope."
         },
         {
           "description": "Denies the third_party_licenses command without any pre-configured scope.",
