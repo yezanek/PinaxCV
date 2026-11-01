@@ -106,6 +106,33 @@ fn StyleFile(
             }
         });
     };
+    let preview = move |_| {
+        let Some(req) = cv.with_untracked(|c| {
+            c.as_ref().map(|c| StyleSave {
+                style: Style::from_cv(c),
+                name: c.title.clone(),
+            })
+        }) else {
+            return;
+        };
+        if busy.get_untracked() {
+            return;
+        }
+        busy.set(true);
+        message.set(Vec::new());
+        spawn_local(async move {
+            let result = call::<_, StyleSaved>("style_preview", &ReqArg { req: &req }).await;
+            // `Some` hands the value back: the tab was closed meanwhile.
+            if busy.try_set(false).is_some() {
+                return;
+            }
+            match result {
+                Ok(r) => message.set(vec![fill(t().style_preview_saved, &[("path", &r.path)])]),
+                Err(e) if e.code == ErrorCode::Cancelled => {}
+                Err(e) => error.set(Some(error_message(&e))),
+            }
+        });
+    };
     let load = move |_| {
         if busy.get_untracked() {
             return;
@@ -135,6 +162,8 @@ fn StyleFile(
             <div class="actions">
                 <button prop:disabled=move || busy.get() on:click=save>{s.style_save}</button>
                 <button prop:disabled=move || busy.get() on:click=load>{s.style_load}</button>
+                <button prop:disabled=move || busy.get() on:click=preview
+                    title=s.style_preview_hint>{s.style_preview}</button>
             </div>
             <ul class="status" aria-live="polite">
                 {move || message.get().into_iter().map(|line| view! { <li>{line}</li> }).collect_view()}

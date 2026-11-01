@@ -22,6 +22,7 @@ mod review;
 mod settings;
 mod signature;
 mod style_file;
+mod style_preview;
 mod tailor;
 
 use std::path::{Path, PathBuf};

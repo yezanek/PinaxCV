@@ -58,6 +58,7 @@
     "allow-photo-remove",
     "allow-style-save",
     "allow-style-open",
+    "allow-style-preview",
     "allow-signature-choose",
     "allow-signature-get",
     "allow-signature-remove"

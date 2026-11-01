@@ -55,6 +55,7 @@ const COMMANDS: &[&str] = &[
     "photo_remove",
     "style_save",
     "style_open",
+    "style_preview",
     "signature_choose",
     "signature_get",
     "signature_remove",

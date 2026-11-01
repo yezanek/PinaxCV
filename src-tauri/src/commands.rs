@@ -574,6 +574,13 @@ pub async fn style_open(app: Shared<'_>) -> Reply<StyleOpened> {
     run(app, "style_open", App::style_open).await
 }
 
+/// Asks where to save and writes the style applied to a built-in sample
+/// CV as an HTML page.
+#[tauri::command]
+pub async fn style_preview(app: Shared<'_>, req: StyleSave) -> Reply<StyleSaved> {
+    run(app, "style_preview", move |a| a.style_preview(req)).await
+}
+
 /// Asks for an image of a signature and stores it for the CV (ADR-090).
 #[tauri::command]
 pub async fn signature_choose(app: Shared<'_>, id: Id) -> Reply<SignatureInfo> {
