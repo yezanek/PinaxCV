@@ -20,11 +20,20 @@ use typst_layout::PagedDocument;
 use crate::data::{SectionData, TypstData, to_typst_data};
 use crate::{ExportOptions, ExportedDocument, Exporter, RenderError, suggested_file_name};
 
-const FONTS: [&[u8]; 4] = [
+/// The CV fonts (ADR-091): Inter, Source Serif 4 and Source Code Pro.
+const FONTS: [&[u8]; 12] = [
     include_bytes!("../fonts/Inter-Regular.ttf"),
     include_bytes!("../fonts/Inter-Bold.ttf"),
     include_bytes!("../fonts/Inter-SemiBold.ttf"),
     include_bytes!("../fonts/Inter-Italic.ttf"),
+    include_bytes!("../fonts/SourceSerif4-Regular.ttf"),
+    include_bytes!("../fonts/SourceSerif4-Bold.ttf"),
+    include_bytes!("../fonts/SourceSerif4-Semibold.ttf"),
+    include_bytes!("../fonts/SourceSerif4-It.ttf"),
+    include_bytes!("../fonts/SourceCodePro-Regular.ttf"),
+    include_bytes!("../fonts/SourceCodePro-Bold.ttf"),
+    include_bytes!("../fonts/SourceCodePro-Semibold.ttf"),
+    include_bytes!("../fonts/SourceCodePro-It.ttf"),
 ];
 
 const CLASSIC: &str = include_str!("../templates/classic/template.typ");

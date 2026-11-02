@@ -34,7 +34,7 @@ The Style tab's **Save style…** and **Load style…** write and read a style f
 <pinaxcv-style xmlns="urn:pinaxcv:style:1" version="1">
   <template id="classic"/>
   <paper size="a4"/>
-  <options font-size-pt="10" line-spacing="1.1" margin-mm="18" date-style="month_name_year" accent="#2B5CAB"/>
+  <options font="source_serif" font-size-pt="10" line-spacing="1.1" margin-mm="18" date-style="month_name_year" accent="#2B5CAB"/>
   <layout columns="two" sidebar-width-pct="32">
     <block kind="name" column="sidebar"/>
     <block kind="contact" column="sidebar"/>
@@ -47,7 +47,7 @@ The Style tab's **Save style…** and **Load style…** write and read a style f
 </pinaxcv-style>
 ```
 
-- `paper size`: `a4` or `letter`. `date-style`: `month_name_year`, `numeric_month_year` or `year_only`. `accent` is optional (`#RRGGBB`; none means black).
+- `paper size`: `a4` or `letter`. `font` (ADR-091): `inter` (the default when absent), `source_serif` or `source_code_pro`; an unknown font is reported and Inter is used. `date-style`: `month_name_year`, `numeric_month_year` or `year_only`. `accent` is optional (`#RRGGBB`; none means black).
 - `columns`: `one` or `two`; `sidebar-width-pct` 25 to 40.
 - `<block>`: `kind` is `name`, `contact`, `summary`, `experience`, `education`, `projects`, `skills`, `languages`, `certifications` or `custom` (with `title`); `column` is `sidebar` or `main` (the default). The blocks are one list: the top blocks in their order, then the sections in the CV's order. One list rather than a `<sidebar>` and a `<main>` list keeps the order across columns, which a one-column page shows. Placements are written in one-column mode too, as the layout keeps them.
 - The name's column is drawn on the left, so there is no side setting.

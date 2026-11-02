@@ -7,8 +7,9 @@
 
 #set document(title: d.meta.title, author: d.meta.author)
 #set page(paper: d.paper, margin: o.margin_mm * 1mm)
+// The chosen font (ADR-091), with Inter for any character it lacks.
 #set text(
-  font: "Inter",
+  font: (o.font, "Inter"),
   size: o.font_size_pt * 1pt,
   lang: d.locale,
   ligatures: false,

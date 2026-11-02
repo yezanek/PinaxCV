@@ -7,7 +7,7 @@
 
 use std::fmt::Write as _;
 
-use cv_core::ResolvedCv;
+use cv_core::{CvFont, ResolvedCv};
 
 use crate::data::{
     BlockData, EntriesData, EntryData, LinkData, SectionData, TypstData, to_typst_data,
@@ -42,7 +42,7 @@ impl Exporter for HtmlExporter {
 pub fn to_html(cv: &ResolvedCv, options: &ExportOptions) -> String {
     let d = to_typst_data(cv, options);
     let mut out = String::with_capacity(8 * 1024);
-    head(&mut out, &d);
+    head(&mut out, &d, cv.options.font);
     let photo = options.photo.as_deref().filter(|_| d.basics.photo);
     let l = &d.layout;
     if l.two {
@@ -150,18 +150,36 @@ fn write_blocks(out: &mut String, d: &TypstData, blocks: &[BlockData], photo: Op
     }
 }
 
-fn head(out: &mut String, d: &TypstData) {
+/// The CSS font stack for the CV font (ADR-091). HTML uses fonts already on
+/// the reader's system, so each stack names the font first and ends with its
+/// generic family.
+fn font_stack(font: CvFont) -> &'static str {
+    match font {
+        CvFont::Inter => {
+            "Inter, system-ui, -apple-system, \"Segoe UI\", Roboto, \"Noto Sans\", \"Helvetica Neue\", Arial, sans-serif"
+        }
+        CvFont::SourceSerif => {
+            "\"Source Serif 4\", \"Source Serif Pro\", Georgia, \"Noto Serif\", \"Times New Roman\", serif"
+        }
+        CvFont::SourceCodePro => {
+            "\"Source Code Pro\", ui-monospace, Menlo, Consolas, \"DejaVu Sans Mono\", monospace"
+        }
+    }
+}
+
+fn head(out: &mut String, d: &TypstData, font: CvFont) {
     let _ = write!(
         out,
         "<!DOCTYPE html>\n<html lang=\"{lang}\">\n<head>\n<meta charset=\"utf-8\">\n\
          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\
          <meta name=\"author\" content=\"{author}\">\n<meta name=\"generator\" content=\"PinaxCV\">\n\
-         <title>{title}</title>\n<style>\n:root {{ --accent: {accent}; }}\n{CSS}</style>\n\
+         <title>{title}</title>\n<style>\n:root {{ --accent: {accent}; --font: {font}; }}\n{CSS}</style>\n\
          </head>\n<body{body_class}>\n",
         lang = esc(d.locale),
         author = esc(&d.meta.author),
         title = esc(&d.meta.title),
         accent = accent(d.opts.accent.as_deref()),
+        font = font_stack(font),
         body_class = if d.layout.two { " class=\"two\"" } else { "" },
     );
 }
@@ -742,7 +760,23 @@ mod tests {
         }
         assert!(doc.contains("<title>Jane Doe, CV</title>"));
         assert!(doc.contains("prefers-color-scheme: dark") && doc.contains("@media print"));
-        assert!(doc.contains("font-family: system-ui"));
+        assert!(doc.contains("font-family: var(--font"));
+        assert!(doc.contains("--font: Inter, system-ui,"));
+    }
+
+    /// Each CV font (ADR-091) picks a system font stack that ends with its
+    /// generic family; nothing is loaded from outside the file.
+    #[test]
+    fn the_cv_font_sets_the_font_stack() {
+        for font in CvFont::ALL {
+            let mut cv = testdata::fixture("typical");
+            cv.options.font = font;
+            let doc = to_html(&cv.resolve(None), &ExportOptions::html_default());
+            let stack = font_stack(font);
+            assert!(stack.ends_with(font.css_generic()), "{font:?}");
+            assert!(doc.contains(&format!("--font: {stack};")), "{font:?}");
+            assert!(external_resources(&doc).is_empty(), "{font:?}");
+        }
     }
 
     #[test]

@@ -97,6 +97,8 @@ pub struct LabelsData {
 
 #[derive(Serialize, Debug, PartialEq)]
 pub struct OptsData {
+    /// The font family name, as in the embedded font files.
+    pub font: &'static str,
     pub font_size_pt: f32,
     pub line_spacing: f32,
     pub margin_mm: f32,
@@ -216,6 +218,7 @@ pub fn to_typst_data(cv: &ResolvedCv, options: &ExportOptions) -> TypstData {
             Paper::Letter => "us-letter",
         },
         opts: OptsData {
+            font: cv.options.font.family(),
             font_size_pt: cv.options.font_size_pt,
             line_spacing: cv.options.line_spacing,
             margin_mm: cv.options.margin_mm,

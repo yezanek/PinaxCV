@@ -278,3 +278,50 @@ fn a_closing_block_taller_than_a_page_may_break() {
     let text = text.split_whitespace().collect::<Vec<_>>().join(" ");
     assert_eq!(text.matches("consent to the processing").count(), 400);
 }
+
+/// Every CV font (ADR-091) embeds in the PDF and passes the ATS check on
+/// the one- and two-column fixtures. The unicode fixture also checks that
+/// each font, with Inter behind it, covers the Latin, Greek and Cyrillic
+/// text without a missing-glyph warning.
+#[test]
+fn every_cv_font_embeds_and_passes_the_ats_check() {
+    use cv_core::CvFont;
+    let renderer = Renderer::new();
+    for font in CvFont::ALL {
+        for name in ["typical", "two_column", "unicode", "european"] {
+            let mut cv = fixture(name);
+            cv.options.font = font;
+            let resolved = cv.resolve(None);
+            let compiled = renderer
+                .compile(&resolved, &ExportOptions::default())
+                .expect("compiles");
+            assert!(
+                compiled.warnings().is_empty(),
+                "{font:?}/{name}: {:?}",
+                compiled.warnings()
+            );
+            let bytes = compiled.to_pdf().expect("pdf");
+            let report = ats_report(&bytes, &resolved);
+            let failed: Vec<_> = report.failed_checks().collect();
+            assert!(failed.is_empty(), "{font:?}/{name}: {failed:#?}");
+            let wanted = font.family().replace(' ', "");
+            assert!(
+                base_fonts(&bytes).iter().any(|f| f.contains(&wanted)),
+                "{font:?}/{name}: {:?}",
+                base_fonts(&bytes)
+            );
+        }
+    }
+}
+
+/// The `BaseFont` names of every font in the PDF.
+fn base_fonts(pdf: &[u8]) -> Vec<String> {
+    let doc = lopdf::Document::load_mem(pdf).expect("parses");
+    doc.objects
+        .values()
+        .filter_map(|o| o.as_dict().ok())
+        .filter_map(|d| d.get(b"BaseFont").ok())
+        .filter_map(|n| n.as_name().ok())
+        .map(|n| String::from_utf8_lossy(n).into_owned())
+        .collect()
+}

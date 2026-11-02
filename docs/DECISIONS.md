@@ -84,7 +84,7 @@ English only in v1, for both the UI and CV content. AI prompts still tell the mo
 
 ## ADR-016 — Rendering
 
-- Inter is the only CV font in v1.
+- Inter is the only CV font in v1. (Superseded by ADR-091: the CV font is now a choice.)
 - Headings are printed as written (title case), not upper-cased.
 - A "Page 1 of 2" footer is included only if extraction tests prove it does not interleave with body text.
 - The template places contact details in the first five extracted lines; the ATS check fails only beyond eight.
@@ -659,3 +659,13 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - A new CV and a CV without a photo always take the imported photo. When the CV already has one, `import_match` sets `photo_conflict` and the merge review asks "Keep my photo / Use the imported photo" (keep is the default); `ImportCommit.use_imported_photo` carries the answer. `show_photo` is never changed, so an imported photo stays hidden until the user switches it on.
 - Snapshots hold the CV document only, so undoing a merge does not bring back a replaced photo; the review says so when replacing is chosen. The photo is stored after the CV is saved and after the preview is dropped, so a failure to store it cannot save the import twice; the error then says the CV was saved without its photo.
 - Tests use a generated image only, never a real photo.
+
+## ADR-091 — CV font choice (issue #157)
+
+- The Style tab has a font picker next to the layout canvas and the font size slider. Three fonts are embedded in `cv-render` with `include_bytes!`, all SIL OFL 1.1, each in regular, semibold, bold and italic: Inter (sans-serif, the default), Source Serif 4 (serif) and Source Code Pro (monospaced), from Adobe's release TTFs. This replaces "Inter is the only CV font in v1" (ADR-016). The two Adobe families add about 1.9 MB to the binary.
+- `TemplateOptions.font` is a `CvFont` (`inter`, `source_serif`, `source_code_pro`) with `#[serde(default)]`, so CVs saved before it load as Inter and `CV_SCHEMA_VERSION` stays 1.
+- The `classic` template sets `font: (o.font, "Inter")`, so a character the chosen font lacks falls back to Inter. The missing-glyph warning (ADR-033) still checks against every embedded font.
+- Style files carry it as `<options font="...">`. A missing attribute means Inter; an unknown name warns and uses Inter.
+- HTML export and the style preview use system fonts only, so each font maps to a CSS stack that names it first and ends with its generic family (`sans-serif`, `serif`, `monospace`). No font is embedded in the HTML.
+- A golden test exports the typical, two-column, unicode and European fixtures in every font, checks the font is embedded and that the ATS check passes with no warnings.
+- Not in this change: a default font for new CVs in Settings.

@@ -336,9 +336,62 @@ pub enum DateStyle {
     YearOnly,
 }
 
+/// The font the CV prints in. Each is embedded in the renderer (SIL OFL)
+/// with regular, semibold, bold and italic styles (ADR-091).
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum CvFont {
+    /// Inter, a sans-serif.
+    #[default]
+    Inter,
+    /// Source Serif 4, a serif.
+    SourceSerif,
+    /// Source Code Pro, a monospaced font.
+    SourceCodePro,
+}
+
+impl CvFont {
+    pub const ALL: [CvFont; 3] = [CvFont::Inter, CvFont::SourceSerif, CvFont::SourceCodePro];
+
+    /// The stored name, as in JSON and style files.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            CvFont::Inter => "inter",
+            CvFont::SourceSerif => "source_serif",
+            CvFont::SourceCodePro => "source_code_pro",
+        }
+    }
+
+    /// The font for a stored name.
+    pub fn from_name(name: &str) -> Option<CvFont> {
+        CvFont::ALL.into_iter().find(|f| f.as_str() == name)
+    }
+
+    /// The family name inside the font files, as Typst looks it up.
+    pub fn family(self) -> &'static str {
+        match self {
+            CvFont::Inter => "Inter",
+            CvFont::SourceSerif => "Source Serif 4",
+            CvFont::SourceCodePro => "Source Code Pro",
+        }
+    }
+
+    /// The CSS generic family for HTML output, which uses system fonts.
+    pub fn css_generic(self) -> &'static str {
+        match self {
+            CvFont::Inter => "sans-serif",
+            CvFont::SourceSerif => "serif",
+            CvFont::SourceCodePro => "monospace",
+        }
+    }
+}
+
 /// Layout options. Out-of-range values are clamped at save time.
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
 pub struct TemplateOptions {
+    /// Absent in CVs saved before the font picker, which print in Inter.
+    #[serde(default)]
+    pub font: CvFont,
     pub font_size_pt: f32,
     pub line_spacing: f32,
     pub margin_mm: f32,
@@ -356,6 +409,7 @@ impl TemplateOptions {
 impl Default for TemplateOptions {
     fn default() -> Self {
         Self {
+            font: CvFont::default(),
             font_size_pt: 10.0,
             line_spacing: 1.1,
             margin_mm: 18.0,
@@ -438,6 +492,24 @@ mod tests {
         assert_eq!(o.date_style, DateStyle::MonthNameYear);
         let (min, max) = TemplateOptions::FONT_SIZE_PT;
         assert!(min <= o.font_size_pt && o.font_size_pt <= max);
+        assert_eq!(o.font, CvFont::Inter);
+    }
+
+    #[test]
+    fn options_without_a_font_read_as_inter() {
+        let json = r#"{"font_size_pt":10.0,"line_spacing":1.1,"margin_mm":18.0,"accent":null,"date_style":"year_only"}"#;
+        let o: TemplateOptions = serde_json::from_str(json).expect("deserialize");
+        assert_eq!(o.font, CvFont::Inter);
+    }
+
+    #[test]
+    fn font_names_round_trip() {
+        for f in CvFont::ALL {
+            assert_eq!(CvFont::from_name(f.as_str()), Some(f));
+            let json = serde_json::to_value(f).expect("serialize");
+            assert_eq!(json, f.as_str());
+        }
+        assert_eq!(CvFont::from_name("comic_sans"), None);
     }
 
     #[test]

@@ -1,11 +1,12 @@
 //! The Style tab (spec section 12.8): template, paper size, locale, date
-//! style and the template's layout options. Sliders use the ranges from the
+//! style, the CV font (ADR-091) and the template's layout options. Sliders use the ranges from the
 //! template manifest; the backend still clamps whatever is saved. Styles can
 //! be saved to and loaded from `.pinaxstyle.xml` files (ADR-084).
 
 use cv_api::{ErrorCode, OptionRange, StyleOpened, StyleSave, StyleSaved, TemplateManifest};
 use cv_core::{
-    Cv, DateStyle, Locale, Paper, StoredVariant, Style, StyleApplied, TemplateId, TemplateOptions,
+    Cv, CvFont, DateStyle, Locale, Paper, StoredVariant, Style, StyleApplied, TemplateId,
+    TemplateOptions,
 };
 use leptos::prelude::*;
 use leptos::task::spawn_local;
@@ -299,6 +300,11 @@ pub fn StyleTab(
             (DateStyle::NumericMonthYear, s.date_numeric),
             (DateStyle::YearOnly, s.date_year_only),
         ], cv, edit, |c| c.options.date_style, |c, v| c.options.date_style = v)}
+        {segmented(s.font, "font", vec![
+            (CvFont::Inter, s.font_sans),
+            (CvFont::SourceSerif, s.font_serif),
+            (CvFont::SourceCodePro, s.font_mono),
+        ], cv, edit, |c| c.options.font, |c, v| c.options.font = v)}
         {slider(s.font_size, s.unit_pt, "0.5", 0, |o| o.font_size_pt, |o, v| o.font_size_pt = v)}
         {slider(s.line_spacing, "", "0.05", 1, |o| o.line_spacing, |o, v| o.line_spacing = v)}
         {slider(s.margins, s.unit_mm, "1", 2, |o| o.margin_mm, |o, v| o.margin_mm = v)}
