@@ -8,7 +8,7 @@ use std::io::Read;
 
 use cv_api::{ApiError, ErrorCode, StyleOpened, StyleSave, StyleSaved};
 use cv_core::{
-    Column, Columns, DateStyle, Layout, Paper, PlacedBlock, SectionKind, Style, StyleBlock,
+    Column, Columns, CvFont, DateStyle, Layout, Paper, PlacedBlock, SectionKind, Style, StyleBlock,
     TemplateId, TemplateOptions, TopBlock,
 };
 
@@ -95,7 +95,8 @@ pub fn style_to_xml(style: &Style) -> String {
     let _ = writeln!(out, "  <paper size=\"{}\"/>", paper_name(style.paper));
     let _ = write!(
         out,
-        "  <options font-size-pt=\"{}\" line-spacing=\"{}\" margin-mm=\"{}\" date-style=\"{}\"",
+        "  <options font=\"{}\" font-size-pt=\"{}\" line-spacing=\"{}\" margin-mm=\"{}\" date-style=\"{}\"",
+        o.font.as_str(),
         o.font_size_pt,
         o.line_spacing,
         o.margin_mm,
@@ -191,6 +192,13 @@ pub fn style_from_xml(bytes: &[u8]) -> Result<(Style, Vec<String>)> {
     };
 
     let options_node = child("options");
+    let font = match options_node.and_then(|n| n.attribute("font")) {
+        None => CvFont::default(),
+        Some(name) => CvFont::from_name(name.trim()).unwrap_or_else(|| {
+            warnings.push("The font was not recognised; Inter is used.".to_owned());
+            CvFont::default()
+        }),
+    };
     let mut number = |name: &str, label: &str, (min, max): (f32, f32), default: f32| {
         let Some(raw) = options_node.and_then(|n| n.attribute(name)) else {
             return default;
@@ -346,6 +354,7 @@ pub fn style_from_xml(bytes: &[u8]) -> Result<(Style, Vec<String>)> {
         template,
         paper,
         options: TemplateOptions {
+            font,
             font_size_pt,
             line_spacing,
             margin_mm,
@@ -445,6 +454,7 @@ mod tests {
             template: TemplateId::default(),
             paper: Paper::Letter,
             options: TemplateOptions {
+                font: CvFont::SourceSerif,
                 accent: Some("#2B5CAB".into()),
                 ..TemplateOptions::default()
             },
@@ -504,6 +514,7 @@ mod tests {
     fn the_written_file_has_the_documented_shape() {
         let xml = style_to_xml(&sample());
         assert!(xml.contains("<pinaxcv-style xmlns=\"urn:pinaxcv:style:1\" version=\"1\">"));
+        assert!(xml.contains("<options font=\"source_serif\" font-size-pt=\"10\""));
         assert!(xml.contains("<layout columns=\"two\" sidebar-width-pct=\"30\">"));
         assert!(xml.contains("<block kind=\"name\" column=\"sidebar\"/>"));
         assert!(xml.contains(
@@ -553,7 +564,7 @@ mod tests {
     fn bad_values_are_clamped_or_defaulted_with_warnings() {
         let xml = wrap(
             "<paper size=\"a3\"/>\
-             <options font-size-pt=\"40\" line-spacing=\"wide\" accent=\"blue\" date-style=\"iso\"/>\
+             <options font=\"comic_sans\" font-size-pt=\"40\" line-spacing=\"wide\" accent=\"blue\" date-style=\"iso\"/>\
              <layout columns=\"three\" sidebar-width-pct=\"90\">\
                <block kind=\"name\" column=\"sidebar\"/>\
                <block kind=\"name\" column=\"main\"/>\
@@ -563,6 +574,7 @@ mod tests {
         );
         let (style, warnings) = style_from_xml(xml.as_bytes()).expect("parses");
         assert_eq!(style.paper, Paper::A4);
+        assert_eq!(style.options.font, CvFont::Inter);
         assert_eq!(style.options.font_size_pt, TemplateOptions::FONT_SIZE_PT.1);
         assert_eq!(
             style.options.line_spacing,
@@ -589,7 +601,12 @@ mod tests {
                 },
             ]
         );
-        assert_eq!(warnings.len(), 10, "{warnings:?}");
+        assert_eq!(warnings.len(), 11, "{warnings:?}");
+        assert!(
+            warnings
+                .iter()
+                .any(|w| w.contains("font was not recognised"))
+        );
         assert!(warnings.iter().any(|w| w.contains("unknown column")));
         assert!(warnings.iter().any(|w| w.contains("repeated")));
     }

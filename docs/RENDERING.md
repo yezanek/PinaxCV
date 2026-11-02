@@ -19,7 +19,7 @@ ResolvedCv
 
 PDF output is optimized for ATS-safe parsing, printing, and deterministic testing. Exports are tagged and declare PDF/UA-1 when Typst can meet it, falling back to a tagged PDF without the claim (ADR-061). CI parses every fixture export with OpenResume's parser.
 
-The `classic` template (embedded, with Inter) takes the CV's style options: paper size, date style, font size, line spacing, margins and accent colour, within the ranges in its manifest. The optional profile photo sits beside the contact block as an artifact, so the extracted text is the same with or without it (ADR-083).
+The `classic` template (embedded) takes the CV's style options: paper size, date style, font (Inter, Source Serif 4 or Source Code Pro, ADR-091), font size, line spacing, margins and accent colour, within the ranges in its manifest. The optional profile photo sits beside the contact block as an artifact, so the extracted text is the same with or without it (ADR-083).
 
 The template also follows the CV's layout (ADR-084): one column, or two columns with a sidebar 25 to 40% wide. The column holding the name is drawn on the left, because PDF text is read left column first, and each column reads in order on its own; bullets never break across pages in two columns. Two-column CVs carry an ATS warning and export with a one-column ATS copy.
 

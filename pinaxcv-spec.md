@@ -72,7 +72,7 @@ Individual job seekers, including non-technical ones. UI and CV content are Engl
 Constraints:
 
 - No Node toolchain in the runtime path. Trunk may use `wasm-bindgen` tooling; a tiny JS shim for drag-and-drop reordering is allowed (section 12.10).
-- All fonts embedded with `include_bytes!` (SIL OFL only). Ship **Inter** (Regular, Italic, Bold, BoldItalic) only in v1; a serif font is added together with a second template. Record licenses in `THIRD_PARTY_LICENSES.md`.
+- All fonts embedded with `include_bytes!` (SIL OFL only). Ship three CV fonts, each in Regular, Semibold, Bold and Italic: **Inter** (sans-serif, the default), **Source Serif 4** (serif) and **Source Code Pro** (monospaced), chosen per CV in the Style tab (ADR-091). Record licenses in `THIRD_PARTY_LICENSES.md`.
 - Minimum Rust: 1.97 (pinned in `rust-toolchain.toml`). `#![forbid(unsafe_code)]` in all our crates.
 
 ---
@@ -227,6 +227,7 @@ pub struct LanguagesSection { pub id: Id, pub items: Vec<LanguageItem> }
 pub struct LanguageItem { pub id: Id, pub name: String, pub level: Option<String> } // free text: "C1", "Native"
 
 pub struct TemplateOptions {
+    pub font: CvFont,                // Inter (default) | SourceSerif | SourceCodePro (ADR-091); absent reads as Inter
     pub font_size_pt: f32,           // 9.0..=12.0, default 10.0
     pub line_spacing: f32,           // 0.9..=1.4, default 1.1
     pub margin_mm: f32,              // 12..=30, default 18
@@ -550,7 +551,7 @@ Hard rules (document them in `docs/ATS_RULES.md` and enforce with tests):
 7. **Real lists:** use `list`/`-` for bullets, using a standard bullet glyph present in the font.
 8. **No images, no backgrounds, no skill bars/ratings**, no decorative glyphs. Accent color only for heading rules/text. The only exceptions are the user's own profile photo (ADR-083) and signature image in the closing block (ADR-090), each off by default, switched on per CV or variant, and drawn as an artifact with no text.
 9. **Text is real text**, never outlined shapes.
-10. Font: Inter (body), sizes from options. Language set from `locale` (`#set text(lang: ...)`). Headings are printed as written (title case), not upper-cased.
+10. Font: the CV's chosen font (Inter by default, ADR-091) with Inter as fallback, sizes from options. Language set from `locale` (`#set text(lang: ...)`). Headings are printed as written (title case), not upper-cased.
 11. Handle empty/missing fields without leaving stray separators or blank headings. Empty sections are not emitted.
 12. Page breaks: avoid orphan headings (`keep-with-next` behavior) and avoid splitting a single entry's first two lines across pages.
 
@@ -1292,7 +1293,7 @@ Assertions (CI replays recorded responses; live runs against a real model are do
 
 ### 12.8 Style tab
 
-Layout panel (ADR-084): One column / Two columns, the sidebar width (25 to 40%), and a page canvas with one card per block (name, contact, summary, each section). Cards are dragged within and between the columns; each also has Move up, Move down and Move to the other column buttons. The column holding the name is drawn on the left. Template picker (v1: one), options controls bound to `TemplateOptions` with sliders/segmented controls within ranges, paper size, locale (v1: English only; affects headings and date formatting), date style. Values outside the manifest ranges are clamped by the backend.
+Layout panel (ADR-084): One column / Two columns, the sidebar width (25 to 40%), and a page canvas with one card per block (name, contact, summary, each section). Cards are dragged within and between the columns; each also has Move up, Move down and Move to the other column buttons. The column holding the name is drawn on the left. Template picker (v1: one), options controls bound to `TemplateOptions` with sliders/segmented controls within ranges, paper size, locale (v1: English only; affects headings and date formatting), date style, font (Inter, Source Serif or Source Code Pro, ADR-091). Values outside the manifest ranges are clamped by the backend.
 
 ### 12.9 Accessibility
 
@@ -1401,7 +1402,7 @@ If no keychain is available (for example the Linux Secret Service is missing), `
 2. Exact Typst crate versions and whether `typst-as-lib` is used. *Pending until the M0.5 spike PR merges; the spike's result is recorded in `docs/DECISIONS.md` (ADR-022). Default is our own small `World`.*
 3. Default AI model names per provider. *Decided: none; the user enters the model name.*
 4. Whether footer page numbers survive the ATS tests. *Decided: included only if the extraction tests pass.*
-5. Font set final choice and license verification. *Decided: Inter only in v1.*
+5. Font set final choice and license verification. *Decided: Inter only in v1; later Source Serif 4 and Source Code Pro were added as choices (ADR-091).*
 6. App license. *Decided: Apache-2.0.*
 7. Whether to include a German UI translation in v1. *Decided: no; English only (UI and content).*
 8. Exact `cv-store` repository/service interface shape and whether it is sync or async. *Decided: synchronous `Store` trait, called via `spawn_blocking`.*

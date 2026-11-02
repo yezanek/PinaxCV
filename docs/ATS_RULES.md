@@ -17,7 +17,7 @@ Users should still verify the final document through the employer's application 
 7. Real lists with a standard bullet glyph.
 8. No images, backgrounds, skill bars or decorative glyphs. Exceptions: the user's profile photo (ADR-083) and the user's signature image in the closing block (ADR-090). Both are off by default, shown only when switched on for the CV or variant, and drawn as PDF artifacts with no text, so extracted text is the same with and without them.
 9. Text is real text, never outlined shapes.
-10. Inter only; document language set from the CV locale.
+10. One of the embedded fonts (Inter, Source Serif 4 or Source Code Pro, ADR-091), with Inter as fallback; document language set from the CV locale.
 11. Empty fields and sections leave no stray separators or headings.
 12. No orphan headings; an entry's first two lines stay together.
 
@@ -31,4 +31,4 @@ CI parses every exported fixture with OpenResume's resume parser and requires it
 
 Name within the first 3 non-empty lines; email and phone within the first 8 and unbroken; headings present and in order; each entry's title, org and period within a 4-line window; no private-use, replacement or ligature codepoints; every bullet recoverable; heading and entry order matches the CV. The score is labelled "as read by PinaxCV" if the custom extractor fallback is used.
 
-The score is the share of these checks that pass, from 0 to 100. Text that cannot be read from the PDF scores 0. CJK text is a known limitation in v1: the bundled Inter font has no CJK glyphs, so the export warns about missing glyphs and the check fails (ADR-033).
+The score is the share of these checks that pass, from 0 to 100. Text that cannot be read from the PDF scores 0. CJK text is a known limitation in v1: none of the bundled fonts has CJK glyphs, so the export warns about missing glyphs and the check fails (ADR-033).

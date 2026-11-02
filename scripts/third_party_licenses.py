@@ -30,6 +30,8 @@ ALLOWED = {
 # Fonts are not crates: listed by hand from their licence files.
 FONTS = [
     ("Inter", "crates/cv-render/fonts/LICENSE.txt", "OFL-1.1", "https://github.com/rsms/inter"),
+    ("Source Serif 4", "crates/cv-render/fonts/SourceSerif4-LICENSE.txt", "OFL-1.1", "https://github.com/adobe-fonts/source-serif"),
+    ("Source Code Pro", "crates/cv-render/fonts/SourceCodePro-LICENSE.txt", "OFL-1.1", "https://github.com/adobe-fonts/source-code-pro"),
 ]
 
 # Crates that ship no licence file: the text from their upstream repository,
