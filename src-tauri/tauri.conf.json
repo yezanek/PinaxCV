@@ -26,7 +26,7 @@
     "targets": [
       "appimage"
     ],
-    "category": "Office",
+    "category": "Productivity",
     "shortDescription": "Local-first CV editor",
     "longDescription": "PinaxCV is a local-first CV editor: write one CV, tailor variants for each job, check them for applicant tracking systems and export PDF or HTML.",
     "copyright": "Copyright the PinaxCV authors. Apache-2.0.",
