@@ -7,8 +7,8 @@ use cv_core::{
     PartialDate, Period, Section, Skill, SkillGroup, SkillsSection,
 };
 use serde_json::{Map, Value};
-use unicode_normalization::UnicodeNormalization;
 
+use crate::clean::{clean_field, track_cuts};
 use crate::europass_map::parse_date;
 use crate::import::{ImportError, MAX_INPUT};
 use crate::partial::{CvPartial, ImportResult, ImportWarning};
@@ -17,7 +17,7 @@ use crate::partial::{CvPartial, ImportResult, ImportWarning};
 /// a group); the rest are dropped with a warning.
 pub const MAX_ITEMS: usize = 200;
 /// Characters kept per text value.
-pub const MAX_TEXT: usize = 10_000;
+pub use crate::clean::MAX_TEXT;
 
 /// Top-level keys of the schema; a JSON object with none of them is not a
 /// JSON Resume.
@@ -66,7 +66,9 @@ pub fn import_json_resume(
         fresh,
         warnings: Vec::new(),
     };
-    Ok(m.map(root))
+    let (mut result, cut) = track_cuts(|| m.map(root));
+    result.warnings.extend(cut);
+    Ok(result)
 }
 
 struct Mapper<'a> {
@@ -329,7 +331,7 @@ impl Mapper<'_> {
     }
 
     fn bullets(&mut self, o: &Map<String, Value>, key: &str, what: &str) -> Vec<Bullet> {
-        let all: Vec<String> = strings(o.get(key)).collect();
+        let all: Vec<String> = strings(o, key).collect();
         if all.len() > MAX_ITEMS {
             self.warn(format!(
                 "Only the first {MAX_ITEMS} bullets of {what} were imported."
@@ -349,7 +351,7 @@ impl Mapper<'_> {
         let mut loose = Vec::new();
         for o in self.cap(objects(root.get("skills")), "skills") {
             let name = line(o, "name");
-            let keywords = self.cap(strings(o.get("keywords")), "keywords of a skill");
+            let keywords = self.cap(strings(o, "keywords"), "keywords of a skill");
             if keywords.is_empty() {
                 // A skill without keywords is a skill, not a group label.
                 loose.extend(name);
@@ -423,49 +425,23 @@ fn objects(v: Option<&Value>) -> impl Iterator<Item = &Map<String, Value>> {
 }
 
 /// The non-empty one-line strings in an array value.
-fn strings(v: Option<&Value>) -> impl Iterator<Item = String> + '_ {
-    v.and_then(Value::as_array)
+fn strings<'a>(o: &'a Map<String, Value>, key: &'a str) -> impl Iterator<Item = String> + 'a {
+    o.get(key)
+        .and_then(Value::as_array)
         .into_iter()
         .flatten()
         .filter_map(Value::as_str)
-        .filter_map(|s| clean(s, false))
+        .filter_map(move |s| clean_field(s, false, key))
 }
 
 /// A one-line text field.
 fn line(o: &Map<String, Value>, key: &str) -> Option<String> {
-    clean(o.get(key)?.as_str()?, false)
+    clean_field(o.get(key)?.as_str()?, false, key)
 }
 
 /// A multi-line text field; line breaks are kept.
 fn text(o: &Map<String, Value>, key: &str) -> Option<String> {
-    clean(o.get(key)?.as_str()?, true)
-}
-
-/// NFC, with whitespace controls as spaces (line breaks kept with
-/// `keep_lines`), other control characters dropped, runs of spaces collapsed, at most
-/// [`MAX_TEXT`] characters. `None` when nothing is left.
-fn clean(s: &str, keep_lines: bool) -> Option<String> {
-    let nfc: String = s
-        .nfc()
-        .filter_map(|c| match c {
-            '\n' if keep_lines => Some('\n'),
-            c if c.is_whitespace() => Some(' '),
-            c if c.is_control() => None,
-            c => Some(c),
-        })
-        .take(MAX_TEXT)
-        .collect();
-    let out = if keep_lines {
-        nfc.lines()
-            .map(|l| l.split_whitespace().collect::<Vec<_>>().join(" "))
-            .collect::<Vec<_>>()
-            .join("\n")
-            .trim()
-            .to_owned()
-    } else {
-        nfc.split_whitespace().collect::<Vec<_>>().join(" ")
-    };
-    (!out.is_empty()).then_some(out)
+    clean_field(o.get(key)?.as_str()?, true, key)
 }
 
 /// `"Engineer at Acme"`-style text for warnings.
@@ -500,6 +476,45 @@ mod tests {
 
     fn import(json: &str) -> Result<ImportResult, ImportError> {
         import_json_resume(json.as_bytes(), &mut ids())
+    }
+
+    fn clean(s: &str, keep_lines: bool) -> Option<String> {
+        crate::clean::clean(s, keep_lines).0
+    }
+
+    #[test]
+    fn a_value_over_the_cap_warns_with_the_field_name_only() {
+        let long = "x".repeat(MAX_TEXT + 1);
+        let json = format!(
+            r#"{{"basics": {{"name": "Ada", "summary": "{long}"}},
+                "work": [{{"name": "Acme", "highlights": ["{long}"]}}]}}"#
+        );
+        let r = import(&json).expect("imports");
+        assert_eq!(
+            r.cv_partial.summary.as_ref().map(|s| s.chars().count()),
+            Some(MAX_TEXT)
+        );
+        let cut: Vec<&str> = r
+            .warnings
+            .iter()
+            .map(|w| w.message.as_str())
+            .filter(|m| m.contains("shortened"))
+            .collect();
+        assert_eq!(cut.len(), 1, "{:?}", r.warnings);
+        assert!(
+            cut[0].ends_with("shortened: highlights, summary."),
+            "{}",
+            cut[0]
+        );
+        assert!(!cut[0].contains("xxx"));
+    }
+
+    #[test]
+    fn a_value_at_the_cap_does_not_warn() {
+        let exact = "x".repeat(MAX_TEXT);
+        let json = format!(r#"{{"basics": {{"summary": "{exact}"}}}}"#);
+        let r = import(&json).expect("imports");
+        assert!(r.warnings.iter().all(|w| !w.message.contains("shortened")));
     }
 
     #[test]
