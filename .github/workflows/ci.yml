@@ -161,3 +161,6 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npx tsx check.ts "$RUNNER_TEMP/fixtures"
+      # PDFs that declare PDF/UA-1 must pass veraPDF (issue #138).
+      - name: Validate PDF/UA-1 with veraPDF
+        run: scripts/verapdf.sh "$RUNNER_TEMP/fixtures"

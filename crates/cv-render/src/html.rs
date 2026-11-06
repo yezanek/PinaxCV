@@ -33,6 +33,7 @@ impl Exporter for HtmlExporter {
             suggested_file_name: suggested_file_name(&cv.basics.full_name, "html"),
             page_count: None,
             warnings: Vec::new(),
+            pdf_ua_dropped: None,
         })
     }
 }

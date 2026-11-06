@@ -286,6 +286,8 @@ pub struct Strings {
     pub ats_limits: &'static str,
     pub ats_run: &'static str,
     pub ats_running: &'static str,
+    /// `{reason}`: Typst's message. Info, shown under the ATS score.
+    pub pdf_ua_dropped: &'static str,
     pub ats_score_line: &'static str,
     pub check_passed: &'static str,
     pub check_failed: &'static str,
@@ -807,6 +809,7 @@ pub static EN: Strings = Strings {
     ats_limits: "These are best-practice checks on how parsers read the PDF, not rules published by any applicant tracking system. Still check the final document in the employer's application flow.",
     ats_run: "Run check",
     ats_running: "Checking…",
+    pdf_ua_dropped: "Info: this PDF is tagged but does not declare PDF/UA-1, the accessible-PDF standard, because: {reason}",
     ats_score_line: "Score as read by PinaxCV: {score} / 100",
     check_passed: "Passed:",
     check_failed: "Failed:",
