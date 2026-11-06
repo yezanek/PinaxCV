@@ -662,6 +662,12 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - Keys: the minisign key pair is made once with `cargo tauri signer generate`. The private key and its password are repository secrets (`TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`); the public key is the repository variable `TAURI_UPDATER_PUBKEY`, built in through `PINAXCV_UPDATER_PUBKEY`. Keeping it out of `tauri.conf.json` (the spec said it would be there) lets builds from source work before the key exists and makes such builds report "no update key" instead of trusting a placeholder. The release workflow adds `createUpdaterArtifacts` only when both are set, and warns otherwise.
 - `requireSignedVersion` is not turned on yet: releases are new, and it can be enabled once the CLI's signed-version comment is confirmed on a real release.
 
+## ADR-096 — Release pass for the AppImage (M8, issue #73)
+
+- Scoped to the Linux AppImage, the only release for now; the Windows 11 VM pass is on hold with the Windows packages.
+- Automated part: the release workflow's `clean-install` job starts the built AppImage under Xvfb in fresh `ubuntu:22.04`, `ubuntu:24.04`, `debian:12` and `fedora:41` containers with nothing else installed (FUSE-less, through `APPIMAGE_EXTRACT_AND_RUN`), and checks that it keeps running and creates its database and log. This shows the AppImage carries what it needs on each base.
+- Manual part: the checklist in `docs/RELEASING.md` (create, edit, export, import, backup and restore, AI, updater). The update flow between two tagged releases can only be tested once two signed releases exist (ADR-095), so it is a step of the second release's pass.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

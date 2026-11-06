@@ -102,3 +102,51 @@ jobs:
           name: pinaxcv-appimage
           path: target/release/bundle/appimage/*.AppImage
           if-no-files-found: error
+
+  # Clean-install smoke test (issue #73): the AppImage starts on fresh
+  # distributions with only an X server added, opens its window and creates
+  # its database and log. It is the automated part of the release pass;
+  # docs/RELEASING.md lists the manual part.
+  clean-install:
+    name: Starts on ${{ matrix.image }}
+    needs: appimage
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["ubuntu:22.04", "ubuntu:24.04", "debian:12", "fedora:41"]
+    container: ${{ matrix.image }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: pinaxcv-appimage
+      - name: Install an X server only
+        run: |
+          if command -v apt-get > /dev/null; then
+            apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y xvfb xauth procps
+          else
+            dnf install -y xorg-x11-server-Xvfb xorg-x11-xauth procps-ng findutils
+          fi
+      - name: Start the AppImage
+        env:
+          # Containers have no FUSE: the runtime unpacks to a temporary folder.
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+          NO_CLEANUP: "1"
+        run: |
+          appimage=$(ls ./*.AppImage)
+          chmod +x "$appimage"
+          export HOME=$(mktemp -d)
+          xvfb-run -a "$appimage" > app.log 2>&1 &
+          for i in $(seq 1 60); do
+            if [ -f "$HOME/.local/share/dev.pinaxcv.app/pinaxcv.sqlite3" ]; then break; fi
+            sleep 1
+          done
+          sleep 5
+          if ! pgrep -f pinaxcv > /dev/null; then
+            echo "The app is not running." >&2; cat app.log >&2; exit 1
+          fi
+          test -f "$HOME/.local/share/dev.pinaxcv.app/pinaxcv.sqlite3" || { echo "No database was created." >&2; cat app.log >&2; exit 1; }
+          ls "$HOME/.local/share/dev.pinaxcv.app/logs/"
+          grep -q "" "$HOME/.local/share/dev.pinaxcv.app/logs/"* || { echo "The log is empty." >&2; exit 1; }
+          echo "The AppImage started on ${{ matrix.image }}."
+          pkill -f pinaxcv || true
