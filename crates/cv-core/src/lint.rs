@@ -7,6 +7,7 @@
 
 use std::collections::BTreeSet;
 
+use crate::contrast::{Rgb, TEXT_MIN_RATIO, contrast_ratio, darker_shade};
 use crate::{
     Id, LintIssue, PartialDate, Period, PersonalField, ResolvedCv, ResolvedEntry, ResolvedSection,
     Severity,
@@ -39,6 +40,9 @@ pub mod codes {
     pub const TWO_COLUMNS: &str = "two_columns";
     /// A personal detail such as the date of birth is printed (ADR-088).
     pub const PERSONAL_DETAIL_SHOWN: &str = "personal_detail_shown";
+    /// The accent colour is too light to read on white (WCAG 2.2 SC 1.4.3,
+    /// issue #139).
+    pub const LOW_CONTRAST: &str = "low_contrast";
 }
 
 /// Bullets longer than this many characters get `bullet_too_long`.
@@ -126,6 +130,7 @@ pub fn lint(cv: &ResolvedCv, page_count: Option<u32>) -> Vec<LintIssue> {
         );
     }
     personal_details(cv, &mut out);
+    accent_contrast(cv, &mut out);
     out.sort_by_rule()
 }
 
@@ -158,6 +163,33 @@ fn personal_details(cv: &ResolvedCv, out: &mut Lints) {
             Some(hint),
         );
     }
+}
+
+/// Section headings print in the accent colour on a white page, so it must
+/// pass WCAG 2.2 SC 1.4.3 for text (4.5:1). A standard, not advice.
+fn accent_contrast(cv: &ResolvedCv, out: &mut Lints) {
+    let Some(accent) = cv.options.accent.as_deref().and_then(Rgb::parse) else {
+        return;
+    };
+    let ratio = contrast_ratio(accent, Rgb::WHITE);
+    if ratio >= TEXT_MIN_RATIO {
+        return;
+    }
+    let shade = darker_shade(accent, Rgb::WHITE, TEXT_MIN_RATIO).hex();
+    let hint = format!(
+        "WCAG 2.2 (1.4.3) asks for at least 4.5:1. Try {shade}, the nearest darker shade that passes, in the Style tab."
+    );
+    out.push(
+        codes::LOW_CONTRAST,
+        Severity::Warning,
+        None,
+        format!(
+            "The accent colour {} has a contrast of {:.1}:1 on white; headings in it are hard to read and may vanish in greyscale prints.",
+            accent.hex(),
+            (ratio * 10.0).floor() / 10.0
+        ),
+        Some(&hint),
+    );
 }
 
 /// Returns the entries of an entry-shaped section, or nothing.
@@ -593,7 +625,7 @@ impl Lints {
 
     /// Stable sort by the rule's position in [`codes`]; document order is kept within a rule.
     fn sort_by_rule(mut self) -> Vec<LintIssue> {
-        const ORDER: [&str; 21] = [
+        const ORDER: [&str; 22] = [
             codes::MISSING_NAME,
             codes::MISSING_CONTACT,
             codes::INVALID_EMAIL,
@@ -615,6 +647,7 @@ impl Lints {
             codes::PAGE_COUNT,
             codes::TWO_COLUMNS,
             codes::PERSONAL_DETAIL_SHOWN,
+            codes::LOW_CONTRAST,
         ];
         self.0
             .sort_by_key(|i| ORDER.iter().position(|c| *c == i.code));
@@ -628,6 +661,38 @@ mod tests {
     use crate::test_fixtures::sample_cv;
     use crate::test_ids::id;
     use crate::{Bullet, Cv, Entry, Section};
+
+    #[test]
+    fn a_light_accent_warns_with_a_darker_shade() {
+        let mut cv = clean_cv();
+        cv.options.accent = Some("#ffd700".into());
+        let issues = lint(&cv.resolve(None), None);
+        let found: Vec<_> = issues
+            .iter()
+            .filter(|i| i.code == codes::LOW_CONTRAST)
+            .collect();
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].severity, Severity::Warning);
+        assert!(found[0].message.contains("#FFD700"), "{}", found[0].message);
+        assert!(found[0].message.contains("1.4:1"), "{}", found[0].message);
+        let hint = found[0].fix_hint.as_deref().expect("hint");
+        let shade = hint
+            .split_whitespace()
+            .find(|w| w.starts_with('#'))
+            .and_then(|w| Rgb::parse(w.trim_end_matches(',')))
+            .expect("a shade in the hint");
+        assert!(contrast_ratio(shade, Rgb::WHITE) >= TEXT_MIN_RATIO);
+
+        for fine in [None, Some("#2B5CAB"), Some("#000000"), Some("bad")] {
+            cv.options.accent = fine.map(Into::into);
+            assert!(
+                lint(&cv.resolve(None), None)
+                    .iter()
+                    .all(|i| i.code != codes::LOW_CONTRAST),
+                "{fine:?}"
+            );
+        }
+    }
 
     fn good_bullet(n: u32, text: &str) -> Bullet {
         Bullet {

@@ -21,6 +21,7 @@ mod style;
 mod suggestion;
 mod variant;
 
+pub mod contrast;
 pub mod fit;
 pub mod lint;
 pub mod locale;

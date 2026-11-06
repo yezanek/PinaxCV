@@ -647,6 +647,13 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - `signature_choose(id)` opens the backend's image dialog (JPEG or PNG, at most 5 MB), decodes the file and re-encodes it, so no metadata survives. Light paper (luma 215 and up) becomes transparent and darker pixels get an opacity that grows with their darkness, so a phone photo of ink on paper works on any background. The margins are trimmed to the ink plus 4 px and the result fits in 900 × 300 px. A blank image is refused. Choosing replaces the stored one; `signature_get` and `signature_remove` read and delete it. The first signature switches the base CV's Show on, as the first photo does.
 - The PDF draws it under the closing text, 1.6 cm high, as a PDF artifact, so the extracted text and the ATS check are the same with or without it. It is the second image exception to the ATS rules, after the photo (docs/ATS_RULES.md rule 8). HTML embeds it as a `data:` URL with an empty `alt`, on a white backing so the dark ink stays visible in the export's automatic dark mode. Nothing is drawn when the switch is on but no signature is stored, and an empty closing block is never printed.
 
+## ADR-093 — Quality checks grounded in published standards (issues #138 to #141)
+
+Lints that cite a standard say so in their hint, so a user can tell a standard from common advice. `docs/QC_RULES.md` lists each rule with its source.
+
+- `low_contrast` (Warning, #139): section headings print in the accent colour on white, so the accent must reach WCAG 2.2 SC 1.4.3's 4.5:1 for text (relative-luminance formula in `cv_core::contrast`). The hint names the lightest shade of the same hue that passes. The accent is the only colour a user can set; any colour the style editor adds later goes through the same check.
+- HTML export: in the reader's dark colour scheme, an accent below 3:1 against the dark background (SC 1.4.11, graphical objects: the heading rules) falls back to the text colour, so the rules never vanish. Print and the light scheme keep the user's colour.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

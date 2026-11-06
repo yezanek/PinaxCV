@@ -231,7 +231,7 @@ pub struct TemplateOptions {
     pub font_size_pt: f32,           // 9.0..=12.0, default 10.0
     pub line_spacing: f32,           // 0.9..=1.4, default 1.1
     pub margin_mm: f32,              // 12..=30, default 18
-    pub accent: Option<String>,      // "#RRGGBB" for heading rules only, default none (black)
+    pub accent: Option<String>,      // "#RRGGBB" for headings and their rules, default none (black); lint `low_contrast` below 4.5:1 on white
     pub date_style: DateStyle,       // MonthNameYear ("Mar 2021") | NumericMonthYear ("03/2021") | YearOnly
 }
 ```
@@ -653,6 +653,7 @@ Signature: `lint(cv: &ResolvedCv, page_count: Option<u32>) -> Vec<LintIssue { co
 | `missing_glyphs` | Warning | characters the embedded fonts cannot display |
 | `page_count` | Info | more than 2 pages (only when `page_count` is provided) |
 | `personal_detail_shown` | Info | a personal detail (date of birth, nationality, …) is printed; whether to show it depends on the target country (ADR-088) |
+| `low_contrast` | Warning | the accent colour (headings and their rules) has less than 4.5:1 contrast on white (WCAG 2.2 SC 1.4.3); the hint names the nearest darker shade that passes (ADR-093) |
 
 ### 7.2 ATS check on the real PDF (`cv_render::ats`)
 
