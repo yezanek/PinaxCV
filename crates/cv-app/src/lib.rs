@@ -479,6 +479,10 @@ impl App {
             .ok()
             .map(|c| c.page_count());
         let mut issues = cv_core::lint::lint(&resolved, pages);
+        issues.extend(cv_core::lint::old_experience(
+            &resolved,
+            crate::review::year_now(),
+        ));
         if self.photo_for(&resolved)?.is_some() {
             issues.push(LintIssue {
                 code: cv_core::lint::codes::PHOTO.to_owned(),

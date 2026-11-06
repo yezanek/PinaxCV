@@ -656,6 +656,13 @@ Signature: `lint(cv: &ResolvedCv, page_count: Option<u32>) -> Vec<LintIssue { co
 | `low_contrast` | Warning | the accent colour (headings and their rules) has less than 4.5:1 contrast on white (WCAG 2.2 SC 1.4.3); the hint names the nearest darker shade that passes (ADR-093) |
 | `phone_format` | Info | the phone number has no leading `+` country code, contains characters other than digits, spaces, `-`, `(`, `)`, `.`, or has fewer than 7 digits (ITU-T E.123 international form; ADR-093) |
 | `language_level` | Info | a language level is not CEFR (A1 to C2), native, ILR (or LinkedIn's ILR wording) or ACTFL, so a reader may not place it (ADR-093) |
+| `long_sentence` | Info | a summary sentence or a bullet sentence over 30 words (ISO 24495-1 plain language; the number is PinaxCV's) |
+| `passive_voice` | Info | a bullet uses "was/were/been/is/are" + past participle (heuristic) |
+| `undefined_acronym` | Info | an all-caps acronym used once in the summary, bullets or descriptions, not spelled out in brackets and not well known |
+| `first_person` | Info | "I", "my", "me" in a bullet (advice) |
+| `tense_mixed` | Info | a finished role's bullets open in the present tense, or a current role's bullets mix present and past (advice) |
+| `cliche` | Info | phrases such as "team player", "results-driven" in the headline, summary, descriptions or bullets (advice) |
+| `old_experience` | Info | an experience entry ended more than 15 years ago; added by the app, which knows the date (advice) |
 
 ### 7.2 ATS check on the real PDF (`cv_render::ats`)
 
