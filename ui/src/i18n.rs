@@ -1259,6 +1259,7 @@ mod tests {
         ("style.rs", include_str!("style.rs")),
         ("tailor.rs", include_str!("tailor.rs")),
         ("text_import.rs", include_str!("text_import.rs")),
+        ("updates.rs", include_str!("updates.rs")),
         ("variants.rs", include_str!("variants.rs")),
     ];
 
