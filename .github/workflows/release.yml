@@ -128,11 +128,11 @@ jobs:
           if command -v apt-get > /dev/null; then
             apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
               xvfb xauth procps fontconfig libfreetype6 libharfbuzz0b libfribidi0 libthai0 \
-              libgl1 libegl1 libgbm1 libx11-6 libx11-xcb1 libxcb1 libdrm2 libexpat1 \
+              libgl1 libegl1 libgles2 libgbm1 libgl1-mesa-dri libx11-6 libx11-xcb1 libxcb1 libdrm2 libexpat1 \
               libgpg-error0 libcom-err2 libuuid1 zlib1g
           else
             dnf install -y xorg-x11-server-Xvfb xorg-x11-xauth procps-ng findutils \
-              fontconfig freetype harfbuzz fribidi libthai mesa-libGL mesa-libEGL mesa-libgbm \
+              fontconfig freetype harfbuzz fribidi libthai mesa-libGL mesa-libEGL libglvnd-gles mesa-libgbm mesa-dri-drivers \
               libX11 libX11-xcb libxcb libdrm expat libgpg-error libcom_err libuuid zlib
           fi
       - name: Start the AppImage
