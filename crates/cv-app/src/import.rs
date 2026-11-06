@@ -122,6 +122,7 @@ impl App {
             personal: p.personal.clone(),
             warnings: warnings.into_iter().map(|w| w.message).collect(),
             needs_review,
+            tokens: None,
             photo: photo.as_ref().map(|ph| data_url(&ph.image)),
         };
         ImportPreview {

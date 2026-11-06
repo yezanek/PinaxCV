@@ -30,6 +30,8 @@ Summary of `pinaxcv-spec.md` section 11. The spec is authoritative.
 
 Optional stages (D, E, F) can fail without discarding earlier results; the job still completes and lists them in `TailorResult.failed_stages`. Every stage answer is checked against its Rust type and retried once with the problem quoted back; after that the stage fails with `ai_invalid_output` (ADR-072). Suggestions land on the variant as pending and appear in the review list (ADR-073).
 
+Each job adds up the token counts its providers report (Anthropic `usage`, OpenAI and compatible `usage`, Gemini `usageMetadata`) in a `TokenMeter` on its `JobContext`, and returns them as `tokens` on `TailorResult`, `ReviewSession` and the AI import's `ImportPreview`. Cache hits send nothing and add nothing; a server that reports no counts is shown as "not reported". The UI shows "Used about N tokens" and never a price (spec section 11.13, ADR-092).
+
 ## Verification
 
 Every rewrite is checked deterministically for new numbers, new proper nouns or technologies, terminology changes, length limits, language changes and unknown or locked targets. Errors drop the suggestion; warnings show a badge. Dropped suggestions are counted in the results (`TailorResult.discarded`) and listed under "discarded by safety checks" (ADR-074, ADR-075).

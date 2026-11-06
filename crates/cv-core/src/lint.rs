@@ -304,6 +304,18 @@ pub fn is_recognised_level(level: &str) -> bool {
     if words.iter().any(|w| cefr(w)) {
         return true;
     }
+    // Phrases match whole words, so "alternative" is not "native". A
+    // negation or hedge anywhere in the level ("non-native", "no longer
+    // native", "not my first language", "near-native", "native-like") means
+    // the phrase does not claim that level.
+    const NEGATIONS: [&str; 8] = [
+        "not", "no", "non", "never", "near", "nearly", "almost", "like",
+    ];
+    let negated = words.iter().any(|w| NEGATIONS.contains(w));
+    let has_phrase = |phrase: &str| {
+        let p: Vec<&str> = phrase.split(' ').collect();
+        !negated && words.windows(p.len()).any(|w| w == p.as_slice())
+    };
     const NATIVE: [&str; 5] = [
         "native",
         "mother tongue",
@@ -311,7 +323,7 @@ pub fn is_recognised_level(level: &str) -> bool {
         "bilingual",
         "muttersprache",
     ];
-    if NATIVE.iter().any(|p| lower.contains(p)) {
+    if NATIVE.iter().any(|p| has_phrase(p)) {
         return true;
     }
     // LinkedIn's levels follow the ILR descriptors.
@@ -321,7 +333,7 @@ pub fn is_recognised_level(level: &str) -> bool {
         "professional working proficiency",
         "full professional proficiency",
     ];
-    if ILR_WORDING.iter().any(|p| lower.contains(p)) {
+    if ILR_WORDING.iter().any(|p| has_phrase(p)) {
         return true;
     }
     let ilr_number = |w: &str| {
@@ -1108,6 +1120,8 @@ mod tests {
         }
     }
 
+    /// Numbers without a `+` country code, with stray characters or too few
+    /// digits get a note; well-formed international numbers do not.
     #[test]
     fn phone_numbers_need_the_international_form() {
         let mut cv = clean_cv();
@@ -1142,6 +1156,8 @@ mod tests {
         assert!(codes_for(&cv).is_empty());
     }
 
+    /// CEFR, native, ILR and ACTFL levels pass; vague, negated or hedged
+    /// wording does not.
     #[test]
     fn language_levels_on_a_known_scale_pass() {
         for ok in [
@@ -1169,11 +1185,22 @@ mod tests {
             "C3",
             "ILR 7",
             "conversational",
+            "Non-native",
+            "not native",
+            "Not my first language",
+            "Near-native",
+            "Native-like",
+            "alternatively fluent",
+            "nativeish",
+            "no longer native",
+            "almost bilingual",
+            "never my first language",
         ] {
             assert!(!is_recognised_level(vague), "{vague}");
         }
     }
 
+    /// A vague level produces one Info note on that language item.
     #[test]
     fn a_vague_language_level_gets_an_info_note() {
         let mut cv = clean_cv();

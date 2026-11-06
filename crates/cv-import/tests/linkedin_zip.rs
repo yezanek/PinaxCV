@@ -194,3 +194,26 @@ fn an_unconfirmed_email_is_not_used() {
     let r = import_linkedin_zip(&zip, &mut ids()).expect("imports");
     assert_eq!(r.cv_partial.email, None);
 }
+
+#[test]
+fn a_cell_over_the_cap_warns_with_the_column_name_only() {
+    let long = "x".repeat(cv_import::linkedin_zip::MAX_TEXT + 1);
+    let profile = format!("First Name,Summary\nSam,{long}\n");
+    let zip = zip_of(&[("Profile.csv", profile.as_bytes())]);
+    let r = import_linkedin_zip(&zip, &mut ids()).expect("imports");
+    assert_eq!(
+        r.cv_partial.summary.as_ref().map(|s| s.chars().count()),
+        Some(cv_import::linkedin_zip::MAX_TEXT)
+    );
+    let messages: Vec<&str> = r.warnings.iter().map(|w| w.message.as_str()).collect();
+    assert!(
+        messages
+            .contains(&"Some text was longer than 10,000 characters and was shortened: summary."),
+        "{messages:?}"
+    );
+
+    let exact = format!("First Name,Summary\nSam,{}\n", &long[1..]);
+    let zip = zip_of(&[("Profile.csv", exact.as_bytes())]);
+    let r = import_linkedin_zip(&zip, &mut ids()).expect("imports");
+    assert!(r.warnings.iter().all(|w| !w.message.contains("shortened")));
+}

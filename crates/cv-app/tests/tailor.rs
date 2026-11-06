@@ -192,6 +192,7 @@ async fn run(
 #[tokio::test]
 async fn tailoring_saves_pending_suggestions_and_caches_the_parse() {
     let llm = FakeLlm::new()
+        .with_usage(100, 20)
         .reply("JobRequirements", requirements())
         .reply("RelevanceResult", relevance())
         .reply("RewriteResult", rewrites())
@@ -252,6 +253,13 @@ async fn tailoring_saves_pending_suggestions_and_caches_the_parse() {
     );
     assert_eq!(result.suggestions, 6);
     assert!(result.failed_stages.is_empty());
+    // Every request reported its tokens (spec section 11.13).
+    let tokens = result.tokens.expect("token usage");
+    let sent = u32::try_from(s.llm.seen().len()).expect("count");
+    assert_eq!(tokens.requests, sent);
+    assert_eq!(tokens.unreported, 0);
+    assert_eq!(tokens.input_tokens, 100 * u64::from(sent));
+    assert_eq!(tokens.total(), 120 * u64::from(sent));
     // The new number dropped one rewrite; the new term marks another.
     assert_eq!(result.discarded.len(), 1);
     assert_eq!(

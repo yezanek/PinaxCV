@@ -65,12 +65,14 @@ impl JobRegistry {
     }
 }
 
-/// Handed to a job's work: its ID, its cancellation token (pass it to each
-/// `LlmRequest`) and a way to report progress.
+/// Handed to a job's work: its ID, its cancellation token and token meter
+/// (pass both to each `LlmRequest`) and a way to report progress.
 #[derive(Clone)]
 pub struct JobContext {
     pub id: JobId,
     pub cancel: CancellationToken,
+    /// Adds up the tokens of the job's requests (spec section 11.13).
+    pub usage: cv_ai::TokenMeter,
     events: Arc<dyn JobEvents>,
     last_pct: Arc<AtomicU8>,
 }
@@ -86,6 +88,17 @@ impl JobContext {
             stage,
             pct,
         }));
+    }
+
+    /// The tokens the job used so far, for its result.
+    pub fn tokens(&self) -> cv_api::TokenUsage {
+        let u = self.usage.total();
+        cv_api::TokenUsage {
+            input_tokens: u.input_tokens,
+            output_tokens: u.output_tokens,
+            requests: u.requests,
+            unreported: u.unreported,
+        }
     }
 
     /// `Err(ai_cancelled)` once the job was cancelled, for checks between stages.
@@ -143,6 +156,7 @@ impl App {
         let ctx = JobContext {
             id: id.clone(),
             cancel: cancel.clone(),
+            usage: cv_ai::TokenMeter::new(),
             events: Arc::clone(&events),
             last_pct: Arc::default(),
         };
