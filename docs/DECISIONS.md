@@ -653,6 +653,13 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - A job's meter lives on `JobContext`; `TailorResult`, `ReviewSession` and the AI import's `ImportPreview` carry its total as `tokens` (`input_tokens`, `output_tokens`, `requests`, `unreported`). Cache hits add zero. Older stored reviews have no `tokens` and show no line.
 - The UI says "Used about N tokens", "Used at least N tokens" when some answers had no counts, "not reported" when none had, and "Used no tokens" when every answer came from the cache. No prices: they change. Token counts are not logged yet; spec section 11.2 would allow it.
 
+## ADR-093 — Quality checks grounded in published standards (issues #138 to #141)
+
+Lints that cite a standard say so in their hint, so a user can tell a standard from common advice. `docs/QC_RULES.md` lists each rule with its source.
+
+- `low_contrast` (Warning, #139): section headings print in the accent colour on white, so the accent must reach WCAG 2.2 SC 1.4.3's 4.5:1 for text (relative-luminance formula in `cv_core::contrast`). The hint names the lightest shade of the same hue that passes. The accent is the only colour a user can set; any colour the style editor adds later goes through the same check.
+- HTML export: in the reader's dark colour scheme, an accent below 3:1 against the dark background (SC 1.4.11, graphical objects: the heading rules) falls back to the text colour, so the rules never vanish. Print and the light scheme keep the user's colour.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
