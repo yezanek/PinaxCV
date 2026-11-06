@@ -20,6 +20,7 @@ use crate::cache::{ResponseCache, generate_cached};
 use crate::payload::{CvPayload, REDACTED};
 use crate::prompts::{self, Prompt};
 use crate::schema::output_schema;
+use crate::usage::TokenMeter;
 use crate::verify::{self, Verdict};
 use crate::{Llm, LlmError};
 
@@ -28,12 +29,14 @@ use crate::{Llm, LlmError};
 pub const RELEVANCE_TOKEN_BUDGET: usize = 12_000;
 
 /// What every stage needs: the provider, the cache, the model name (part of
-/// the cache key) and the job's cancellation token.
+/// the cache key), the job's cancellation token and its token meter.
 pub struct StageContext<'a> {
     pub llm: &'a dyn Llm,
     pub cache: &'a dyn ResponseCache,
     pub model: &'a str,
     pub cancel: CancellationToken,
+    /// Adds up the tokens of the job's requests; cache hits add nothing.
+    pub usage: TokenMeter,
 }
 
 impl StageContext<'_> {
@@ -51,6 +54,7 @@ impl StageContext<'_> {
         let kind = prompt.kind;
         let mut request = prompt.request(output_schema::<T>(), schema_name);
         request.cancel = self.cancel.clone();
+        request.usage = self.usage.clone();
         generate_cached(self.llm, self.cache, kind, self.model, request).await
     }
 }
@@ -428,6 +432,7 @@ mod tests {
             cache,
             model: "m",
             cancel: CancellationToken::new(),
+            usage: crate::TokenMeter::new(),
         }
     }
 

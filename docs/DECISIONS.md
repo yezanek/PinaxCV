@@ -647,6 +647,12 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - `signature_choose(id)` opens the backend's image dialog (JPEG or PNG, at most 5 MB), decodes the file and re-encodes it, so no metadata survives. Light paper (luma 215 and up) becomes transparent and darker pixels get an opacity that grows with their darkness, so a phone photo of ink on paper works on any background. The margins are trimmed to the ink plus 4 px and the result fits in 900 × 300 px. A blank image is refused. Choosing replaces the stored one; `signature_get` and `signature_remove` read and delete it. The first signature switches the base CV's Show on, as the first photo does.
 - The PDF draws it under the closing text, 1.6 cm high, as a PDF artifact, so the extracted text and the ATS check are the same with or without it. It is the second image exception to the ATS rules, after the photo (docs/ATS_RULES.md rule 8). HTML embeds it as a `data:` URL with an empty `alt`, on a white backing so the dark ink stays visible in the export's automatic dark mode. Nothing is drawn when the switch is on but no signature is stored, and an empty closing block is never printed.
 
+## ADR-092 — Token usage per AI job (M7, issue #120)
+
+- Providers record the counts they report on a `TokenMeter` carried by every `LlmRequest` (like the cancel token): Anthropic `usage.input_tokens`/`output_tokens`, OpenAI and compatible `usage.prompt_tokens`/`completion_tokens`, Gemini `usageMetadata.promptTokenCount` with `candidatesTokenCount` plus `thoughtsTokenCount` as output. Every answer received counts, including ones that then fail validation and the compatible server's retry, since they were used.
+- A job's meter lives on `JobContext`; `TailorResult`, `ReviewSession` and the AI import's `ImportPreview` carry its total as `tokens` (`input_tokens`, `output_tokens`, `requests`, `unreported`). Cache hits add zero. Older stored reviews have no `tokens` and show no line.
+- The UI says "Used about N tokens", "Used at least N tokens" when some answers had no counts, "not reported" when none had, and "Used no tokens" when every answer came from the cache. No prices: they change. Token counts are not logged yet; spec section 11.2 would allow it.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).
