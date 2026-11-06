@@ -252,6 +252,27 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_cache_hit_uses_no_tokens() {
+        let llm = FakeLlm::new()
+            .with_usage(10, 2)
+            .reply("JobRequirements", serde_json::json!({ "n": 1 }));
+        let cache = MemoryCache::default();
+        let meter = crate::TokenMeter::new();
+        for _ in 0..2 {
+            let mut req = request("jd");
+            req.usage = meter.clone();
+            generate_cached::<N>(&llm, &cache, Kind::JobParse, "m", req)
+                .await
+                .expect("answer");
+        }
+        let total = meter.total();
+        assert_eq!(
+            (total.requests, total.input_tokens, total.output_tokens),
+            (1, 10, 2)
+        );
+    }
+
+    #[tokio::test]
     async fn a_cancelled_request_is_not_sent() {
         let llm = FakeLlm::new().reply("JobRequirements", serde_json::json!({ "n": 1 }));
         let cache = MemoryCache::default();
