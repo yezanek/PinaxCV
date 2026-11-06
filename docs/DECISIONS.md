@@ -659,6 +659,8 @@ Lints that cite a standard say so in their hint, so a user can tell a standard f
 
 - `low_contrast` (Warning, #139): section headings print in the accent colour on white, so the accent must reach WCAG 2.2 SC 1.4.3's 4.5:1 for text (relative-luminance formula in `cv_core::contrast`). The hint names the lightest shade of the same hue that passes. The accent is the only colour a user can set; any colour the style editor adds later goes through the same check.
 - HTML export: in the reader's dark colour scheme, an accent below 3:1 against the dark background (SC 1.4.11, graphical objects: the heading rules) falls back to the text colour, so the rules never vanish. Print and the light scheme keep the user's colour.
+- `phone_format` (Info, #140): ITU-T E.123's international form, `+` and the country code first. Spaces, `-`, `(`, `)` and `.` are accepted as grouping (E.123 itself uses spaces; the others are common and harmless). Fewer than 7 digits is flagged as too short to dial. Phone numbers are not links in exports (only `https:` and `mailto:` are clickable), so there is no E.164 `tel:` normalisation.
+- `language_level` (Info, #140): CEFR A1 to C2 (with an optional `+` or a word around it, "C1 (Advanced)"), a native-speaker phrase, the ILR scale ("ILR 3+") and LinkedIn's ILR-based wording ("Full professional proficiency"), and ACTFL levels are recognised; anything else ("good", "fluent") gets a note. A CEFR picker beside the free-text field is left for later.
 
 ## Open decisions
 

@@ -43,6 +43,12 @@ pub mod codes {
     /// The accent colour is too light to read on white (WCAG 2.2 SC 1.4.3,
     /// issue #139).
     pub const LOW_CONTRAST: &str = "low_contrast";
+    /// The phone number is not in the international form of ITU-T E.123
+    /// (issue #140).
+    pub const PHONE_FORMAT: &str = "phone_format";
+    /// A language level is not CEFR, native, or another recognised scale
+    /// (issue #140).
+    pub const LANGUAGE_LEVEL: &str = "language_level";
 }
 
 /// Bullets longer than this many characters get `bullet_too_long`.
@@ -131,6 +137,8 @@ pub fn lint(cv: &ResolvedCv, page_count: Option<u32>) -> Vec<LintIssue> {
     }
     personal_details(cv, &mut out);
     accent_contrast(cv, &mut out);
+    phone_format(cv, &mut out);
+    language_levels(cv, &mut out);
     out.sort_by_rule()
 }
 
@@ -190,6 +198,137 @@ fn accent_contrast(cv: &ResolvedCv, out: &mut Lints) {
         ),
         Some(&hint),
     );
+}
+
+/// ITU-T E.123 writes a number for international use as `+<country code>
+/// <number>`, with spaces (and, commonly, `-`, `(`, `)` or `.`) to group the
+/// digits. A standard, not advice.
+fn phone_format(cv: &ResolvedCv, out: &mut Lints) {
+    let Some(phone) = cv.basics.phone.as_deref().map(str::trim) else {
+        return;
+    };
+    if phone.is_empty() {
+        return;
+    }
+    let message = if !phone.starts_with('+') {
+        format!("The phone number \"{phone}\" has no international country code.")
+    } else if phone[1..]
+        .chars()
+        .any(|c| !(c.is_ascii_digit() || matches!(c, ' ' | '-' | '(' | ')' | '.')))
+    {
+        format!("The phone number \"{phone}\" contains characters other than digits and spacing.")
+    } else if phone.chars().filter(char::is_ascii_digit).count() < 7 {
+        format!("The phone number \"{phone}\" looks too short to dial from abroad.")
+    } else {
+        return;
+    };
+    out.push(
+        codes::PHONE_FORMAT,
+        Severity::Info,
+        None,
+        message,
+        Some(
+            "Standard (ITU-T E.123): write it as + country code, then the number, \
+             for example +44 20 7946 0000, so recruiters abroad can dial it.",
+        ),
+    );
+}
+
+/// Levels a reader can place: CEFR (A1 to C2, the Council of Europe scale
+/// Europass uses), native speaker, the ILR scale (0 to 5, and LinkedIn's
+/// ILR-based wording) and ACTFL. Anything else gets an Info note.
+fn language_levels(cv: &ResolvedCv, out: &mut Lints) {
+    for section in &cv.sections {
+        let ResolvedSection::Languages(s) = section else {
+            continue;
+        };
+        for item in &s.items {
+            let Some(level) = item.level.as_deref().map(str::trim) else {
+                continue;
+            };
+            if level.is_empty() || is_recognised_level(level) {
+                continue;
+            }
+            out.push(
+                codes::LANGUAGE_LEVEL,
+                Severity::Info,
+                Some(&item.id),
+                format!(
+                    "\"{level}\" for {} is not a level every reader can place.",
+                    item.name
+                ),
+                Some(
+                    "Standard (CEFR, Council of Europe): use A1, A2, B1, B2, C1 or C2, \
+                     or \"Native\". ILR and ACTFL levels are understood too.",
+                ),
+            );
+        }
+    }
+}
+
+/// True for a CEFR level (`B2`, `C1 (advanced)`, `B2+`), a native-speaker
+/// phrase, an ILR level or LinkedIn's ILR wording, or an ACTFL level.
+pub fn is_recognised_level(level: &str) -> bool {
+    let lower = level.to_lowercase();
+    let words: Vec<&str> = lower
+        .split(|c: char| !(c.is_alphanumeric() || c == '+'))
+        .filter(|w| !w.is_empty())
+        .collect();
+    let cefr = |w: &str| {
+        let w = w.strip_suffix('+').unwrap_or(w);
+        let b = w.as_bytes();
+        b.len() == 2 && matches!(b[0], b'a' | b'b' | b'c') && matches!(b[1], b'1' | b'2')
+    };
+    if words.iter().any(|w| cefr(w)) {
+        return true;
+    }
+    // Phrases match whole words, so "alternative" is not "native". A
+    // negation or hedge anywhere in the level ("non-native", "no longer
+    // native", "not my first language", "near-native", "native-like") means
+    // the phrase does not claim that level.
+    const NEGATIONS: [&str; 8] = [
+        "not", "no", "non", "never", "near", "nearly", "almost", "like",
+    ];
+    let negated = words.iter().any(|w| NEGATIONS.contains(w));
+    let has_phrase = |phrase: &str| {
+        let p: Vec<&str> = phrase.split(' ').collect();
+        !negated && words.windows(p.len()).any(|w| w == p.as_slice())
+    };
+    const NATIVE: [&str; 5] = [
+        "native",
+        "mother tongue",
+        "first language",
+        "bilingual",
+        "muttersprache",
+    ];
+    if NATIVE.iter().any(|p| has_phrase(p)) {
+        return true;
+    }
+    // LinkedIn's levels follow the ILR descriptors.
+    const ILR_WORDING: [&str; 4] = [
+        "elementary proficiency",
+        "limited working proficiency",
+        "professional working proficiency",
+        "full professional proficiency",
+    ];
+    if ILR_WORDING.iter().any(|p| has_phrase(p)) {
+        return true;
+    }
+    let ilr_number = |w: &str| {
+        let w = w.strip_suffix('+').unwrap_or(w);
+        matches!(w, "0" | "1" | "2" | "3" | "4" | "5")
+    };
+    if words.first() == Some(&"ilr") && words.get(1).is_some_and(|w| ilr_number(w)) {
+        return true;
+    }
+    const ACTFL: [&str; 5] = [
+        "novice",
+        "intermediate",
+        "advanced",
+        "superior",
+        "distinguished",
+    ];
+    words.iter().any(|w| ACTFL.contains(w))
 }
 
 /// Returns the entries of an entry-shaped section, or nothing.
@@ -625,7 +764,7 @@ impl Lints {
 
     /// Stable sort by the rule's position in [`codes`]; document order is kept within a rule.
     fn sort_by_rule(mut self) -> Vec<LintIssue> {
-        const ORDER: [&str; 22] = [
+        const ORDER: [&str; 24] = [
             codes::MISSING_NAME,
             codes::MISSING_CONTACT,
             codes::INVALID_EMAIL,
@@ -648,6 +787,8 @@ impl Lints {
             codes::TWO_COLUMNS,
             codes::PERSONAL_DETAIL_SHOWN,
             codes::LOW_CONTRAST,
+            codes::PHONE_FORMAT,
+            codes::LANGUAGE_LEVEL,
         ];
         self.0
             .sort_by_key(|i| ORDER.iter().position(|c| *c == i.code));
@@ -692,6 +833,118 @@ mod tests {
                 "{fine:?}"
             );
         }
+    }
+
+    /// Numbers without a `+` country code, with stray characters or too few
+    /// digits get a note; well-formed international numbers do not.
+    #[test]
+    fn phone_numbers_need_the_international_form() {
+        let mut cv = clean_cv();
+        let codes_for = |cv: &Cv| -> Vec<String> {
+            lint(&cv.resolve(None), None)
+                .into_iter()
+                .filter(|i| i.code == codes::PHONE_FORMAT)
+                .map(|i| i.message)
+                .collect()
+        };
+        for good in [
+            "+44 20 7946 0000",
+            "+1 (555) 010-0000",
+            "+49.170.1234567",
+            "+33600000000",
+        ] {
+            cv.basics.phone = Some(good.into());
+            assert!(codes_for(&cv).is_empty(), "{good}");
+        }
+        for (bad, why) in [
+            ("020 7946 0000", "no international country code"),
+            ("+44 20 7946 0000 ext 2", "other than digits"),
+            ("+44 / 20 7946", "other than digits"),
+            ("+44 123", "too short"),
+        ] {
+            cv.basics.phone = Some(bad.into());
+            let found = codes_for(&cv);
+            assert_eq!(found.len(), 1, "{bad}");
+            assert!(found[0].contains(why), "{bad}: {}", found[0]);
+        }
+        cv.basics.phone = Some("  ".into());
+        assert!(codes_for(&cv).is_empty());
+    }
+
+    /// CEFR, native, ILR and ACTFL levels pass; vague, negated or hedged
+    /// wording does not.
+    #[test]
+    fn language_levels_on_a_known_scale_pass() {
+        for ok in [
+            "C1",
+            "b2",
+            "B2+",
+            "C1 (Advanced)",
+            "Upper intermediate - B2",
+            "Native",
+            "Mother tongue",
+            "Native or bilingual proficiency",
+            "Full professional proficiency",
+            "Limited working proficiency",
+            "ILR 3+",
+            "ACTFL Advanced Mid",
+            "Intermediate High",
+        ] {
+            assert!(is_recognised_level(ok), "{ok}");
+        }
+        for vague in [
+            "good",
+            "fluent-ish",
+            "Fluent",
+            "basic",
+            "C3",
+            "ILR 7",
+            "conversational",
+            "Non-native",
+            "not native",
+            "Not my first language",
+            "Near-native",
+            "Native-like",
+            "alternatively fluent",
+            "nativeish",
+            "no longer native",
+            "almost bilingual",
+            "never my first language",
+        ] {
+            assert!(!is_recognised_level(vague), "{vague}");
+        }
+    }
+
+    /// A vague level produces one Info note on that language item.
+    #[test]
+    fn a_vague_language_level_gets_an_info_note() {
+        let mut cv = clean_cv();
+        let lang = Id::parse("01J0Z000000000000000000099").expect("id");
+        cv.sections
+            .push(Section::Languages(crate::LanguagesSection {
+                id: Id::parse("01J0Z000000000000000000098").expect("id"),
+                title_override: None,
+                items: vec![
+                    crate::LanguageItem {
+                        id: lang.clone(),
+                        name: "German".into(),
+                        level: Some("good".into()),
+                    },
+                    crate::LanguageItem {
+                        id: Id::parse("01J0Z000000000000000000097").expect("id"),
+                        name: "French".into(),
+                        level: Some("B2".into()),
+                    },
+                ],
+            }));
+        let found: Vec<_> = lint(&cv.resolve(None), None)
+            .into_iter()
+            .filter(|i| i.code == codes::LANGUAGE_LEVEL)
+            .collect();
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].severity, Severity::Info);
+        assert_eq!(found[0].target.as_ref(), Some(&lang));
+        assert!(found[0].message.contains("German"));
     }
 
     fn good_bullet(n: u32, text: &str) -> Bullet {
