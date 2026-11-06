@@ -120,12 +120,20 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: pinaxcv-appimage
-      - name: Install an X server only
+      # An AppImage leaves out the libraries every desktop has (the AppImage
+      # excludelist: fontconfig, FreeType, HarfBuzz, Mesa, X11 and so on), so
+      # those and an X server are all the container gets.
+      - name: Install an X server and the desktop base libraries
         run: |
           if command -v apt-get > /dev/null; then
-            apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y xvfb xauth procps
+            apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+              xvfb xauth procps fontconfig libfreetype6 libharfbuzz0b libfribidi0 libthai0 \
+              libgl1 libegl1 libgbm1 libx11-6 libx11-xcb1 libxcb1 libdrm2 libexpat1 \
+              libgpg-error0 libcom-err2 libuuid1 zlib1g
           else
-            dnf install -y xorg-x11-server-Xvfb xorg-x11-xauth procps-ng findutils
+            dnf install -y xorg-x11-server-Xvfb xorg-x11-xauth procps-ng findutils \
+              fontconfig freetype harfbuzz fribidi libthai mesa-libGL mesa-libEGL mesa-libgbm \
+              libX11 libX11-xcb libxcb libdrm expat libgpg-error libcom_err libuuid zlib
           fi
       - name: Start the AppImage
         env:

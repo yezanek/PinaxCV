@@ -24,7 +24,7 @@ Automated, on every PR or release run:
 - `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace` (PDF golden and ATS tests, HTML export tests, backup/restore tests), on Linux and Windows (CI)
 - open-source resume parser and veraPDF PDF/UA-1 check on every fixture export (CI `resume parser` job)
 - `python3 scripts/third_party_licenses.py --check` (every shipped licence is compatible with Apache-2.0; run without `--check` after a dependency change)
-- clean-install smoke test: the release workflow starts the AppImage on fresh Ubuntu 22.04, Ubuntu 24.04, Debian 12 and Fedora 41 containers with only an X server added, and checks that it runs and creates its database and log (issue #73)
+- clean-install smoke test: the release workflow starts the AppImage on fresh Ubuntu 22.04, Ubuntu 24.04, Debian 12 and Fedora 41 containers with only an X server and the base libraries every desktop has (fontconfig, Mesa, X11 and the rest of the AppImage excludelist), and checks that it runs and creates its database and log (issue #73)
 
 ## Release pass (manual, issue #73)
 
