@@ -514,6 +514,14 @@ pub async fn get_settings(app: Shared<'_>) -> Reply<AppSettings> {
 }
 
 #[tauri::command]
+pub async fn set_update_check(app: Shared<'_>, enabled: bool) -> Reply<AppSettings> {
+    run(app, "set_update_check", move |a| {
+        a.set_update_check(enabled)
+    })
+    .await
+}
+
+#[tauri::command]
 pub async fn set_cv_defaults(app: Shared<'_>, defaults: CvDefaults) -> Reply<AppSettings> {
     run(app, "set_cv_defaults", move |a| a.set_cv_defaults(defaults)).await
 }

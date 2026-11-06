@@ -373,6 +373,29 @@ pub struct AppSettings {
     pub version: String,
     /// The app's SPDX licence identifier.
     pub license: String,
+    /// Whether to check for updates at startup (spec section 13, ADR-095);
+    /// `None` until the user has answered the first-run question.
+    #[serde(default)]
+    pub update_check: Option<bool>,
+}
+
+/// What an update check found (`update_check`, ADR-095).
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
+#[serde(tag = "status", rename_all = "snake_case")]
+pub enum UpdateStatus {
+    /// The user has not switched the check on; nothing was sent.
+    Off,
+    /// This copy cannot update itself, for example a binary built from
+    /// source rather than the AppImage. Nothing was sent.
+    Unsupported {
+        reason: String,
+    },
+    UpToDate,
+    /// A newer signed release; `update_install` installs it.
+    Available {
+        version: String,
+        notes: Option<String>,
+    },
 }
 
 /// A backup that was written (spec section 13).

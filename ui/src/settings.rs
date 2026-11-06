@@ -14,6 +14,7 @@ use serde::Serialize;
 
 use crate::i18n::{error_message, fill, t};
 use crate::ipc::{NoArgs, call};
+use crate::updates::UpdatesSection;
 
 #[derive(Serialize)]
 struct ConfigArg<'a> {
@@ -272,6 +273,8 @@ fn AppSection(
             </div>
         </Show>
         <p role="status">{move || data_message.get()}</p>
+
+        <UpdatesSection settings=settings />
 
         <h2>{s.about_heading}</h2>
         {move || settings.get().map(|st| view! {

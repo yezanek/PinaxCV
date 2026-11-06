@@ -59,18 +59,22 @@ PinaxCV makes no network requests of its own except these:
 
    What the provider does with that data is governed by its own privacy
    policy. A local provider such as Ollama keeps everything on your machine.
-2. **HTTPS links you click.** Only `https://` web links (and `mailto:`
+2. **The update check, if you turn it on.** On first run PinaxCV asks
+   whether to check for new versions, with "No" already selected; you can
+   change the answer in Settings, under Updates. When it is on, PinaxCV asks
+   GitHub Releases (`github.com`) for the latest version when it starts, or
+   when you press "Check now". The request carries nothing about you or your
+   CVs; GitHub sees your IP address, as with any website. An update is
+   downloaded only when you press "Install and restart", and is verified
+   against PinaxCV's signing key before it replaces the app. For now only
+   the Linux AppImage can update itself.
+3. **HTTPS links you click.** Only `https://` web links (and `mailto:`
    email links) are made clickable in your exported PDF and HTML files.
    Clicking one opens it in your normal web browser; PinaxCV itself never
    opens a link or any other kind of address.
 
 There is no telemetry, no crash upload and no tracking. Exported PDF and HTML
 files load nothing from the internet: fonts and styles are built in.
-
-A check for new versions on GitHub Releases is planned. When it comes,
-PinaxCV will ask you about it on first run with "off" already selected, and
-you can change your answer later in Settings. Until you turn it on, it makes
-no request.
 
 ## Backups and exports
 

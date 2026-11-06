@@ -14,6 +14,8 @@ use crate::{App, Result, store_error};
 const PAPER: &str = "defaults.paper";
 const LOCALE: &str = "defaults.locale";
 const DATE_STYLE: &str = "defaults.date_style";
+/// "on" or "off"; unset until the first-run question is answered.
+const UPDATE_CHECK: &str = "updates.check";
 
 /// A setting value as its serde name ("a4", "month_name_year").
 fn name<T: Serialize>(value: T) -> String {
@@ -81,7 +83,33 @@ impl App {
             log_dir: self.log_dir.as_ref().map(|d| d.display().to_string()),
             version: env!("CARGO_PKG_VERSION").to_owned(),
             license: env!("CARGO_PKG_LICENSE").to_owned(),
+            update_check: self.update_check()?,
         })
+    }
+
+    /// Whether the user switched the startup update check on; `None` until
+    /// they answered (spec section 13: asked on first run, "off" preselected).
+    pub fn update_check(&self) -> Result<Option<bool>> {
+        Ok(
+            match self
+                .store
+                .get_setting(UPDATE_CHECK)
+                .map_err(store_error)?
+                .as_deref()
+            {
+                Some("on") => Some(true),
+                Some("off") => Some(false),
+                _ => None,
+            },
+        )
+    }
+
+    /// Saves the answer to "check for updates at startup".
+    pub fn set_update_check(&self, enabled: bool) -> Result<AppSettings> {
+        self.store
+            .set_setting(UPDATE_CHECK, if enabled { "on" } else { "off" })
+            .map_err(store_error)?;
+        self.get_settings()
     }
 
     /// Saves what new CVs start with. Existing CVs keep their own settings.

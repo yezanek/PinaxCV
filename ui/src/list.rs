@@ -14,6 +14,7 @@ use crate::import::{ImportWizard, choose_file};
 use crate::ipc::{IdArg, NoArgs, ReqArg, call};
 use crate::settings::Settings;
 use crate::text_import::TextImport;
+use crate::updates::UpdateNotice;
 
 /// How long the "Deleted" toast offers Undo.
 const UNDO_TIME: Duration = Duration::from_secs(8);
@@ -274,6 +275,7 @@ pub fn CvList(open: RwSignal<Option<Id>>) -> impl IntoView {
                 <button class="settings-button" on:click=move |_| settings_open.set(true)>{s.settings}</button>
             </header>
             <main class="list">
+                <UpdateNotice />
                 <h2>{s.your_cvs}</h2>
                 <p class="error">{move || error.get()}</p>
                 <p class="new-cv">

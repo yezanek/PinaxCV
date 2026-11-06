@@ -44,5 +44,13 @@
         "bundleMediaFramework": false
       }
     }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "",
+      "endpoints": [
+        "https://github.com/yezanek/PinaxCV/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

@@ -1329,7 +1329,7 @@ If no keychain is available (for example the Linux Secret Service is missing), `
 - GitHub Actions matrix: `ubuntu-22.04` and `windows-latest`, from the first commit (development happens on Linux; the Windows runner is the Windows test machine). Steps: checkout, Rust toolchain, `wasm32-unknown-unknown` target, Trunk, Tauri CLI, `cargo test --workspace`, `tauri-driver` end-to-end smoke tests, `tauri-action` build.
 - Outputs: Windows NSIS installer (WebView2 bootstrapper referenced) and a portable exe labelled "no auto-update"; Linux AppImage, Flatpak and Snap (no `.deb`; ADR-049).
 - Before 1.0: a manual test pass in a Windows 11 evaluation VM (free from Microsoft's Evaluation Center).
-- Updater: `tauri-plugin-updater` with signed manifests on GitHub Releases; the update signing key is a repo secret; the public key is in `tauri.conf.json`.
+- Updater: `tauri-plugin-updater` with signed manifests on GitHub Releases; the update signing key is a repo secret; the public key is a repository variable built into release builds (ADR-095). For now only the Linux AppImage updates itself.
 - Windows code signing: pre-1.0 test builds are unsigned (document SmartScreen behavior); builds are signed from 1.0 (SignPath for open source, or a certificate).
 - Reproducibility: pin the toolchain (`rust-toolchain.toml`), commit `Cargo.lock`.
 - Release checklist in `docs/RELEASING.md`.

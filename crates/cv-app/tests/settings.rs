@@ -105,3 +105,16 @@ fn settings_name_the_data_and_log_folders_version_and_licence() {
     assert_eq!(s.data_dir, Some(dir.display().to_string()));
     assert_eq!(s.log_dir, Some(logs.display().to_string()));
 }
+
+#[test]
+fn the_update_check_is_unasked_until_answered() {
+    let app = app(store());
+    assert_eq!(app.get_settings().expect("settings").update_check, None);
+    let s = app.set_update_check(true).expect("on");
+    assert_eq!(s.update_check, Some(true));
+    assert_eq!(app.update_check().expect("read"), Some(true));
+    assert_eq!(
+        app.set_update_check(false).expect("off").update_check,
+        Some(false)
+    );
+}

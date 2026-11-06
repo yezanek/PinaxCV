@@ -4,7 +4,7 @@
 
 - Offline by default.
 - No telemetry or crash upload.
-- Network requests only for AI calls the user has configured and consented to, and user-clicked HTTPS links. An opt-in update check is planned (#70); it is not built yet.
+- Network requests only for AI calls the user has configured and consented to, and user-clicked HTTPS links. The opt-in update check (#70, ADR-095) asks GitHub Releases for `latest.json` only after the user turned it on; updates are minisign-signed and verified by `tauri-plugin-updater` before they replace the AppImage.
 - AI requests follow no redirects, so an API key never goes to a host the user did not consent to.
 - API keys stored in the OS keychain or memory-only fallback; never in SQLite, logs, or backups.
 - Logs contain no CV content, job descriptions, prompts, or secrets.
