@@ -282,6 +282,21 @@ pub fn is_recognised_level(level: &str) -> bool {
     if words.iter().any(|w| cefr(w)) {
         return true;
     }
+    // Phrases match whole words, so "alternative" is not "native", and a
+    // negation or hedge right before or after ("non-native", "not my first
+    // language", "native-like") does not count.
+    let has_phrase = |phrase: &str| {
+        let p: Vec<&str> = phrase.split(' ').collect();
+        words.windows(p.len()).enumerate().any(|(i, w)| {
+            let negated = i
+                .checked_sub(1)
+                .and_then(|j| words.get(j))
+                .is_some_and(|w| matches!(*w, "non" | "not" | "no" | "near"))
+                || (i >= 2 && matches!(words[i - 2], "not" | "non"));
+            let hedged = words.get(i + p.len()).is_some_and(|w| *w == "like");
+            w == p.as_slice() && !negated && !hedged
+        })
+    };
     const NATIVE: [&str; 5] = [
         "native",
         "mother tongue",
@@ -289,7 +304,7 @@ pub fn is_recognised_level(level: &str) -> bool {
         "bilingual",
         "muttersprache",
     ];
-    if NATIVE.iter().any(|p| lower.contains(p)) {
+    if NATIVE.iter().any(|p| has_phrase(p)) {
         return true;
     }
     // LinkedIn's levels follow the ILR descriptors.
@@ -299,7 +314,7 @@ pub fn is_recognised_level(level: &str) -> bool {
         "professional working proficiency",
         "full professional proficiency",
     ];
-    if ILR_WORDING.iter().any(|p| lower.contains(p)) {
+    if ILR_WORDING.iter().any(|p| has_phrase(p)) {
         return true;
     }
     let ilr_number = |w: &str| {
@@ -884,6 +899,13 @@ mod tests {
             "C3",
             "ILR 7",
             "conversational",
+            "Non-native",
+            "not native",
+            "Not my first language",
+            "Near-native",
+            "Native-like",
+            "alternatively fluent",
+            "nativeish",
         ] {
             assert!(!is_recognised_level(vague), "{vague}");
         }
