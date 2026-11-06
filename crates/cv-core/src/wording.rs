@@ -39,9 +39,22 @@ pub fn words(text: &str) -> impl Iterator<Item = &str> {
         .filter(|w| w.chars().any(char::is_alphanumeric))
 }
 
-/// The number of words in `text`.
+/// The number of words in `text`. A `.` or `,` between two letters or
+/// digits joins them, so "Node.js", "ASP.NET" and "1,000" are one word each.
 pub fn word_count(text: &str) -> usize {
-    words(text).count()
+    let chars: Vec<char> = text.chars().collect();
+    let joined: String = chars
+        .iter()
+        .enumerate()
+        .map(|(i, &c)| {
+            let inner = matches!(c, '.' | ',')
+                && i > 0
+                && chars[i - 1].is_alphanumeric()
+                && chars.get(i + 1).is_some_and(|n| n.is_alphanumeric());
+            if inner { '-' } else { c }
+        })
+        .collect();
+    words(&joined).count()
 }
 
 /// Irregular past participles common in CV bullets.
@@ -161,11 +174,11 @@ const KNOWN_ACRONYMS: &[&str] = &[
 ];
 
 /// True for a word written in capitals that looks like an acronym: three
-/// to eight characters, at least two of them letters, a letter first, digits
+/// to twelve characters, at least two of them letters, a letter first, digits
 /// allowed after it, and not a well-known one.
 pub fn is_unknown_acronym(word: &str) -> bool {
     let letters = word.chars().filter(char::is_ascii_alphabetic).count();
-    (3..=8).contains(&word.len())
+    (3..=12).contains(&word.len())
         && letters >= 2
         && word.chars().next().is_some_and(|c| c.is_ascii_uppercase())
         && word
@@ -288,6 +301,10 @@ mod tests {
         );
         assert_eq!(sentences("  "), Vec::<&str>::new());
         assert_eq!(word_count("Built a C++ / Rust service, then e-mail."), 7);
+        // Dotted names and grouped numbers are one word each; a full stop
+        // or comma before a space still separates.
+        assert_eq!(word_count("Moved 1,000 users to Node.js and ASP.NET."), 7);
+        assert_eq!(word_count("Cut costs, then grew. Then left."), 6);
     }
 
     #[test]
@@ -332,6 +349,7 @@ mod tests {
     fn acronyms_need_capitals_and_skip_known_ones() {
         assert!(is_unknown_acronym("SLO"));
         assert!(is_unknown_acronym("K8S"));
+        assert!(is_unknown_acronym("SOMEACRONYM"), "nine or more letters");
         assert!(!is_unknown_acronym("SQL"));
         assert!(!is_unknown_acronym("AI"), "too short");
         assert!(!is_unknown_acronym("Rust"));

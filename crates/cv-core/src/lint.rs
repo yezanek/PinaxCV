@@ -10,8 +10,8 @@ use std::collections::BTreeSet;
 use crate::contrast::{Rgb, TEXT_MIN_RATIO, contrast_ratio, darker_shade};
 use crate::wording;
 use crate::{
-    Id, LintIssue, PartialDate, Period, PersonalField, ResolvedCv, ResolvedEntry, ResolvedSection,
-    Severity,
+    CalendarDate, Id, LintIssue, Locale, PartialDate, Period, PersonalField, ResolvedCv,
+    ResolvedEntry, ResolvedSection, Severity,
 };
 
 /// Stable codes for [`LintIssue::code`], in the order of the spec's table.
@@ -358,6 +358,11 @@ pub fn is_recognised_level(level: &str) -> bool {
 fn wording(cv: &ResolvedCv, entries: &[(&ResolvedSection, &ResolvedEntry)], out: &mut Lints) {
     use crate::wording::{Tense, cliche, first_person, is_passive, opening_tense, sentences};
 
+    // The word lists are English; another language gets no wording notes.
+    if cv.locale != Locale::En {
+        return;
+    }
+
     // long_sentence
     if let Some(summary) = &cv.summary
         && let Some(n) = sentences(summary)
@@ -429,7 +434,7 @@ fn wording(cv: &ResolvedCv, entries: &[(&ResolvedSection, &ResolvedEntry)], out:
 
     // tense_mixed: a finished role in the present, or a current role that
     // mixes both. A current role told in the past is fine: those are
-    // finished results.
+    // finished results, and most CVs (the sample's too) write them so.
     for (section, e) in entries {
         if !matches!(section, ResolvedSection::Experience(_)) {
             continue;
@@ -580,9 +585,12 @@ fn undefined_acronyms(
 }
 
 /// Experience entries that ended more than [`OLD_EXPERIENCE_YEARS`] before
-/// `this_year`. The app adds these, since `cv-core` has no clock.
-pub fn old_experience(cv: &ResolvedCv, this_year: i32) -> Vec<LintIssue> {
+/// `today`, counted in months. An end date without a month counts as
+/// December and today without a month as January, so a note never comes
+/// early. The app adds these, since `cv-core` has no clock.
+pub fn old_experience(cv: &ResolvedCv, today: CalendarDate) -> Vec<LintIssue> {
     let mut out = Lints::default();
+    let now = i32::from(today.year) * 12 + i32::from(today.month.unwrap_or(1));
     for section in &cv.sections {
         let ResolvedSection::Experience(s) = section else {
             continue;
@@ -591,8 +599,9 @@ pub fn old_experience(cv: &ResolvedCv, this_year: i32) -> Vec<LintIssue> {
             let Some(end) = e.period.end.filter(|_| !e.period.current) else {
                 continue;
             };
-            let years = this_year - i32::from(end.year);
-            if years > OLD_EXPERIENCE_YEARS {
+            let months = now - (i32::from(end.year) * 12 + i32::from(end.month.unwrap_or(12)));
+            if months > OLD_EXPERIENCE_YEARS * 12 {
+                let years = months / 12;
                 out.push(
                     codes::OLD_EXPERIENCE,
                     Severity::Info,
@@ -1367,7 +1376,10 @@ mod tests {
         assert_eq!(run(&cv), [(codes::TENSE_MIXED.into(), Some(id(4)))]);
         // A current role may be told in the past, but not both at once.
         let mut cv = clean_cv();
-        assert!(codes(&cv).is_empty());
+        assert!(
+            codes(&cv).is_empty(),
+            "past-tense results in a current role"
+        );
         e_push(&mut cv, "Manage the on-call rota for 40 engineers");
         assert_eq!(codes(&cv), [codes::TENSE_MIXED]);
     }
@@ -1392,19 +1404,37 @@ mod tests {
 
     #[test]
     fn old_experience_counts_from_this_year() {
+        let day = |year, month| CalendarDate {
+            year,
+            month: Some(month),
+            day: None,
+        };
         let mut cv = clean_cv();
         assert!(
-            old_experience(&cv.resolve(None), 2100).is_empty(),
+            old_experience(&cv.resolve(None), day(2100, 1)).is_empty(),
             "current"
         );
+        // `finish` ends the role in December 2005.
         finish(&mut cv, 2005);
         let cv = cv.resolve(None);
-        let year = 2005;
-        assert!(old_experience(&cv, year + OLD_EXPERIENCE_YEARS).is_empty());
-        let found = old_experience(&cv, year + OLD_EXPERIENCE_YEARS + 1);
+        // Exactly 15 years later is not yet over the line; a month more is.
+        assert!(old_experience(&cv, day(2020, 12)).is_empty());
+        let found = old_experience(&cv, day(2021, 1));
         assert_eq!(found.len(), 1);
         assert_eq!(found[0].code, codes::OLD_EXPERIENCE);
         assert_eq!(found[0].severity, Severity::Info);
+        assert!(
+            found[0].message.contains("15 years"),
+            "{}",
+            found[0].message
+        );
+        // Without today's month, January is assumed, so no early note.
+        let undated = CalendarDate {
+            year: 2021,
+            month: None,
+            day: None,
+        };
+        assert_eq!(old_experience(&cv, undated).len(), 1);
     }
 
     #[test]
