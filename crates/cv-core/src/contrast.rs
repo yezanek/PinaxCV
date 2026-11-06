@@ -54,9 +54,11 @@ pub fn contrast_ratio(a: Rgb, b: Rgb) -> f64 {
 /// same factor) with at least `min_ratio` against `background`. Black when
 /// nothing lighter passes.
 pub fn darker_shade(colour: Rgb, background: Rgb, min_ratio: f64) -> Rgb {
-    (0..=100u8)
+    // Steps of 1/1000 move each channel by at most 0.255, so no 8-bit
+    // shade of the hue is skipped and the first pass is the nearest one.
+    (0..=1000u16)
         .map(|step| {
-            let keep = f64::from(100 - step) / 100.0;
+            let keep = f64::from(1000 - step) / 1000.0;
             // In 0..=255 after scaling a u8 by a factor in 0..=1.
             #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
             let scale = |c: u8| (f64::from(c) * keep).round() as u8;
@@ -117,6 +119,15 @@ mod tests {
             shade.2,
         );
         assert!(contrast_ratio(lighter, Rgb::WHITE) < TEXT_MIN_RATIO + 0.2);
+        // Found at 8-bit precision: the red channel one value lighter, with
+        // the green scaled the same way, no longer passes.
+        let red_up = f64::from(shade.0 + 1) / f64::from(gold.0);
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let one_up = Rgb(shade.0 + 1, (f64::from(gold.1) * red_up).round() as u8, 0);
+        assert!(
+            contrast_ratio(one_up, Rgb::WHITE) < TEXT_MIN_RATIO,
+            "{shade:?}"
+        );
         // A passing colour is its own shade.
         let navy = Rgb(0x1F, 0x3A, 0x68);
         assert_eq!(darker_shade(navy, Rgb::WHITE, TEXT_MIN_RATIO), navy);

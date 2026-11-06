@@ -456,6 +456,7 @@ Requirements:
 - Only `https:` and `mailto:` links are clickable (same rule in the PDF); any other scheme, including `http:`, `tel:` and `javascript:`, is rendered as plain text and flagged by lint (`unsafe_link`).
 - Email and phone are optional per export: the export dialog has "Include email" (default on) and "Include phone" (default off) checkboxes, because the file is meant for public hosting.
 - Design: single column by default (two columns as a CSS grid when the CV's layout has them, falling back to one on narrow screens, ADR-084), the visitor's system font stack (no embedded web fonts), automatic light/dark via `prefers-color-scheme`, and a print stylesheet.
+- In the dark scheme, an accent below 3:1 contrast against the dark background (WCAG 2.2 SC 1.4.11) falls back to the text colour, so the heading rules stay visible. Print and the light scheme keep the user's colour (ADR-093).
 - "No external resources" is tested by parsing the output: any `src=`, `<link>`, `<script>`, `@import` or CSS `url(` that is not a `data:` URI fails; navigational `<a href>` links are allowed.
 - Export is completely offline.
 - HTML is generated directly from `ResolvedCv`; it must never be produced by parsing the PDF.
