@@ -7,11 +7,14 @@
 
 Artifacts:
 
-- Linux AppImage
-- Linux Flatpak
-- Linux Snap
-- Windows NSIS installer (signed from 1.0)
-- Windows portable executable (no auto-update; signed from 1.0)
+- Linux AppImage, built by `.github/workflows/release.yml` on a `v*` tag (ADR-094). This is the only release for now.
+- On hold, to be done later: Linux Flatpak, Linux Snap, Windows NSIS installer and portable executable (signed from 1.0).
+
+## Making a release
+
+1. Set the version in the root `Cargo.toml` (`[workspace.package]`) and add a `CHANGELOG.md` entry; merge to `main`.
+2. Push the tag: `git tag v<version> && git push origin v<version>`. The tag must match the version or the workflow stops.
+3. The workflow builds the AppImage on Ubuntu 22.04 and attaches it to a draft GitHub release. Check the release checks below, then publish the draft.
 
 ## Release checks
 

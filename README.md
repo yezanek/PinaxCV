@@ -4,7 +4,7 @@ Privacy-first desktop CV editor. Write once, tailor variants per job, export ATS
 
 PinaxCV is a local-first desktop application written in Rust (Tauri 2 + Leptos, Typst for PDF rendering, SQLite for storage). It needs no PinaxCV account, server or subscription, and sends nothing over the network unless you configure an AI provider (an opt-in update check is planned).
 
-> **Status:** milestones M0 to M7b are built, and so are the M8 items that are not packaging (backup and restore, data deletion, privacy notice, licences, profile photo). There are no releases or installers yet: build it from source with [`docs/BUILDING.md`](docs/BUILDING.md). Packaging, the update check and signing are the open M8 issues.
+> **Status:** milestones M0 to M7b are built, and so are the M8 items that are not packaging (backup and restore, data deletion, privacy notice, licences, profile photo). Releases are Linux AppImages, built by CI from a version tag (no release has been tagged yet); Flatpak, Snap and Windows packages are on hold. You can also build it from source with [`docs/BUILDING.md`](docs/BUILDING.md).
 
 ## What it does
 

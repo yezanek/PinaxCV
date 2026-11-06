@@ -647,6 +647,13 @@ The spec calls `cv-api` both "types shared by src-tauri and ui" and "application
 - `signature_choose(id)` opens the backend's image dialog (JPEG or PNG, at most 5 MB), decodes the file and re-encodes it, so no metadata survives. Light paper (luma 215 and up) becomes transparent and darker pixels get an opacity that grows with their darkness, so a phone photo of ink on paper works on any background. The margins are trimmed to the ink plus 4 px and the result fits in 900 × 300 px. A blank image is refused. Choosing replaces the stored one; `signature_get` and `signature_remove` read and delete it. The first signature switches the base CV's Show on, as the first photo does.
 - The PDF draws it under the closing text, 1.6 cm high, as a PDF artifact, so the extracted text and the ATS check are the same with or without it. It is the second image exception to the ATS rules, after the photo (docs/ATS_RULES.md rule 8). HTML embeds it as a `data:` URL with an empty `alt`, on a white backing so the dark ink stays visible in the export's automatic dark mode. Nothing is drawn when the switch is on but no signature is stored, and an empty closing block is never printed.
 
+## ADR-094 — Linux AppImage release (M8, issue #68)
+
+- For now the only release is the Linux AppImage (Dan, 2026-11-06); Flatpak (#33), Snap (#34) and the Windows packages (#69, #71) are on hold.
+- `.github/workflows/release.yml` builds it on Ubuntu 22.04 with `tauri-apps/tauri-action` (pinned) and the Tauri CLI at the version of the `tauri` crate, after `trunk build --release`. Building on the oldest supported base keeps the glibc requirement low; WebKitGTK and its libraries are bundled by linuxdeploy, the GStreamer media framework is not (the app plays no media).
+- A `v*` tag that matches the workspace version makes a draft GitHub release with the AppImage attached, to be published by hand. Pull requests that touch the workflow, `tauri.conf.json` or the icons, and manual runs, build it as a workflow artifact and check that it unpacks with the app binary and a desktop file.
+- `tauri.conf.json` no longer has its own version: Tauri takes the `pinaxcv` crate's, so there is one version to bump. Bundling is on with the `appimage` target only.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

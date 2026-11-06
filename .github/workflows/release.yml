@@ -1,0 +1,85 @@
+name: Release
+
+# Builds the Linux AppImage, the only release for now (issue #68; Flatpak,
+# Snap and Windows are on hold). A `v*` tag makes a draft GitHub release
+# with the AppImage attached; any other run keeps it as a workflow artifact.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - src-tauri/tauri.conf.json
+      - src-tauri/icons/**
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  appimage:
+    name: AppImage
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install pinned toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      # Ubuntu 22.04 is the oldest supported base, so the AppImage runs on
+      # it and on newer distributions (glibc is not bundled).
+      - name: Install Tauri system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev librsvg2-dev libayatana-appindicator3-dev libfuse2
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: trunk@0.21.14
+      - name: Check the tag matches the version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          version=$(cargo metadata --no-deps --format-version 1 --locked | python3 -c 'import json,sys; print(next(p["version"] for p in json.load(sys.stdin)["packages"] if p["name"] == "pinaxcv"))')
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match the workspace version $version" >&2
+            exit 1
+          fi
+      - name: Build UI (Trunk)
+        working-directory: ui
+        run: trunk build --release --locked
+      - name: Build the AppImage
+        uses: tauri-apps/tauri-action@v0.6.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tauriScript: npx --yes @tauri-apps/cli@2.12.3
+          args: --bundles appimage
+          tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
+          releaseName: PinaxCV ${{ github.ref_name }}
+          releaseBody: Linux AppImage. See CHANGELOG.md for what changed.
+          releaseDraft: true
+      - name: Check the AppImage
+        run: |
+          appimage=$(ls target/release/bundle/appimage/*.AppImage)
+          echo "Built $appimage ($(du -h "$appimage" | cut -f1))"
+          chmod +x "$appimage"
+          cd "$RUNNER_TEMP"
+          "$OLDPWD/$appimage" --appimage-extract > /dev/null
+          test -x squashfs-root/usr/bin/pinaxcv
+          test -f squashfs-root/pinaxcv.desktop || ls squashfs-root/*.desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pinaxcv-appimage
+          path: target/release/bundle/appimage/*.AppImage
+          if-no-files-found: error
