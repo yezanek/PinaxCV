@@ -14,7 +14,7 @@ use leptos::task::spawn_local;
 use serde::Serialize;
 
 use crate::fit::EditFn;
-use crate::i18n::{error_message, fill, t};
+use crate::i18n::{error_message, fill, t, token_message};
 use crate::ipc::{Listener, NoArgs, ReqArg, call, listen};
 use crate::settings::ConsentPanel;
 
@@ -63,6 +63,10 @@ pub fn result_message(r: &TailorResult) -> String {
             t().fit_impossible,
             &[("pages", &r.pages.unwrap_or_default().to_string())],
         ));
+    }
+    if let Some(tokens) = token_message(r.tokens.as_ref()) {
+        text.push(' ');
+        text.push_str(&tokens);
     }
     text
 }
@@ -337,6 +341,7 @@ mod tests {
             fits,
             discarded: Vec::new(),
             failed_stages: Vec::new(),
+            tokens: None,
         }
     }
 

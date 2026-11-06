@@ -4,6 +4,7 @@
 
 #![forbid(unsafe_code)]
 
+mod clean;
 pub mod europass;
 
 pub use europass::{AttachmentError, embedded_xml};
