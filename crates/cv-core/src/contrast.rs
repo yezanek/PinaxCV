@@ -54,16 +54,26 @@ pub fn contrast_ratio(a: Rgb, b: Rgb) -> f64 {
 /// same factor) with at least `min_ratio` against `background`. Black when
 /// nothing lighter passes.
 pub fn darker_shade(colour: Rgb, background: Rgb, min_ratio: f64) -> Rgb {
-    // Steps of 1/1000 move each channel by at most 0.255, so no 8-bit
-    // shade of the hue is skipped and the first pass is the nearest one.
-    (0..=1000u16)
-        .map(|step| {
-            let keep = f64::from(1000 - step) / 1000.0;
-            // In 0..=255 after scaling a u8 by a factor in 0..=1.
-            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-            let scale = |c: u8| (f64::from(c) * keep).round() as u8;
-            Rgb(scale(colour.0), scale(colour.1), scale(colour.2))
-        })
+    // Scaling by a factor k rounds each channel c to round(c * k), which only
+    // changes where c * k crosses a half. Between two such crossings every k
+    // gives the same colour, so trying one k per interval, from k = 1 down,
+    // visits every shade of the hue in order and the first pass is the
+    // nearest one.
+    let mut cuts: Vec<f64> = [colour.0, colour.1, colour.2]
+        .into_iter()
+        .filter(|&c| c > 0)
+        .flat_map(|c| (0..c).map(move |n| (f64::from(n) + 0.5) / f64::from(c)))
+        .collect();
+    cuts.push(0.0);
+    cuts.push(1.0);
+    cuts.sort_by(|x, y| y.total_cmp(x));
+    cuts.dedup();
+    // In 0..=255 after scaling a u8 by a factor in 0..=1.
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let scale = |c: u8, k: f64| (f64::from(c) * k).round() as u8;
+    std::iter::once(1.0)
+        .chain(cuts.windows(2).map(|w| f64::midpoint(w[0], w[1])))
+        .map(|k| Rgb(scale(colour.0, k), scale(colour.1, k), scale(colour.2, k)))
         .find(|c| contrast_ratio(*c, background) >= min_ratio)
         .unwrap_or(Rgb(0, 0, 0))
 }
@@ -127,6 +137,12 @@ mod tests {
         assert!(
             contrast_ratio(one_up, Rgb::WHITE) < TEXT_MIN_RATIO,
             "{shade:?}"
+        );
+        // Two channels can round across a step together; the shade must still
+        // be the nearest one (#508325 passes, so #4F8325 is not the answer).
+        assert_eq!(
+            darker_shade(Rgb(0x98, 0xFB, 0x47), Rgb::WHITE, TEXT_MIN_RATIO),
+            Rgb(0x50, 0x83, 0x25)
         );
         // A passing colour is its own shade.
         let navy = Rgb(0x1F, 0x3A, 0x68);
