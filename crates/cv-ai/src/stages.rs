@@ -16,7 +16,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
 use tokio_util::sync::CancellationToken;
 
-use crate::cache::{ResponseCache, cache_key};
+use crate::cache::{ResponseCache, generate_cached};
 use crate::payload::{CvPayload, REDACTED};
 use crate::prompts::{self, Prompt};
 use crate::schema::output_schema;
@@ -37,7 +37,9 @@ pub struct StageContext<'a> {
 }
 
 impl StageContext<'_> {
-    /// Sends `prompt` for a `T`, or takes it from the cache.
+    /// Sends `prompt` for a `T`, or takes it from the cache, through
+    /// [`generate_cached`] (one retry on a wrong shape; only fitting answers
+    /// are cached).
     pub async fn generate<T>(
         &self,
         prompt: Prompt,
@@ -46,49 +48,10 @@ impl StageContext<'_> {
     where
         T: DeserializeOwned + JsonSchema,
     {
-        if self.cancel.is_cancelled() {
-            return Err(LlmError::Cancelled);
-        }
-        let key = cache_key(prompt.kind, self.model, &prompt.user);
-        if let Some(hit) = self
-            .cache
-            .get(&key)
-            .await
-            .and_then(|s| serde_json::from_str(&s).ok())
-        {
-            return Ok(hit);
-        }
-        let schema = output_schema::<T>();
-        let mut user = prompt.user.clone();
-        for attempt in 0..2 {
-            let mut request = Prompt {
-                user: user.clone(),
-                ..prompt.clone()
-            }
-            .request(schema.clone(), schema_name);
-            request.cancel = self.cancel.clone();
-            let value = self.llm.generate_json(request).await?;
-            match T::deserialize(&value) {
-                Ok(out) => {
-                    self.cache
-                        .put(&key, prompt.kind.as_str(), &value.to_string())
-                        .await;
-                    return Ok(out);
-                }
-                Err(e) if attempt == 0 => {
-                    // The model's own output may be quoted back to it; it
-                    // never goes into an error or a log.
-                    user = format!(
-                        "{}\n\nYour last output was invalid: {e}. Respond again with JSON matching the schema.",
-                        prompt.user
-                    );
-                }
-                Err(_) => break,
-            }
-        }
-        Err(LlmError::InvalidOutput(format!(
-            "the answer did not match {schema_name}"
-        )))
+        let kind = prompt.kind;
+        let mut request = prompt.request(output_schema::<T>(), schema_name);
+        request.cancel = self.cancel.clone();
+        generate_cached(self.llm, self.cache, kind, self.model, request).await
     }
 }
 
