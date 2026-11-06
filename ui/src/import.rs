@@ -16,7 +16,7 @@ use cv_core::{
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 
-use crate::i18n::{error_message, fill, t};
+use crate::i18n::{error_message, fill, t, token_message};
 use crate::ipc::{IdArg, ReqArg, call};
 
 /// Sections whose entries the merge review lists, tagged by kind so an
@@ -271,6 +271,8 @@ pub fn ImportWizard(
     lines.extend(personal_line(&preview.personal));
     let has_warnings = !preview.warnings.is_empty();
     let warnings = StoredValue::new(preview.warnings.clone());
+    let tokens =
+        token_message(preview.tokens.as_ref()).map(|line| view! { <p class="status">{line}</p> });
     let review_bullets = StoredValue::new(needs_review_texts(&preview));
     let has_review = review_bullets.with_value(|b| !b.is_empty());
     let photo = preview.photo.clone().map(|url| {
@@ -395,6 +397,7 @@ pub fn ImportWizard(
             <ul class="import-summary">
                 {lines.into_iter().map(|l| view! { <li>{l}</li> }).collect_view()}
             </ul>
+            {tokens}
             {photo}
             <Show when=move || has_warnings>
                 <h3>{s.import_warnings}</h3>
@@ -539,6 +542,7 @@ mod tests {
             personal: PersonalDetails::default(),
             warnings: Vec::new(),
             needs_review: vec![id(6)],
+            tokens: None,
             photo: None,
         };
         assert_eq!(needs_review_texts(&preview), ["Reworded"]);

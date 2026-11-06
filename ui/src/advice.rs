@@ -17,7 +17,7 @@ use serde::Serialize;
 
 use crate::checks::{Spot, focus_spot};
 use crate::fit::EditFn;
-use crate::i18n::{error_message, fill, t};
+use crate::i18n::{error_message, fill, t, token_message};
 use crate::ipc::{Listener, NoArgs, ReqArg, call, listen};
 use crate::review::{badges_view, bullet_entries, describe, diff_view, labels, needs_attention};
 use crate::settings::ConsentPanel;
@@ -129,11 +129,16 @@ pub fn when(at: &str) -> String {
 
 /// The status line after a review.
 pub fn review_message(session: &ReviewSession) -> String {
-    match session.suggestions.len() {
+    let mut text = match session.suggestions.len() {
         0 => t().ai_review_nothing.to_owned(),
         1 => t().ai_review_done_one.to_owned(),
         n => fill(t().ai_review_done, &[("n", &n.to_string())]),
+    };
+    if let Some(tokens) = token_message(session.tokens.as_ref()) {
+        text.push(' ');
+        text.push_str(&tokens);
     }
+    text
 }
 
 #[derive(Clone)]

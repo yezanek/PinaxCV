@@ -14,9 +14,9 @@ use cv_core::{
     Bullet, Entry, EntrySection, Id, LanguageItem, LanguagesSection, Link, PartialDate, Period,
     Section, Skill, SkillGroup, SkillsSection,
 };
-use unicode_normalization::UnicodeNormalization;
 use zip::ZipArchive;
 
+use crate::clean::{clean, clean_field, track_cuts};
 use crate::import::ImportError;
 use crate::partial::{CvPartial, ImportResult, ImportWarning};
 use crate::pdf_map::parse_date;
@@ -29,7 +29,7 @@ pub const MAX_CSV: u64 = 5 * 1024 * 1024;
 pub const MAX_TOTAL: u64 = 20 * 1024 * 1024;
 /// Rows kept per CSV, and characters per value.
 pub const MAX_ROWS: usize = 500;
-pub const MAX_TEXT: usize = 10_000;
+pub use crate::clean::MAX_TEXT;
 /// A one-paragraph description longer than this stays a description.
 const LONG_PARAGRAPH: usize = 300;
 /// File names listed in the "not used" warning.
@@ -102,7 +102,9 @@ pub fn import_linkedin_zip(
         warnings,
         tables: files.tables,
     };
-    Ok(m.map())
+    let (mut result, cut) = track_cuts(|| m.map());
+    result.warnings.extend(cut);
+    Ok(result)
 }
 
 struct Csvs {
@@ -191,6 +193,7 @@ fn read_csvs(bytes: &[u8]) -> Result<Csvs, ImportError> {
 /// A file name from the archive, cleaned and shortened for a warning.
 fn name_for_warning(name: &str) -> String {
     clean(name, false)
+        .0
         .map(|n| n.chars().take(NAME_IN_WARNING).collect())
         .unwrap_or_else(|| "(unnamed file)".into())
 }
@@ -365,38 +368,11 @@ fn get(row: &HashMap<String, String>, column: &str) -> Option<String> {
                 .filter(|(_, to)| *to == column)
                 .find_map(|(alias, _)| row.get(*alias))
         })
-        .and_then(|v| clean(v, false))
+        .and_then(|v| clean_field(v, false, column))
 }
 
 fn get_text(row: &HashMap<String, String>, column: &str) -> Option<String> {
-    row.get(column).and_then(|v| clean(v, true))
-}
-
-/// NFC, with whitespace (other than kept line breaks) turned into spaces,
-/// without other control characters, with runs of spaces collapsed, at most
-/// [`MAX_TEXT`] characters. `None` when nothing is left.
-fn clean(s: &str, keep_lines: bool) -> Option<String> {
-    let nfc: String = s
-        .nfc()
-        .filter_map(|c| match c {
-            '\n' if keep_lines => Some('\n'),
-            c if c.is_whitespace() => Some(' '),
-            c if c.is_control() => None,
-            c => Some(c),
-        })
-        .take(MAX_TEXT)
-        .collect();
-    let out = if keep_lines {
-        nfc.lines()
-            .map(|l| l.split_whitespace().collect::<Vec<_>>().join(" "))
-            .collect::<Vec<_>>()
-            .join("\n")
-            .trim()
-            .to_owned()
-    } else {
-        nfc.split_whitespace().collect::<Vec<_>>().join(" ")
-    };
-    (!out.is_empty()).then_some(out)
+    row.get(column).and_then(|v| clean_field(v, true, column))
 }
 
 /// Splits a free-text description into bullets on lines and on leading
@@ -816,6 +792,10 @@ fn describe(title: &str, org: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn clean(s: &str, keep_lines: bool) -> Option<String> {
+        super::clean(s, keep_lines).0
+    }
 
     #[test]
     fn paths_must_stay_inside_the_archive() {
