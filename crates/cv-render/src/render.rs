@@ -117,6 +117,13 @@ impl Compiled {
     /// depend only on the input: no creation date, a fixed document
     /// identifier and no creator string.
     pub fn to_pdf(&self) -> Result<Vec<u8>, RenderError> {
+        self.to_pdf_with_ua().map(|(bytes, _)| bytes)
+    }
+
+    /// [`Compiled::to_pdf`], also saying why the PDF does not declare
+    /// PDF/UA-1 when Typst could not meet it (issue #138). `None` means the
+    /// claim is in the file.
+    pub fn to_pdf_with_ua(&self) -> Result<(Vec<u8>, Option<String>), RenderError> {
         let options = |standards| typst_pdf::PdfOptions {
             ident: Smart::Custom("pinaxcv".to_owned()),
             creator: Smart::Custom(None),
@@ -127,12 +134,16 @@ impl Compiled {
         };
         let ua = typst_pdf::PdfStandards::new(&[typst_pdf::PdfStandard::Ua_1])
             .map_err(|e| RenderError::Export(e.message().to_string()))?;
-        typst_pdf::pdf(&self.document, &options(ua))
-            .or_else(|_| typst_pdf::pdf(&self.document, &options(Default::default())))
-            .map_err(|errors| {
-                let message: Vec<String> = errors.iter().map(|e| e.message.to_string()).collect();
-                RenderError::Export(message.join("; "))
-            })
+        let messages = |errors: &[typst::diag::SourceDiagnostic]| {
+            let message: Vec<String> = errors.iter().map(|e| e.message.to_string()).collect();
+            message.join("; ")
+        };
+        match typst_pdf::pdf(&self.document, &options(ua)) {
+            Ok(bytes) => Ok((bytes, None)),
+            Err(ua_errors) => typst_pdf::pdf(&self.document, &options(Default::default()))
+                .map(|bytes| (bytes, Some(messages(&ua_errors))))
+                .map_err(|errors| RenderError::Export(messages(&errors))),
+        }
     }
 
     /// Renders every page to PNG at `pixels_per_pt` (1.5 suits the preview).
@@ -186,8 +197,10 @@ impl Exporter for PdfExporter<'_> {
             .renderer
             .compile(cv, options)
             .map_err(RenderError::Compile)?;
+        let (bytes, pdf_ua_dropped) = compiled.to_pdf_with_ua()?;
         Ok(ExportedDocument {
-            bytes: compiled.to_pdf()?,
+            bytes,
+            pdf_ua_dropped,
             media_type: "application/pdf",
             suggested_file_name: suggested_file_name(&cv.basics.full_name, "pdf"),
             page_count: Some(compiled.page_count()),
@@ -444,6 +457,12 @@ mod tests {
         // Missing glyphs break PDF/UA-1; the export still succeeds without it.
         let cjk = compile("cjk").to_pdf().expect("cjk still exports");
         assert!(cjk.starts_with(b"%PDF") && !contains(&cjk, b"pdfuaid"));
+        // The reason comes with the bytes, for the ATS report (issue #138).
+        let (_, reason) = compile("typical").to_pdf_with_ua().expect("typical");
+        assert_eq!(reason, None);
+        let (bytes, reason) = compile("cjk").to_pdf_with_ua().expect("cjk");
+        assert_eq!(bytes, cjk);
+        assert!(reason.is_some_and(|r| !r.is_empty()));
     }
 
     #[test]
