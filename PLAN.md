@@ -14,7 +14,7 @@ The product owner builds PinaxCV from source on a Linux laptop and a MacBook. `d
 |---|---|
 | M0 to M6 | Done |
 | M7a, M7b | Done. The eval recordings are still hand-written; a live run replaces them (#115). |
-| M8 | Done: backup and restore, Delete all data, Clear AI cache, privacy notice, third-party licences, the optional profile photo. AppImage (#68) built by the release workflow. Signed updater and opt-in update check (#70). Open: the release pass (#73). On hold: NSIS and portable exe (#69), Windows signing (#71), Flatpak (#33), Snap (#34). |
+| M8 | Done: backup and restore, Delete all data, Clear AI cache, privacy notice, third-party licences, the optional profile photo. AppImage (#68) built by the release workflow. Signed updater and opt-in update check (#70). Clean-install smoke test added to the release workflow, and the manual checklist written in `docs/RELEASING.md`. Open: the release pass (#73) itself, which is run by hand before the first release, with the update-flow test from the second signed release on. On hold: NSIS and portable exe (#69), Windows signing (#71), Flatpak (#33), Snap (#34). |
 | M9 onwards | Not started |
 
 Smaller follow-ups are in the [open issues](https://github.com/yezanek/PinaxCV/issues).

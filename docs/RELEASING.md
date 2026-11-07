@@ -19,17 +19,28 @@ Artifacts:
 
 ## Release checks
 
-- `cargo fmt --check`
-- `cargo clippy --workspace --all-targets -- -D warnings`
-- `cargo test --workspace`
-- PDF golden/ATS tests
-- live AI evals against each supported provider, with the model named in `PINAXCV_EVAL_MODEL` (`testdata/evals/README.md`); record again when prompts changed (a passing live run with `PINAXCV_EVAL_RECORD=1` replaces the hand-written recordings, #115)
-- HTML standalone/export tests
-- clean-install smoke tests
-- backup/restore test
+Automated. CI runs on every PR; the release workflow (AppImage build and clean-install smoke test) runs on every `v*` tag and manual run, and on PRs that touch the release workflow, `tauri.conf.json`, `tauri.updater.conf.json` or the icons:
+
+- `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace` (PDF golden and ATS tests, HTML export tests, backup/restore tests), on Linux and Windows (CI)
+- open-source resume parser and veraPDF PDF/UA-1 check on every fixture export (CI `resume parser` job)
 - `python3 scripts/third_party_licenses.py --check` (every shipped licence is compatible with Apache-2.0; run without `--check` after a dependency change)
-- `PRIVACY.md` still matches what the app stores and sends
-- updater test: install the previous release's AppImage, switch on Settings > Updates, and check that "Check now" finds the new release and "Install and restart" replaces the AppImage and restarts it (#73)
-- manual pass in a Windows 11 evaluation VM (required once the Windows packages leave hold; then before 1.0 and each major release)
+- clean-install smoke test: the release workflow starts the AppImage on fresh Ubuntu 22.04, Ubuntu 24.04, Debian 12 and Fedora 41 containers with only an X server and the base libraries every desktop has (fontconfig, Mesa, X11 and the rest of the AppImage excludelist), and checks that it runs and creates its database and log (issue #73)
+
+## Release pass (manual, issue #73)
+
+Before publishing the draft release, on a real Linux desktop (a fresh Ubuntu 22.04 or 24.04 VM is best; `libfuse2` / `libfuse2t64` installed):
+
+1. Download the AppImage from the draft release, `chmod +x` it and start it. The first-run question about updates appears with "No" selected.
+2. Create a CV, edit it, and check the preview updates.
+3. Export a PDF and an HTML file; open both. Run Checks and the ATS check.
+4. Import a JSON Resume or LinkedIn export (synthetic data).
+5. Back up, restore the backup, and check the CV is still there. Delete all data from Settings and check the list is empty.
+6. If an AI key is at hand: configure a provider, accept the consent, tailor a variant, and check the token line.
+7. Updater (from the second signed release on): start the previous release's AppImage, switch on Settings > Updates, press "Check now", then "Install and restart"; the app restarts as the new version (Settings > About shows it). With the check off, nothing is requested.
+8. Check `PRIVACY.md` still matches what the app stores and sends.
+
+Before 1.0, also run the live AI evals against each supported provider (`testdata/evals/README.md`; on hold, #115).
+
+On hold with the other packages: Windows installers and signing. The manual pass in a Windows 11 evaluation VM is skipped only while the releases are AppImage-only; it is required before 1.0, and 1.0 is not published without it.
 
 macOS releases are a future addition. SaaS releases have a separate deployment process and are not covered by this desktop checklist.
