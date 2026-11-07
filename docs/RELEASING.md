@@ -19,7 +19,7 @@ Artifacts:
 
 ## Release checks
 
-Automated, on every PR or release run:
+Automated. CI runs on every PR; the release workflow (AppImage build and clean-install smoke test) runs on every tag and manual run, and on PRs that touch the release workflow, `tauri.conf.json`, `tauri.updater.conf.json` or the icons:
 
 - `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace` (PDF golden and ATS tests, HTML export tests, backup/restore tests), on Linux and Windows (CI)
 - open-source resume parser and veraPDF PDF/UA-1 check on every fixture export (CI `resume parser` job)
@@ -41,6 +41,6 @@ Before publishing the draft release, on a real Linux desktop (a fresh Ubuntu 22.
 
 Before 1.0, also run the live AI evals against each supported provider (`testdata/evals/README.md`; on hold, #115).
 
-On hold with the other packages: the manual pass in a Windows 11 evaluation VM, Windows installers and signing.
+On hold with the other packages: Windows installers and signing. The manual pass in a Windows 11 evaluation VM is skipped only while the releases are AppImage-only; it is required before 1.0, and 1.0 is not published without it.
 
 macOS releases are a future addition. SaaS releases have a separate deployment process and are not covered by this desktop checklist.

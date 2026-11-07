@@ -681,7 +681,7 @@ Lints that cite a standard say so in their hint, so a user can tell a standard f
 
 ## ADR-096 — Release pass for the AppImage (M8, issue #73)
 
-- Scoped to the Linux AppImage, the only release for now; the Windows 11 VM pass is on hold with the Windows packages.
+- Scoped to the Linux AppImage, the only release for now. Only the current AppImage-only releases skip the Windows 11 evaluation-VM pass, which is on hold with the Windows packages; it stays a prerequisite for 1.0 (spec section 14), and 1.0 is not published without it.
 - Automated part: the release workflow's `clean-install` job starts the built AppImage under Xvfb in fresh `ubuntu:22.04`, `ubuntu:24.04`, `debian:12` and `fedora:41` containers with only an X server and the base libraries an AppImage expects from every desktop, the AppImage excludelist (fontconfig, FreeType, HarfBuzz, Mesa, X11; FUSE-less, through `APPIMAGE_EXTRACT_AND_RUN`), and checks that it keeps running and creates its database and log. This shows the AppImage carries what it needs on each base.
 - Manual part: the checklist in `docs/RELEASING.md` (create, edit, export, import, backup and restore, AI, updater). The update flow between two tagged releases can only be tested once two signed releases exist (ADR-095), so it is a step of the second release's pass.
 
