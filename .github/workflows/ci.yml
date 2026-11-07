@@ -146,6 +146,7 @@ jobs:
         with:
           key: ats-parser
       - name: Export the fixtures
+        id: export
         run: cargo run --locked -p cv-render --example export_fixtures -- "$RUNNER_TEMP/fixtures"
       - uses: actions/setup-node@v4
         with:
@@ -163,4 +164,6 @@ jobs:
           npx tsx check.ts "$RUNNER_TEMP/fixtures"
       # PDFs that declare PDF/UA-1 must pass veraPDF (issue #138).
       - name: Validate PDF/UA-1 with veraPDF
+        # Run even if the parser step failed, as long as the export succeeded.
+        if: ${{ !cancelled() && steps.export.outcome == 'success' }}
         run: scripts/verapdf.sh "$RUNNER_TEMP/fixtures"
