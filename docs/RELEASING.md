@@ -19,7 +19,7 @@ Artifacts:
 
 ## Release checks
 
-Automated. CI runs on every PR; the release workflow (AppImage build and clean-install smoke test) runs on every tag and manual run, and on PRs that touch the release workflow, `tauri.conf.json`, `tauri.updater.conf.json` or the icons:
+Automated. CI runs on every PR; the release workflow (AppImage build and clean-install smoke test) runs on every `v*` tag and manual run, and on PRs that touch the release workflow, `tauri.conf.json`, `tauri.updater.conf.json` or the icons:
 
 - `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace` (PDF golden and ATS tests, HTML export tests, backup/restore tests), on Linux and Windows (CI)
 - open-source resume parser and veraPDF PDF/UA-1 check on every fixture export (CI `resume parser` job)
