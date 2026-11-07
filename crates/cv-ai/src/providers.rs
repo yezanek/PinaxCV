@@ -7,6 +7,7 @@ use std::sync::Arc;
 use serde_json::{Value, json};
 
 use crate::http::{HttpRequest, Transport, UreqTransport, host, send};
+use crate::usage::{anthropic_counts, gemini_counts, openai_counts};
 use crate::{Llm, LlmError, LlmRequest};
 
 /// Anthropic Messages API version sent with every request.
@@ -145,6 +146,7 @@ impl Llm for AnthropicLlm {
     async fn generate_json(&self, request: LlmRequest) -> Result<Value, LlmError> {
         let http = self.request(&request)?;
         let body = send(self.endpoint.transport.clone(), http, request.cancel).await?;
+        request.usage.record(anthropic_counts(&body));
         Self::output(&body)
     }
 
@@ -316,6 +318,7 @@ impl Llm for OpenAiLlm {
             }
             other => other?,
         };
+        request.usage.record(openai_counts(&body));
         let text = Self::content(&body)?;
         match json_text(&text) {
             // Spec section 11.2: a compatible server gets one more try, told
@@ -331,6 +334,7 @@ impl Llm for OpenAiLlm {
                     }));
                 }
                 let body = send(transport, http, request.cancel).await?;
+                request.usage.record(openai_counts(&body));
                 json_text(&Self::content(&body)?)
             }
             other => other,
@@ -419,6 +423,7 @@ impl Llm for GeminiLlm {
     async fn generate_json(&self, request: LlmRequest) -> Result<Value, LlmError> {
         let http = self.request(&request)?;
         let body = send(self.endpoint.transport.clone(), http, request.cancel).await?;
+        request.usage.record(gemini_counts(&body));
         Self::output(&body)
     }
 
@@ -498,6 +503,51 @@ mod tests {
         let local = OpenAiLlm::with_transport(None, "llama", "http://localhost:11434/v1/", true, t)
             .expect("no key needed");
         assert_eq!(local.name(), "OpenAI-compatible (localhost:11434)");
+    }
+
+    #[tokio::test]
+    async fn every_provider_records_the_token_counts_it_reports() {
+        let anthropic = Recorder::replying(vec![Recorder::ok(json!({
+            "content": [{ "type": "tool_use", "input": {} }],
+            "usage": { "input_tokens": 100, "output_tokens": 20 },
+        }))]);
+        let openai = Recorder::replying(vec![Recorder::ok(json!({
+            "choices": [{ "message": { "content": "{}" } }],
+            "usage": { "prompt_tokens": 30, "completion_tokens": 4 },
+        }))]);
+        let gemini = Recorder::replying(vec![Recorder::ok(json!({
+            "candidates": [{ "content": { "parts": [{ "text": "{}" }] } }],
+            "usageMetadata": { "promptTokenCount": 5, "candidatesTokenCount": 1 },
+        }))]);
+        // A compatible server that reports nothing, and needs its retry.
+        let local = Recorder::replying(vec![
+            Recorder::ok(json!({ "choices": [{ "message": { "content": "nope" } }] })),
+            Recorder::ok(json!({ "choices": [{ "message": { "content": "{}" } }] })),
+        ]);
+        let llms: Vec<Box<dyn Llm>> = vec![
+            Box::new(AnthropicLlm::with_transport("k", "m", ANTHROPIC_URL, anthropic).expect("a")),
+            Box::new(
+                OpenAiLlm::with_transport(Some("k"), "m", OPENAI_URL, false, openai).expect("o"),
+            ),
+            Box::new(GeminiLlm::with_transport("k", "m", GEMINI_URL, gemini).expect("g")),
+            Box::new(
+                OpenAiLlm::with_transport(None, "m", "http://localhost:1/v1", true, local)
+                    .expect("c"),
+            ),
+        ];
+        let req = request();
+        for llm in &llms {
+            llm.generate_json(req.clone()).await.expect("output");
+        }
+        assert_eq!(
+            req.usage.total(),
+            crate::TokenUsage {
+                input_tokens: 135,
+                output_tokens: 25,
+                requests: 5,
+                unreported: 2,
+            }
+        );
     }
 
     #[tokio::test]
