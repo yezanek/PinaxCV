@@ -137,6 +137,12 @@ async fn pasted_text_is_extracted_without_sending_contact_details() {
     // The bullet mark is dropped; the reworded bullet is marked for review.
     assert_eq!(entry.bullets[0].text, "Built the billing service in Rust.");
     assert_eq!(preview.needs_review, [entry.bullets[1].id.clone()]);
+    // The fake server reports no token counts.
+    let tokens = preview.tokens.expect("token usage");
+    assert_eq!(
+        (tokens.requests, tokens.unreported, tokens.total()),
+        (1, 1, 0)
+    );
     assert!(
         preview
             .warnings

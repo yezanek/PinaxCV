@@ -125,6 +125,7 @@ impl App {
             cache: &cache,
             model: &model,
             cancel: ctx.cancel.clone(),
+            usage: ctx.usage.clone(),
         };
 
         // A: the parse saved on the variant is reused while its text is unchanged.
@@ -315,6 +316,7 @@ impl App {
             fits,
             discarded,
             failed_stages,
+            tokens: Some(ctx.tokens()),
         })
     }
 }

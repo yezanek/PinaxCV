@@ -68,12 +68,14 @@ pub fn ats_report_with_options(
                 score: score(&checks),
                 extracted_text: text,
                 checks,
+                pdf_ua_dropped: None,
             }
         }
         Err(e) => AtsReport {
             extracted_text: String::new(),
             score: 0,
             checks: vec![fail(checks::TEXT_EXTRACTED, e.to_string())],
+            pdf_ua_dropped: None,
         },
     }
 }

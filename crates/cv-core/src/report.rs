@@ -46,6 +46,11 @@ pub struct AtsReport {
     /// 0..=100
     pub score: u8,
     pub checks: Vec<AtsCheck>,
+    /// Why the PDF does not declare PDF/UA-1 (the accessible-PDF standard),
+    /// when the export had to drop the claim; `None` when it declares it
+    /// (issue #138).
+    #[serde(default)]
+    pub pdf_ua_dropped: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
@@ -81,6 +86,7 @@ mod tests {
                 check("email", false),
                 check("order", false),
             ],
+            pdf_ua_dropped: None,
         };
         let names: Vec<_> = report.failed_checks().map(|c| c.name.as_str()).collect();
         assert_eq!(names, ["email", "order"]);
