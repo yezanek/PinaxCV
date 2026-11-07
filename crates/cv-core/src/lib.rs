@@ -27,6 +27,7 @@ pub mod lint;
 pub mod locale;
 pub mod selection;
 pub mod validate;
+pub mod wording;
 
 #[cfg(test)]
 mod test_fixtures;

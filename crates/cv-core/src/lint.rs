@@ -8,9 +8,10 @@
 use std::collections::BTreeSet;
 
 use crate::contrast::{Rgb, TEXT_MIN_RATIO, contrast_ratio, darker_shade};
+use crate::wording;
 use crate::{
-    Id, LintIssue, PartialDate, Period, PersonalField, ResolvedCv, ResolvedEntry, ResolvedSection,
-    Severity,
+    CalendarDate, Id, LintIssue, Locale, PartialDate, Period, PersonalField, ResolvedCv,
+    ResolvedEntry, ResolvedSection, Severity,
 };
 
 /// Stable codes for [`LintIssue::code`], in the order of the spec's table.
@@ -49,7 +50,27 @@ pub mod codes {
     /// A language level is not CEFR, native, or another recognised scale
     /// (issue #140).
     pub const LANGUAGE_LEVEL: &str = "language_level";
+    /// Plain-language lints after ISO 24495-1 (issue #141).
+    pub const LONG_SENTENCE: &str = "long_sentence";
+    pub const PASSIVE_VOICE: &str = "passive_voice";
+    pub const UNDEFINED_ACRONYM: &str = "undefined_acronym";
+    /// Common recruiter advice, not a standard (issue #141).
+    pub const FIRST_PERSON: &str = "first_person";
+    pub const TENSE_MIXED: &str = "tense_mixed";
+    pub const CLICHE: &str = "cliche";
+    /// Added by the app, which knows today's date (issue #141).
+    pub const OLD_EXPERIENCE: &str = "old_experience";
 }
+
+/// Sentences and bullets longer than this many words get `long_sentence`.
+/// ISO 24495-1 sets no number; this one is PinaxCV's (ADR-093).
+pub const SENTENCE_MAX_WORDS: usize = 30;
+/// Experience that ended more than this many years ago gets
+/// `old_experience`.
+pub const OLD_EXPERIENCE_YEARS: i32 = 15;
+
+const PLAIN_LANGUAGE: &str = "Standard (ISO 24495-1, plain language)";
+const ADVICE: &str = "Advice (common recruiter guidance, not a standard)";
 
 /// Bullets longer than this many characters get `bullet_too_long`.
 pub const BULLET_MAX_CHARS: usize = 220;
@@ -139,6 +160,7 @@ pub fn lint(cv: &ResolvedCv, page_count: Option<u32>) -> Vec<LintIssue> {
     accent_contrast(cv, &mut out);
     phone_format(cv, &mut out);
     language_levels(cv, &mut out);
+    wording(cv, &entries, &mut out);
     out.sort_by_rule()
 }
 
@@ -329,6 +351,271 @@ pub fn is_recognised_level(level: &str) -> bool {
         "distinguished",
     ];
     words.iter().any(|w| ACTFL.contains(w))
+}
+
+/// The plain-language and wording lints (issue #141). English only, like
+/// `weak_opening`; never more than Info.
+fn wording(cv: &ResolvedCv, entries: &[(&ResolvedSection, &ResolvedEntry)], out: &mut Lints) {
+    use crate::wording::{Tense, cliche, first_person, is_passive, opening_tense, sentences};
+
+    // The word lists are English; another language gets no wording notes.
+    if cv.locale != Locale::En {
+        return;
+    }
+
+    // long_sentence
+    if let Some(summary) = &cv.summary
+        && let Some(n) = sentences(summary)
+            .iter()
+            .map(|s| wording::word_count(s))
+            .find(|n| *n > SENTENCE_MAX_WORDS)
+    {
+        out.push(
+            codes::LONG_SENTENCE,
+            Severity::Info,
+            None,
+            format!("A sentence in the summary has {n} words."),
+            Some(&format!(
+                "{PLAIN_LANGUAGE}: shorter sentences are easier to scan. \
+                 Split sentences over {SENTENCE_MAX_WORDS} words (PinaxCV's limit)."
+            )),
+        );
+    }
+    for b in entries.iter().flat_map(|(_, e)| &e.bullets) {
+        if let Some(n) = sentences(&b.text)
+            .iter()
+            .map(|s| wording::word_count(s))
+            .find(|n| *n > SENTENCE_MAX_WORDS)
+        {
+            out.push(
+                codes::LONG_SENTENCE,
+                Severity::Info,
+                Some(&b.id),
+                format!("This bullet has a sentence of {n} words."),
+                Some(&format!(
+                    "{PLAIN_LANGUAGE}: keep each point to one short sentence, \
+                     at most {SENTENCE_MAX_WORDS} words (PinaxCV's limit)."
+                )),
+            );
+        }
+    }
+
+    // passive_voice
+    for b in entries.iter().flat_map(|(_, e)| &e.bullets) {
+        if is_passive(&b.text) {
+            out.push(
+                codes::PASSIVE_VOICE,
+                Severity::Info,
+                Some(&b.id),
+                "This bullet uses the passive voice.".into(),
+                Some(&format!(
+                    "{PLAIN_LANGUAGE}: say who did it. \"The API was rebuilt\" becomes \"Rebuilt the API\"."
+                )),
+            );
+        }
+    }
+
+    undefined_acronyms(cv, entries, out);
+
+    // first_person
+    for b in entries.iter().flat_map(|(_, e)| &e.bullets) {
+        if let Some(word) = first_person(&b.text) {
+            out.push(
+                codes::FIRST_PERSON,
+                Severity::Info,
+                Some(&b.id),
+                format!("This bullet says \"{word}\"."),
+                Some(&format!(
+                    "{ADVICE}: bullets usually leave out \"I\" and \"my\" and start with the verb."
+                )),
+            );
+        }
+    }
+
+    // tense_mixed: a finished role in the present, or a current role that
+    // mixes both. A current role told in the past is fine: those are
+    // finished results, and most CVs (the sample's too) write them so.
+    for (section, e) in entries {
+        if !matches!(section, ResolvedSection::Experience(_)) {
+            continue;
+        }
+        let tenses: Vec<Tense> = e
+            .bullets
+            .iter()
+            .filter_map(|b| opening_tense(&b.text))
+            .collect();
+        let has = |t| tenses.contains(&t);
+        let message = if !e.period.current && e.period.end.is_some() && has(Tense::Present) {
+            format!(
+                "\"{}\" has ended, but some bullets are in the present tense.",
+                e.title
+            )
+        } else if e.period.current && has(Tense::Present) && has(Tense::Past) {
+            format!("The bullets of \"{}\" mix present and past tense.", e.title)
+        } else {
+            continue;
+        };
+        out.push(
+            codes::TENSE_MIXED,
+            Severity::Info,
+            Some(&e.id),
+            message,
+            Some(&format!(
+                "{ADVICE}: past roles in the past tense; a current role in the present, \
+                 or in the past for finished results."
+            )),
+        );
+    }
+
+    // cliche
+    let mut check = |target: Option<&Id>, text: &str| {
+        if let Some(phrase) = cliche(text) {
+            out.push(
+                codes::CLICHE,
+                Severity::Info,
+                target,
+                format!("\"{phrase}\" is a phrase recruiters see in most CVs."),
+                Some(&format!(
+                    "{ADVICE}: show it with a result instead of claiming it."
+                )),
+            );
+        }
+    };
+    if let Some(h) = &cv.basics.headline {
+        check(None, h);
+    }
+    if let Some(summary) = &cv.summary {
+        check(None, summary);
+    }
+    for (_, e) in entries {
+        if let Some(d) = &e.description {
+            check(Some(&e.id), d);
+        }
+        for b in &e.bullets {
+            check(Some(&b.id), &b.text);
+        }
+    }
+}
+
+/// An all-caps acronym used once, not defined in brackets, and not on the
+/// well-known list. One note per acronym.
+fn undefined_acronyms(
+    cv: &ResolvedCv,
+    entries: &[(&ResolvedSection, &ResolvedEntry)],
+    out: &mut Lints,
+) {
+    let mut texts: Vec<(Option<&Id>, &str)> = Vec::new();
+    if let Some(summary) = &cv.summary {
+        texts.push((None, summary));
+    }
+    for (_, e) in entries {
+        if let Some(d) = &e.description {
+            texts.push((Some(&e.id), d));
+        }
+        for b in &e.bullets {
+            texts.push((Some(&b.id), &b.text));
+        }
+    }
+    // Text that only counts uses: a skill or a title that names it.
+    let mut elsewhere: Vec<&str> = Vec::new();
+    elsewhere.extend(cv.basics.headline.as_deref());
+    for (_, e) in entries {
+        elsewhere.push(&e.title);
+        elsewhere.push(&e.org);
+    }
+    for section in &cv.sections {
+        if let ResolvedSection::Skills(s) = section {
+            elsewhere.extend(
+                s.groups
+                    .iter()
+                    .flat_map(|g| g.skills.iter().map(|k| k.name.as_str())),
+            );
+        }
+    }
+    // A word the CV also writes in lower case is an English word in
+    // capitals for emphasis, not an acronym.
+    let lower: BTreeSet<String> = texts
+        .iter()
+        .map(|(_, t)| *t)
+        .chain(elsewhere.iter().copied())
+        .flat_map(wording::words)
+        .filter(|w| w.chars().any(char::is_lowercase))
+        .map(str::to_lowercase)
+        .collect();
+    let mut uses: std::collections::BTreeMap<&str, (usize, Option<&Id>, bool)> =
+        std::collections::BTreeMap::new();
+    for (target, text) in &texts {
+        for w in wording::words(text).filter(|w| wording::is_unknown_acronym(w)) {
+            let bracketed = text.contains(&format!("({w})"));
+            let e = uses.entry(w).or_insert((0, *target, false));
+            e.0 += 1;
+            e.2 |= bracketed || lower.contains(&w.to_lowercase());
+        }
+    }
+    for w in elsewhere.iter().flat_map(|t| wording::words(t)) {
+        if let Some(e) = uses.get_mut(w) {
+            e.0 += 1;
+        }
+    }
+    // Document order: by the first text each acronym appears in.
+    let mut once: Vec<(usize, &str, Option<&Id>)> = uses
+        .into_iter()
+        .filter(|(_, (n, _, bracketed))| *n == 1 && !bracketed)
+        .map(|(w, (_, target, _))| {
+            let pos = texts
+                .iter()
+                .position(|(t, _)| *t == target)
+                .unwrap_or(usize::MAX);
+            (pos, w, target)
+        })
+        .collect();
+    once.sort();
+    for (_, w, target) in once {
+        out.push(
+            codes::UNDEFINED_ACRONYM,
+            Severity::Info,
+            target,
+            format!("\"{w}\" is used once and not spelled out."),
+            Some(&format!(
+                "{PLAIN_LANGUAGE}: write it out the first time, for example \
+                 \"Service Level Objective (SLO)\", unless every reader knows it."
+            )),
+        );
+    }
+}
+
+/// Experience entries that ended more than [`OLD_EXPERIENCE_YEARS`] before
+/// `today`, counted in months. An end date without a month counts as
+/// December and today without a month as January, so a note never comes
+/// early. The app adds these, since `cv-core` has no clock.
+pub fn old_experience(cv: &ResolvedCv, today: CalendarDate) -> Vec<LintIssue> {
+    let mut out = Lints::default();
+    let now = i32::from(today.year) * 12 + i32::from(today.month.unwrap_or(1));
+    for section in &cv.sections {
+        let ResolvedSection::Experience(s) = section else {
+            continue;
+        };
+        for e in &s.entries {
+            let Some(end) = e.period.end.filter(|_| !e.period.current) else {
+                continue;
+            };
+            let months = now - (i32::from(end.year) * 12 + i32::from(end.month.unwrap_or(12)));
+            if months > OLD_EXPERIENCE_YEARS * 12 {
+                let years = months / 12;
+                out.push(
+                    codes::OLD_EXPERIENCE,
+                    Severity::Info,
+                    Some(&e.id),
+                    format!("\"{}\" ended {years} years ago.", e.title),
+                    Some(&format!(
+                        "{ADVICE}: many guides keep the last {OLD_EXPERIENCE_YEARS} years in detail. \
+                         Collapse or hide older roles unless they matter for this job."
+                    )),
+                );
+            }
+        }
+    }
+    out.0
 }
 
 /// Returns the entries of an entry-shaped section, or nothing.
@@ -764,7 +1051,7 @@ impl Lints {
 
     /// Stable sort by the rule's position in [`codes`]; document order is kept within a rule.
     fn sort_by_rule(mut self) -> Vec<LintIssue> {
-        const ORDER: [&str; 24] = [
+        const ORDER: [&str; 31] = [
             codes::MISSING_NAME,
             codes::MISSING_CONTACT,
             codes::INVALID_EMAIL,
@@ -789,6 +1076,13 @@ impl Lints {
             codes::LOW_CONTRAST,
             codes::PHONE_FORMAT,
             codes::LANGUAGE_LEVEL,
+            codes::LONG_SENTENCE,
+            codes::PASSIVE_VOICE,
+            codes::UNDEFINED_ACRONYM,
+            codes::FIRST_PERSON,
+            codes::TENSE_MIXED,
+            codes::CLICHE,
+            codes::OLD_EXPERIENCE,
         ];
         self.0
             .sort_by_key(|i| ORDER.iter().position(|c| *c == i.code));
@@ -1007,6 +1301,140 @@ mod tests {
 
     fn codes(cv: &Cv) -> Vec<String> {
         run(cv).into_iter().map(|(c, _)| c).collect()
+    }
+
+    fn with_bullet(text: &str) -> Cv {
+        let mut cv = clean_cv();
+        entry_mut(&mut cv, 0).bullets[0].text = text.into();
+        cv
+    }
+
+    fn hint_of(cv: &Cv, code: &str) -> String {
+        lint(&cv.resolve(None), None)
+            .into_iter()
+            .find(|i| i.code == code)
+            .and_then(|i| i.fix_hint)
+            .unwrap_or_default()
+    }
+
+    #[test]
+    fn long_sentences_in_bullets_and_the_summary() {
+        let thirty = vec!["word"; SENTENCE_MAX_WORDS].join(" ");
+        assert_eq!(run(&with_bullet(&format!("Built {thirty}"))).len(), 1);
+        assert!(codes(&with_bullet(&thirty)).is_empty());
+        let mut cv = with_bullet(&format!("Cut costs by 20%. Built {thirty}"));
+        assert_eq!(run(&cv), [(codes::LONG_SENTENCE.into(), Some(id(5)))]);
+        assert!(hint_of(&cv, codes::LONG_SENTENCE).starts_with("Standard (ISO 24495-1"));
+        cv = clean_cv();
+        cv.summary = Some(format!("Engineer. Built {thirty}."));
+        assert_eq!(run(&cv), [(codes::LONG_SENTENCE.into(), None)]);
+    }
+
+    #[test]
+    fn passive_and_first_person_bullets() {
+        let cv = with_bullet("The billing service was rebuilt for 40 teams");
+        assert_eq!(run(&cv), [(codes::PASSIVE_VOICE.into(), Some(id(5)))]);
+        let cv = with_bullet("I built a billing service used by 40 teams");
+        assert_eq!(run(&cv), [(codes::FIRST_PERSON.into(), Some(id(5)))]);
+        assert!(hint_of(&cv, codes::FIRST_PERSON).starts_with("Advice ("));
+    }
+
+    #[test]
+    fn acronyms_used_once_and_not_spelled_out() {
+        let cv = with_bullet("Built a billing service with an SLO and a QPS target for 40 teams");
+        assert_eq!(
+            codes(&cv),
+            [codes::UNDEFINED_ACRONYM, codes::UNDEFINED_ACRONYM]
+        );
+        // Spelled out in brackets, known, used twice, or also written in
+        // lower case: no note.
+        for fine in [
+            "Set a Service Level Objective (SLO) for 40 teams",
+            "Moved 40 teams to AWS and SQL",
+            "Built SLO dashboards for 40 teams; SLO reviews weekly",
+            "Built a billing service USED by 40 teams, used daily",
+        ] {
+            assert!(codes(&with_bullet(fine)).is_empty(), "{fine}");
+        }
+    }
+
+    fn finish(cv: &mut Cv, year: u16) {
+        let e = entry_mut(cv, 0);
+        e.period.current = false;
+        e.period.end = Some(PartialDate {
+            year,
+            month: Some(12),
+        });
+    }
+
+    #[test]
+    fn tense_follows_the_role() {
+        // A finished role in the present.
+        let mut cv = with_bullet("Manage a billing service used by 40 teams");
+        assert!(codes(&cv).is_empty(), "the sample's first job is current");
+        finish(&mut cv, 2025);
+        assert_eq!(run(&cv), [(codes::TENSE_MIXED.into(), Some(id(4)))]);
+        // A current role may be told in the past, but not both at once.
+        let mut cv = clean_cv();
+        assert!(
+            codes(&cv).is_empty(),
+            "past-tense results in a current role"
+        );
+        e_push(&mut cv, "Manage the on-call rota for 40 engineers");
+        assert_eq!(codes(&cv), [codes::TENSE_MIXED]);
+    }
+
+    fn e_push(cv: &mut Cv, text: &str) {
+        let e = entry_mut(cv, 0);
+        let n = 900 + u32::try_from(e.bullets.len()).expect("few bullets");
+        e.bullets.push(Bullet {
+            id: id(n),
+            text: text.into(),
+        });
+    }
+
+    #[test]
+    fn cliches_anywhere_in_the_text() {
+        let cv = with_bullet("A team player who built a billing service for 40 teams");
+        assert_eq!(run(&cv), [(codes::CLICHE.into(), Some(id(5)))]);
+        let mut cv = clean_cv();
+        cv.basics.headline = Some("Results-driven engineer".into());
+        assert_eq!(run(&cv), [(codes::CLICHE.into(), None)]);
+    }
+
+    #[test]
+    fn old_experience_counts_from_this_year() {
+        let day = |year, month| CalendarDate {
+            year,
+            month: Some(month),
+            day: None,
+        };
+        let mut cv = clean_cv();
+        assert!(
+            old_experience(&cv.resolve(None), day(2100, 1)).is_empty(),
+            "current"
+        );
+        // `finish` ends the role in December 2005.
+        finish(&mut cv, 2005);
+        let cv = cv.resolve(None);
+        // Exactly 15 years later is not yet over the line; a month more is.
+        assert!(old_experience(&cv, day(2020, 12)).is_empty());
+        let found = old_experience(&cv, day(2021, 1));
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].code, codes::OLD_EXPERIENCE);
+        assert_eq!(found[0].severity, Severity::Info);
+        assert!(
+            found[0].message.contains("15 years"),
+            "{}",
+            found[0].message
+        );
+        // Without today's month, January is assumed, so no early note.
+        let undated = CalendarDate {
+            year: 2021,
+            month: None,
+            day: None,
+        };
+        assert_eq!(old_experience(&cv, undated).len(), 1);
     }
 
     #[test]
