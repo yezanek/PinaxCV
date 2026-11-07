@@ -270,6 +270,9 @@ fn AtsPanel(cv_id: Id, variant_id: Signal<Option<Id>>) -> impl IntoView {
             {move || error.get().map(|e| view! { <p role="alert">{e}</p> })}
             {move || report.get().map(|r| view! {
                 <p class="ats-score">{fill(t().ats_score_line, &[("score", &r.score.to_string())])}</p>
+                {r.pdf_ua_dropped.map(|why| view! {
+                    <p class="hint">{fill(t().pdf_ua_dropped, &[("reason", &why)])}</p>
+                })}
                 <ul class="ats-checks">
                     {r.checks.into_iter().map(|c| view! {
                         <li class:failed=!c.passed>

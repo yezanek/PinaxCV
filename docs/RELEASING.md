@@ -30,6 +30,6 @@ Artifacts:
 - `python3 scripts/third_party_licenses.py --check` (every shipped licence is compatible with Apache-2.0; run without `--check` after a dependency change)
 - `PRIVACY.md` still matches what the app stores and sends
 - updater test: install the previous release's AppImage, switch on Settings > Updates, and check that "Check now" finds the new release and "Install and restart" replaces the AppImage and restarts it (#73)
-- manual pass in a Windows 11 evaluation VM (before 1.0 and each major release)
+- manual pass in a Windows 11 evaluation VM (required once the Windows packages leave hold; then before 1.0 and each major release)
 
 macOS releases are a future addition. SaaS releases have a separate deployment process and are not covered by this desktop checklist.

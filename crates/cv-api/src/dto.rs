@@ -210,6 +210,9 @@ pub struct ImportPreview {
     /// preview highlights them.
     #[serde(default)]
     pub needs_review: Vec<Id>,
+    /// Tokens an AI import used; none for an import without AI.
+    #[serde(default)]
+    pub tokens: Option<TokenUsage>,
     /// The profile photo the file carried (a Europass attachment), already
     /// cleaned and cropped as it will be stored, as a `data:` URL.
     #[serde(default)]
@@ -556,6 +559,28 @@ pub struct TailorResult {
     /// Optional stages that failed; the other suggestions were still saved.
     #[serde(default)]
     pub failed_stages: Vec<AiStage>,
+    /// Tokens the run used (spec section 11.13).
+    #[serde(default)]
+    pub tokens: Option<TokenUsage>,
+}
+
+/// Tokens an AI job used, added up over its requests (spec section 11.13).
+/// Cached answers add nothing. No prices: they change.
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TokenUsage {
+    pub input_tokens: u64,
+    pub output_tokens: u64,
+    /// Answers received from the provider.
+    pub requests: u32,
+    /// Answers whose server gave no token counts.
+    pub unreported: u32,
+}
+
+impl TokenUsage {
+    /// Input plus output tokens.
+    pub fn total(&self) -> u64 {
+        self.input_tokens.saturating_add(self.output_tokens)
+    }
 }
 
 /// A rewrite dropped by a safety check, with the findings that dropped it.
@@ -585,6 +610,9 @@ pub struct ReviewSession {
     /// Rewrites the safety checks dropped, for the "discarded" details.
     #[serde(default)]
     pub discarded: Vec<DiscardedRewrite>,
+    /// Tokens the review used (spec section 11.13).
+    #[serde(default)]
+    pub tokens: Option<TokenUsage>,
 }
 
 /// Advice from a review that is not a rewrite.
