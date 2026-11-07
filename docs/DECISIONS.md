@@ -664,6 +664,13 @@ Lints that cite a standard say so in their hint, so a user can tell a standard f
 - `language_level` (Info, #140): CEFR A1 to C2 (with an optional `+` or a word around it, "C1 (Advanced)"), a native-speaker phrase, the ILR scale ("ILR 3+") and LinkedIn's ILR-based wording ("Full professional proficiency"), and ACTFL levels are recognised; anything else ("good", "fluent") gets a note. A CEFR picker beside the free-text field is left for later.
 - Wording lints (#141), all Info, English only, in `cv_core::wording` (word lists and patterns, no AI): `long_sentence` (over 30 words; ISO 24495-1 has no number, so it is ours), `passive_voice`, `undefined_acronym` (an all-caps word that the CV also writes in lower case is emphasis, not an acronym), `first_person`, `tense_mixed`, `cliche`. `tense_mixed` flags a current role only when it mixes tenses: a current role told in the past (finished results) is common and accepted. `old_experience` needs today's date, which `cv-core` cannot read, so `App::lint` passes it in and adds the result, like `photo`; it counts months, and an end date without a month counts as December so a note never comes early. `long_sentence` counts "Node.js" and "1,000" as one word each. Every wording lint is skipped for a CV whose locale is not English.
 
+## ADR-094 — Linux AppImage release (M8, issue #68)
+
+- For now the only release is the Linux AppImage (Dan, 2026-11-06); Flatpak (#33), Snap (#34) and the Windows packages (#69, #71) are on hold.
+- `.github/workflows/release.yml` builds it on Ubuntu 22.04 with `tauri-apps/tauri-action` (pinned) and the Tauri CLI at the version of the `tauri` crate, after `trunk build --release`. Building on the oldest supported base keeps the glibc requirement low; WebKitGTK and its libraries are bundled by linuxdeploy, the GStreamer media framework is not (the app plays no media).
+- A `v*` tag that matches the workspace version makes a draft GitHub release with the AppImage attached, to be published by hand. Pull requests that touch the workflow, `tauri.conf.json` or the icons, and manual runs, build it as a workflow artifact and check that it unpacks with the app binary and a desktop file.
+- `tauri.conf.json` no longer has its own version: Tauri takes the `pinaxcv` crate's, so there is one version to bump. Bundling is on with the `appimage` target only.
+
 ## Open decisions
 
 - Future SaaS DTO reuse and synchronization model (SaaS phase).

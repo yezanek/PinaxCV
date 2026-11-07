@@ -2,7 +2,7 @@
 
 PinaxCV builds from source on Linux, macOS and Windows. Linux and Windows are the v1 release platforms. macOS builds are for development and personal use only: there are no signed or notarized macOS releases until Future M10 (ADR-007), but CI builds and tests on macOS on every PR, and these instructions are kept working there.
 
-This file is updated in every milestone that changes how PinaxCV is built. A build produces the desktop app (`pinaxcv`), the library crates and their tests. There are no installers yet: packaging is the open M8 work (AppImage #68, NSIS and portable exe #69, Flatpak #33, Snap #34).
+This file is updated in every milestone that changes how PinaxCV is built. A build produces the desktop app (`pinaxcv`), the library crates and their tests. The only package for now is the Linux AppImage (section 6, ADR-094); Flatpak, Snap and the Windows installers are on hold.
 
 ## 1. System packages
 
@@ -112,7 +112,7 @@ cargo build --release -p pinaxcv --locked
 
 The app is then `target/release/pinaxcv` (`target\release\pinaxcv.exe` on Windows). It is a single binary with the UI, templates and fonts built in, so you can copy it anywhere. On macOS it runs as a plain binary rather than an `.app`; a binary you built yourself is not quarantined, so Gatekeeper does not prompt.
 
-Rebuild the UI with Trunk after changing anything under `ui/`; the shell embeds `ui/dist` at compile time. `cargo tauri dev` and `cargo tauri build` are not set up yet (no `beforeDevCommand`, bundling is off); they arrive with the packaging issues.
+Rebuild the UI with Trunk after changing anything under `ui/`; the shell embeds `ui/dist` at compile time. `cargo tauri dev` is not set up (no `beforeDevCommand`); `cargo tauri build` builds the AppImage, see section 6.
 
 Where the app keeps things:
 
@@ -144,10 +144,26 @@ xvfb-run -a sh -c 'tauri-driver & driver=$!; trap "kill $driver" EXIT
 
 The shell stops `tauri-driver` when the test ends. The test uses the app's normal data folder, so it adds an "E2E smoke" CV there. On Windows, `tauri-driver` also needs `msedgedriver.exe` matching the installed WebView2 version (`--native-driver`); the CI job shows how to fetch it.
 
+## 6. Build the Linux AppImage
+
+The release workflow (`.github/workflows/release.yml`) builds the AppImage on Ubuntu 22.04 with `tauri-action`. To build the same file yourself on Linux:
+
+```sh
+sudo apt install libfuse2   # Debian and Ubuntu; to run AppImages and the bundler's tools
+cargo install tauri-cli --version 2.12.3 --locked
+(cd ui && trunk build --release --locked)
+cargo tauri build --bundles appimage
+```
+
+The file is `target/release/bundle/appimage/PinaxCV_<version>_amd64.AppImage`. Make it executable and run it; it keeps its data in the same folders as the plain binary (section 4). The bundler downloads `linuxdeploy` on the first run. An AppImage built on a newer distribution may not start on an older one, since glibc is not bundled: releases are built on Ubuntu 22.04 for that reason.
+
+To publish a release, set the version in the root `Cargo.toml` (`[workspace.package]`), merge it, and push a tag `v<version>`. The workflow checks that the tag matches, builds the AppImage and attaches it to a draft GitHub release to review and publish.
+
 ## Troubleshooting
 
 - **`webkit2gtk-4.1` not found (Linux):** your distribution is too old or the `-dev`/`-devel` package is missing. Ubuntu 20.04 and Debian 11 only ship WebKitGTK 4.0, which Tauri 2 does not support.
 - **`link.exe` not found (Windows):** the C++ Build Tools are missing, or the shell was opened before they were installed.
+- **AppImage does not start, `libfuse.so.2` missing:** install `libfuse2` (Ubuntu 22.04: `libfuse2`; Ubuntu 24.04: `libfuse2t64`), or run it with `--appimage-extract-and-run`.
 - **Slow first build:** the first build compiles Typst, Tauri and all their dependencies from source, which takes several minutes. Later builds are incremental.
 
 ## Appendix: the M0.5 spikes

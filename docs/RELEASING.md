@@ -7,11 +7,14 @@
 
 Artifacts:
 
-- Linux AppImage
-- Linux Flatpak
-- Linux Snap
-- Windows NSIS installer (signed from 1.0)
-- Windows portable executable (no auto-update; signed from 1.0)
+- Linux AppImage, built by `.github/workflows/release.yml` on a `v*` tag (ADR-094). This is the only release for now.
+- On hold, to be done later: Linux Flatpak, Linux Snap, Windows NSIS installer and portable executable (signed from 1.0).
+
+## Making a release
+
+1. Set the version in the root `Cargo.toml` (`[workspace.package]`) and add a `CHANGELOG.md` entry; merge to `main`.
+2. Push the tag: `git tag v<version> && git push origin v<version>`. The tag must match the version or the workflow stops.
+3. The workflow builds the AppImage on Ubuntu 22.04 and attaches it to a draft GitHub release. Check the release checks below, then publish the draft.
 
 ## Release checks
 
@@ -25,7 +28,7 @@ Artifacts:
 - backup/restore test
 - `python3 scripts/third_party_licenses.py --check` (every shipped licence is compatible with Apache-2.0; run without `--check` after a dependency change)
 - `PRIVACY.md` still matches what the app stores and sends
-- updater test
-- manual pass in a Windows 11 evaluation VM (before 1.0 and each major release)
+- updater test (required once the updater ships, #70)
+- manual pass in a Windows 11 evaluation VM (required once the Windows packages leave hold; then before 1.0 and each major release)
 
 macOS releases are a future addition. SaaS releases have a separate deployment process and are not covered by this desktop checklist.
