@@ -74,6 +74,9 @@ pub struct ExportedDocument {
     pub page_count: Option<u32>,
     /// Warnings that did not block the export, such as missing glyphs.
     pub warnings: Vec<Diagnostic>,
+    /// PDF only: why the file does not declare PDF/UA-1, when Typst could
+    /// not meet it (ADR-061, issue #138).
+    pub pdf_ua_dropped: Option<String>,
 }
 
 #[derive(Debug, thiserror::Error)]

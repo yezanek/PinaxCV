@@ -251,6 +251,7 @@ Experience\r\nSenior Engineer, Example AG   \r\n2020 - present\r\n• Built the 
             cache: &MemoryCache::default(),
             model: "m",
             cancel: CancellationToken::new(),
+            usage: crate::TokenMeter::new(),
         };
         let p = prepare_text(TEXT).expect("prepared");
         let cv = extract_cv(&ctx, &p.sent).await.expect("extracted");

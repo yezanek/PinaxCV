@@ -396,7 +396,10 @@ impl App {
         }
         .export(&resolved, &self.pdf_options(&resolved)?)
         .map_err(render_error)?;
-        let report = ats::ats_report(&doc.bytes, &resolved);
+        let report = AtsReport {
+            pdf_ua_dropped: doc.pdf_ua_dropped.clone(),
+            ..ats::ats_report(&doc.bytes, &resolved)
+        };
         let path = self.choose_save_path(&doc.suggested_file_name, ExportKind::Pdf)?;
         // The dialog asked before replacing the PDF, which also covers the
         // copy beside it from the earlier export; otherwise an existing
@@ -460,13 +463,16 @@ impl App {
     pub fn ats_check(&self, target: &Target) -> Result<AtsReport> {
         let (cv, variant) = self.load_target(target)?;
         let resolved = cv.resolve(variant.as_ref());
-        let pdf = self
+        let (pdf, pdf_ua_dropped) = self
             .renderer
             .compile(&resolved, &self.pdf_options(&resolved)?)
             .map_err(|d| render_error(cv_render::RenderError::Compile(d)))?
-            .to_pdf()
+            .to_pdf_with_ua()
             .map_err(render_error)?;
-        Ok(ats::ats_report(&pdf, &resolved))
+        Ok(AtsReport {
+            pdf_ua_dropped,
+            ..ats::ats_report(&pdf, &resolved)
+        })
     }
 
     /// Lint findings, including the page-count rule from a fresh render.
@@ -479,6 +485,7 @@ impl App {
             .ok()
             .map(|c| c.page_count());
         let mut issues = cv_core::lint::lint(&resolved, pages);
+        issues.extend(cv_core::lint::old_experience(&resolved, today()));
         if self.photo_for(&resolved)?.is_some() {
             issues.push(LintIssue {
                 code: cv_core::lint::codes::PHOTO.to_owned(),

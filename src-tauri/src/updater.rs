@@ -51,6 +51,20 @@ fn io_error(message: &str) -> ApiError {
     ApiError::new(ErrorCode::Io, message)
 }
 
+/// Whether the user switched the update check on.
+async fn enabled(app: &State<'_, Arc<App>>) -> Result<bool, ApiError> {
+    let app = Arc::clone(app.inner());
+    let setting = tauri::async_runtime::spawn_blocking(move || app.update_check())
+        .await
+        .map_err(|_| {
+            ApiError::new(
+                ErrorCode::Internal,
+                "The update check stopped unexpectedly.",
+            )
+        })??;
+    Ok(setting == Some(true))
+}
+
 /// Checks GitHub Releases for a newer signed AppImage, if the user switched
 /// the check on and this copy can update itself.
 #[tauri::command]
@@ -59,16 +73,7 @@ pub async fn update_check<R: Runtime>(
     app: State<'_, Arc<App>>,
     pending: State<'_, Pending>,
 ) -> Result<UpdateStatus, ApiError> {
-    let app = Arc::clone(app.inner());
-    let enabled = tauri::async_runtime::spawn_blocking(move || app.update_check())
-        .await
-        .map_err(|_| {
-            ApiError::new(
-                ErrorCode::Internal,
-                "The update check stopped unexpectedly.",
-            )
-        })??;
-    if enabled != Some(true) {
+    if !enabled(&app).await? {
         return Ok(UpdateStatus::Off);
     }
     let appimage = std::env::var("APPIMAGE").ok();
@@ -114,14 +119,24 @@ pub async fn update_check<R: Runtime>(
 #[tauri::command]
 pub async fn update_install<R: Runtime>(
     handle: AppHandle<R>,
+    app: State<'_, Arc<App>>,
     pending: State<'_, Pending>,
 ) -> Result<(), ApiError> {
+    // The update is taken in every case, so a failed or refused install asks
+    // for a new check.
     let update = pending
         .0
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
         .take()
-        .ok_or_else(|| ApiError::new(ErrorCode::NotFound, "Check for updates first."))?;
+        .ok_or_else(|| ApiError::new(ErrorCode::Validation, "Check for updates first."))?;
+    // Switched off after the check: nothing is downloaded (ADR-095).
+    if !enabled(&app).await? {
+        return Err(ApiError::new(
+            ErrorCode::Validation,
+            "Update checks are off. Turn them on in Settings > Updates.",
+        ));
+    }
     let version = update.version.clone();
     if update.download_and_install(|_, _| {}, || {}).await.is_err() {
         tracing::warn!(%version, "update install failed");

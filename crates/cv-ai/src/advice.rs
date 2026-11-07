@@ -390,6 +390,7 @@ mod tests {
             cache,
             model: "m",
             cancel: CancellationToken::new(),
+            usage: crate::TokenMeter::new(),
         }
     }
 

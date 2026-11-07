@@ -107,6 +107,7 @@ impl App {
             cache: &cache,
             model: &model,
             cancel: ctx.cancel.clone(),
+            usage: ctx.usage.clone(),
         };
 
         ctx.progress(AiStage::Review, 0);
@@ -166,6 +167,7 @@ impl App {
             suggestions,
             notes,
             discarded,
+            tokens: Some(ctx.tokens()),
         };
         let content = serde_json::to_string(&session)
             .map_err(|_| internal("The review could not be saved."))?;

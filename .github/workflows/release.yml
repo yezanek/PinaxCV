@@ -78,7 +78,9 @@ jobs:
         uses: tauri-apps/tauri-action@v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PINAXCV_UPDATER_PUBKEY: ${{ vars.TAURI_UPDATER_PUBKEY }}
+          # Built in only when the build is signed, so an unsigned AppImage says
+          # it cannot update itself instead of failing the check.
+          PINAXCV_UPDATER_PUBKEY: ${{ steps.signing.outputs.args != '' && vars.TAURI_UPDATER_PUBKEY || '' }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:

@@ -22,6 +22,8 @@ pub struct SeenRequest {
 pub struct FakeLlm {
     replies: Mutex<HashMap<&'static str, VecDeque<Result<Value, LlmError>>>>,
     seen: Mutex<Vec<SeenRequest>>,
+    /// Token counts reported with every answer; none when unset.
+    usage: Option<(u64, u64)>,
 }
 
 impl FakeLlm {
@@ -32,6 +34,13 @@ impl FakeLlm {
     /// Queues `output` for the next request named `schema_name`.
     pub fn reply(self, schema_name: &'static str, output: Value) -> Self {
         self.queue(schema_name, Ok(output))
+    }
+
+    /// Reports `input` and `output` tokens with every answer, like a
+    /// provider that sends usage counts.
+    pub fn with_usage(mut self, input: u64, output: u64) -> Self {
+        self.usage = Some((input, output));
+        self
     }
 
     /// Queues `error` for the next request named `schema_name`.
@@ -64,6 +73,7 @@ impl Llm for FakeLlm {
         if request.cancel.is_cancelled() {
             return Err(LlmError::Cancelled);
         }
+        request.usage.record(self.usage);
         self.seen
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)

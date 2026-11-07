@@ -5,7 +5,7 @@
 //! Strings with values in them are templates: `{name}` placeholders are
 //! filled by [`fill`], so a translation can move them around.
 
-use cv_api::{ApiError, ErrorCode};
+use cv_api::{ApiError, ErrorCode, TokenUsage};
 
 /// The UI text for one locale.
 pub struct Strings {
@@ -286,6 +286,8 @@ pub struct Strings {
     pub ats_limits: &'static str,
     pub ats_run: &'static str,
     pub ats_running: &'static str,
+    /// `{reason}`: Typst's message. Info, shown under the ATS score.
+    pub pdf_ua_dropped: &'static str,
     pub ats_score_line: &'static str,
     pub check_passed: &'static str,
     pub check_failed: &'static str,
@@ -541,6 +543,14 @@ pub struct Strings {
     pub ai_review_done: &'static str,
     pub ai_review_nothing: &'static str,
     pub ai_review_cancelled: &'static str,
+
+    // Token usage of an AI job (spec section 11.13); never a price.
+    /// `{n}`: input plus output tokens.
+    pub tokens_used: &'static str,
+    /// `{n}`: the tokens of the answers that reported a count.
+    pub tokens_partly_reported: &'static str,
+    pub tokens_not_reported: &'static str,
+    pub tokens_cached: &'static str,
     /// `{at}`: when the shown review ran.
     pub ai_review_last: &'static str,
     pub ai_review_notes: &'static str,
@@ -820,6 +830,7 @@ pub static EN: Strings = Strings {
     ats_limits: "These are best-practice checks on how parsers read the PDF, not rules published by any applicant tracking system. Still check the final document in the employer's application flow.",
     ats_run: "Run check",
     ats_running: "Checking…",
+    pdf_ua_dropped: "Info: this PDF is tagged but does not declare PDF/UA-1, the accessible-PDF standard, because: {reason}",
     ats_score_line: "Score as read by PinaxCV: {score} / 100",
     check_passed: "Passed:",
     check_failed: "Failed:",
@@ -1056,6 +1067,10 @@ pub static EN: Strings = Strings {
     ai_review_progress: "Review progress",
     ai_review_done_one: "1 suggestion is ready. Nothing changes until you accept it.",
     ai_review_done: "{n} suggestions are ready. Nothing changes until you accept them.",
+    tokens_used: "Used about {n} tokens.",
+    tokens_partly_reported: "Used at least {n} tokens; the server did not report every request.",
+    tokens_not_reported: "Token use was not reported by the server.",
+    tokens_cached: "Used no tokens: every answer came from the cache.",
     ai_review_nothing: "The review found nothing to rewrite.",
     ai_review_cancelled: "The review was cancelled.",
     ai_review_last: "Last review: {at}",
@@ -1114,6 +1129,35 @@ pub fn fill(template: &str, args: &[(&str, &str)]) -> String {
     out
 }
 
+/// The token line shown after an AI job (spec section 11.13), or none when
+/// the result carries no usage (an import without AI, an older review).
+pub fn token_message(tokens: Option<&TokenUsage>) -> Option<String> {
+    let u = tokens?;
+    let n = || group_digits(u.total());
+    Some(if u.requests == 0 {
+        t().tokens_cached.to_owned()
+    } else if u.unreported == u.requests {
+        t().tokens_not_reported.to_owned()
+    } else if u.unreported > 0 {
+        fill(t().tokens_partly_reported, &[("n", &n())])
+    } else {
+        fill(t().tokens_used, &[("n", &n())])
+    })
+}
+
+/// `12345` as `12,345`.
+fn group_digits(n: u64) -> String {
+    let digits = n.to_string();
+    let mut out = String::with_capacity(digits.len() + digits.len() / 3);
+    for (i, c) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
+            out.push(',');
+        }
+        out.push(c);
+    }
+    out
+}
+
 /// The text shown for a backend error (spec section 15). Codes whose meaning
 /// is complete on its own map to a fixed string here. For the others the
 /// backend message is the specific, actionable part (which fields failed
@@ -1149,6 +1193,37 @@ pub fn error_message(e: &ApiError) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn token_lines_say_how_much_was_used_or_why_not() {
+        let used = |input, output, requests, unreported| TokenUsage {
+            input_tokens: input,
+            output_tokens: output,
+            requests,
+            unreported,
+        };
+        assert_eq!(token_message(None), None);
+        assert_eq!(
+            token_message(Some(&used(12_000, 345, 3, 0))).as_deref(),
+            Some("Used about 12,345 tokens.")
+        );
+        assert_eq!(
+            token_message(Some(&used(900, 100, 2, 1))).as_deref(),
+            Some("Used at least 1,000 tokens; the server did not report every request.")
+        );
+        assert_eq!(
+            token_message(Some(&used(0, 0, 2, 2))).as_deref(),
+            Some(t().tokens_not_reported)
+        );
+        assert_eq!(
+            token_message(Some(&used(0, 0, 0, 0))).as_deref(),
+            Some(t().tokens_cached)
+        );
+        assert_eq!(group_digits(0), "0");
+        assert_eq!(group_digits(999), "999");
+        assert_eq!(group_digits(1_000), "1,000");
+        assert_eq!(group_digits(1_234_567), "1,234,567");
+    }
 
     #[test]
     fn fill_replaces_named_placeholders() {

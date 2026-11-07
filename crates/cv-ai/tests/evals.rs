@@ -138,6 +138,7 @@ async fn run(llm: &dyn Llm, model: &str, job: &str, cv: &CvPayload) -> Run {
         cache: &cache,
         model,
         cancel: CancellationToken::new(),
+        usage: cv_ai::TokenMeter::new(),
     };
     let requirements = parse_job(&ctx, job).await.expect("stage A");
     let relevance = score_relevance(&ctx, &requirements, cv)

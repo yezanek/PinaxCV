@@ -17,6 +17,7 @@ pub mod prompts;
 pub mod providers;
 pub mod schema;
 pub mod stages;
+pub mod usage;
 pub mod verify;
 
 pub use advice::{
@@ -32,6 +33,7 @@ pub use stages::{
 
 pub use fake::FakeLlm;
 pub use providers::{AnthropicLlm, GeminiLlm, OpenAiCompatibleLlm, OpenAiLlm};
+pub use usage::{TokenMeter, TokenUsage};
 
 use serde_json::Value;
 use tokio_util::sync::CancellationToken;
@@ -55,6 +57,8 @@ pub struct LlmRequest {
     /// Always within [`TEMPERATURE_RANGE`]; set through [`LlmRequest::with_temperature`].
     temperature: f32,
     pub cancel: CancellationToken,
+    /// Where the provider records the token counts of each answer it gets.
+    pub usage: TokenMeter,
 }
 
 impl LlmRequest {
@@ -68,6 +72,7 @@ impl LlmRequest {
             max_output_tokens: 4096,
             temperature: DEFAULT_TEMPERATURE,
             cancel: CancellationToken::new(),
+            usage: TokenMeter::new(),
         }
     }
 

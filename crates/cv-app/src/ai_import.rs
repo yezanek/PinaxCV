@@ -344,12 +344,16 @@ impl App {
             cache: &cache,
             model: &model,
             cancel: ctx.cancel.clone(),
+            usage: ctx.usage.clone(),
         };
         ctx.progress(AiStage::Import, 10);
         let cv = extract_cv(&stage, &sent).await.map_err(llm_error)?;
         ctx.check()?;
         let (result, needs_review) = self.with_ids(|ids| to_partial(cv, &original, &sent, ids));
         ctx.progress(AiStage::Import, 100);
-        Ok(self.keep_preview(result, needs_review))
+        Ok(ImportPreview {
+            tokens: Some(ctx.tokens()),
+            ..self.keep_preview(result, needs_review)
+        })
     }
 }

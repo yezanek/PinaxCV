@@ -7,6 +7,7 @@
 
 use std::fmt::Write as _;
 
+use cv_core::contrast::{GRAPHIC_MIN_RATIO, Rgb, contrast_ratio};
 use cv_core::{CvFont, ResolvedCv};
 
 use crate::data::{
@@ -33,6 +34,7 @@ impl Exporter for HtmlExporter {
             suggested_file_name: suggested_file_name(&cv.basics.full_name, "html"),
             page_count: None,
             warnings: Vec::new(),
+            pdf_ua_dropped: None,
         })
     }
 }
@@ -173,12 +175,13 @@ fn head(out: &mut String, d: &TypstData, font: CvFont) {
         "<!DOCTYPE html>\n<html lang=\"{lang}\">\n<head>\n<meta charset=\"utf-8\">\n\
          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\
          <meta name=\"author\" content=\"{author}\">\n<meta name=\"generator\" content=\"PinaxCV\">\n\
-         <title>{title}</title>\n<style>\n:root {{ --accent: {accent}; --font: {font}; }}\n{CSS}</style>\n\
+         <title>{title}</title>\n<style>\n:root {{ --accent: {accent}; --font: {font}; }}\n{CSS}{dark}</style>\n\
          </head>\n<body{body_class}>\n",
         lang = esc(d.locale),
         author = esc(&d.meta.author),
         title = esc(&d.meta.title),
         accent = accent(d.opts.accent.as_deref()),
+        dark = dark_accent(d.opts.accent.as_deref()),
         font = font_stack(font),
         body_class = if d.layout.two { " class=\"two\"" } else { "" },
     );
@@ -218,6 +221,21 @@ fn accent(value: Option<&str>) -> String {
             v.to_owned()
         }
         _ => "currentColor".to_owned(),
+    }
+}
+
+/// Background of the dark colour scheme in `cv.css`.
+const DARK_BG: Rgb = Rgb(0x12, 0x12, 0x12);
+
+/// A dark-scheme rule that swaps the accent for the text colour when the
+/// accent's heading rules would be too faint on the dark background
+/// (WCAG 2.2 SC 1.4.11, 3:1 for graphical objects; issue #139).
+fn dark_accent(value: Option<&str>) -> &'static str {
+    match value.and_then(Rgb::parse) {
+        Some(c) if contrast_ratio(c, DARK_BG) < GRAPHIC_MIN_RATIO => {
+            "@media screen and (prefers-color-scheme: dark) {\n  :root { --accent: currentColor; }\n}\n"
+        }
+        _ => "",
     }
 }
 
@@ -829,6 +847,15 @@ mod tests {
         assert_eq!(header_len(&[Name, Summary, Contact]), 1);
         assert_eq!(header_len(&[Summary, Name, Contact]), 0);
         assert_eq!(header_len(&[]), 0);
+    }
+
+    #[test]
+    fn a_dark_accent_falls_back_to_the_text_colour_in_dark_mode() {
+        // Navy rules vanish on the dark background; a light blue does not.
+        assert!(dark_accent(Some("#1F3A68")).contains("--accent: currentColor"));
+        assert_eq!(dark_accent(Some("#6CA0FF")), "");
+        assert_eq!(dark_accent(None), "");
+        assert_eq!(dark_accent(Some("bad")), "");
     }
 
     #[test]

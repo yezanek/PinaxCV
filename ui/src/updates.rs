@@ -33,8 +33,9 @@ pub fn status_message(status: &UpdateStatus) -> String {
     }
 }
 
-/// "Install and restart", or the error when it failed.
-fn install(busy: RwSignal<bool>, error: RwSignal<Option<String>>) {
+/// "Install and restart", or the error when it failed. A failed install
+/// drops the offer (`forget`): the app needs a new check before retrying.
+fn install(busy: RwSignal<bool>, error: RwSignal<Option<String>>, forget: impl Fn() + 'static) {
     busy.set(true);
     error.set(None);
     spawn_local(async move {
@@ -43,6 +44,7 @@ fn install(busy: RwSignal<bool>, error: RwSignal<Option<String>>) {
         let _ = busy.try_set(false);
         if let Err(e) = result {
             let _ = error.try_set(Some(error_message(&e)));
+            forget();
         }
     });
 }
@@ -117,7 +119,7 @@ pub fn UpdateNotice() -> impl IntoView {
             <section class="notice" role="status">
                 <p>{status_message(&status)}</p>
                 <p class="actions">
-                    <button prop:disabled=move || busy.get() on:click=move |_| install(busy, error)>{t().updates_install}</button>
+                    <button prop:disabled=move || busy.get() on:click=move |_| install(busy, error, move || { let _ = found.try_set(None); })>{t().updates_install}</button>
                 </p>
             </section>
         })}
@@ -180,7 +182,7 @@ pub fn UpdatesSection(settings: RwSignal<Option<AppSettings>>) -> impl IntoView 
         <p class="actions">
             <button prop:disabled=move || busy.get() || !on() on:click=check_now>{s.updates_check_now}</button>
             <Show when=move || available.get()>
-                <button prop:disabled=move || busy.get() on:click=move |_| install(busy, error)>{t().updates_install}</button>
+                <button prop:disabled=move || busy.get() on:click=move |_| install(busy, error, move || { let _ = available.try_set(false); let _ = message.try_set(None); })>{t().updates_install}</button>
             </Show>
         </p>
         <p role="status">{move || message.get()}</p>
