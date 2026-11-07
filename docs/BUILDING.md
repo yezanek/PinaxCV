@@ -155,7 +155,7 @@ cargo install tauri-cli --version 2.12.3 --locked
 cargo tauri build --bundles appimage
 ```
 
-The file is `target/release/bundle/appimage/PinaxCV_<version>_amd64.AppImage`. Make it executable and run it; it keeps its data in the same folders as the plain binary (section 4). The bundler downloads `linuxdeploy` on the first run. An AppImage built on a newer distribution may not start on an older one, since glibc is not bundled: releases are built on Ubuntu 22.04 for that reason.
+The file is `target/release/bundle/appimage/PinaxCV_<version>_amd64.AppImage`. A build without `PINAXCV_UPDATER_PUBKEY` set cannot update itself and says so in Settings > Updates; only release builds carry the key (ADR-095). Make it executable and run it; it keeps its data in the same folders as the plain binary (section 4). The bundler downloads `linuxdeploy` on the first run. An AppImage built on a newer distribution may not start on an older one, since glibc is not bundled: releases are built on Ubuntu 22.04 for that reason.
 
 To publish a release, set the version in the root `Cargo.toml` (`[workspace.package]`), merge it, and push a tag `v<version>`. The workflow checks that the tag matches, builds the AppImage and attaches it to a draft GitHub release to review and publish.
 

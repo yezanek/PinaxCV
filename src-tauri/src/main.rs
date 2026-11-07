@@ -15,6 +15,7 @@ mod jobs;
 mod keychain;
 mod log;
 mod preview;
+mod updater;
 
 /// File name of the database inside the app data directory.
 const DB_FILE: &str = "pinaxcv.sqlite3";
@@ -65,6 +66,8 @@ fn main() {
     with_driver_args(&mut context);
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(updater::plugin())
+        .manage(updater::Pending::default())
         .register_uri_scheme_protocol("preview", |ctx, request| {
             let app = ctx.app_handle().try_state::<Arc<App>>();
             preview::respond(app.as_deref().map(Arc::as_ref), request.uri().path())
@@ -136,6 +139,9 @@ fn main() {
             commands::import_commit,
             commands::get_settings,
             commands::set_cv_defaults,
+            commands::set_update_check,
+            updater::update_check,
+            updater::update_install,
             commands::open_data_dir,
             commands::open_log_dir,
             commands::third_party_licenses,

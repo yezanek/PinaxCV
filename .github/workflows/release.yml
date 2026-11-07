@@ -12,6 +12,7 @@ on:
       - .github/workflows/release.yml
       - src-tauri/tauri.conf.json
       - src-tauri/icons/**
+      - src-tauri/tauri.updater.conf.json
 
 concurrency:
   group: release-${{ github.ref }}
@@ -55,6 +56,21 @@ jobs:
             echo "Tag $GITHUB_REF_NAME does not match the workspace version $version" >&2
             exit 1
           fi
+      # Updates are signed (issue #70, ADR-095). The repository variable
+      # TAURI_UPDATER_PUBKEY is built into the app; the secret
+      # TAURI_SIGNING_PRIVATE_KEY (and its password) signs the AppImage and
+      # makes tauri-action upload latest.json. Without them the AppImage is
+      # built unsigned and cannot update itself.
+      - name: Updater signing
+        id: signing
+        env:
+          HAS_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' && vars.TAURI_UPDATER_PUBKEY != '' }}
+        run: |
+          if [ "$HAS_KEY" = "true" ]; then
+            echo "args=--config src-tauri/tauri.updater.conf.json" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No updater key set (TAURI_UPDATER_PUBKEY variable, TAURI_SIGNING_PRIVATE_KEY secret): this AppImage cannot update itself."
+          fi
       - name: Build UI (Trunk)
         working-directory: ui
         run: trunk build --release --locked
@@ -62,9 +78,14 @@ jobs:
         uses: tauri-apps/tauri-action@v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Built in only when the build is signed, so an unsigned AppImage says
+          # it cannot update itself instead of failing the check.
+          PINAXCV_UPDATER_PUBKEY: ${{ steps.signing.outputs.args != '' && vars.TAURI_UPDATER_PUBKEY || '' }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tauriScript: npx --yes @tauri-apps/cli@2.12.3
-          args: --bundles appimage
+          args: --bundles appimage ${{ steps.signing.outputs.args }}
           tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
           releaseName: PinaxCV ${{ github.ref_name }}
           releaseBody: Linux AppImage. See CHANGELOG.md for what changed.

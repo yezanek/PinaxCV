@@ -30,6 +30,7 @@ mod settings;
 mod style;
 mod tailor;
 mod text_import;
+mod updates;
 mod variants;
 
 #[component]
